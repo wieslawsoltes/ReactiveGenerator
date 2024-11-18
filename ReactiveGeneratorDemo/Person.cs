@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace InpcDemo;
+namespace ReactiveGeneratorDemo;
 
 public partial class Person
 {

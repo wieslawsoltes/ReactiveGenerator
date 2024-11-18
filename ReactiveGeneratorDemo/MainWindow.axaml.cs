@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace InpcDemo;
+namespace ReactiveGeneratorDemo;
 
 public partial class MainWindow : Window
 {

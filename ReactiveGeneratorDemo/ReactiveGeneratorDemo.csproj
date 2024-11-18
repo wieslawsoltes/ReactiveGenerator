@@ -8,7 +8,7 @@
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
         <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
         <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\GeneratedFiles</CompilerGeneratedFilesOutputPath>
-        <RootNamespace>InpcDemo</RootNamespace>
+        <RootNamespace>ReactiveGeneratorDemo</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>

@@ -1,7 +1,7 @@
 ﻿using Avalonia;
 using System;
 
-namespace InpcDemo;
+namespace ReactiveGeneratorDemo;
 
 class Program
 {
