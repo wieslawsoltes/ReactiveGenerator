@@ -12,6 +12,9 @@ public partial class Person
 
     [Reactive]
     public partial int Age { get; set; }
+
+    [Reactive] 
+    internal partial string Tag { get; private set; }
 }
 
 public partial class Student : Person
