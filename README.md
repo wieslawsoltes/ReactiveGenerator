@@ -1,5 +1,7 @@
 # ReactiveGenerator
 
+[![CI](https://github.com/wieslawsoltes/ReactiveGenerator/actions/workflows/build.yml/badge.svg)](https://github.com/wieslawsoltes/ReactiveGenerator/actions/workflows/build.yml)
+
 [![NuGet](https://img.shields.io/nuget/v/ReactiveGeneratorsvg)](https://www.nuget.org/packages/ReactiveGenerator)
 [![NuGet](https://img.shields.io/nuget/dt/ReactiveGenerator.svg)](https://www.nuget.org/packages/ReactiveGenerator)
 
