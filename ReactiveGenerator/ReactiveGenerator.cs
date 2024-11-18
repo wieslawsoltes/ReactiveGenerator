@@ -175,7 +175,7 @@ namespace ReactiveGenerator
             return typeSymbol.BaseType != null && HasReactivePropertiesInHierarchy(typeSymbol.BaseType);
         }
 
-       private static string GenerateClassSource(
+        private static string GenerateClassSource(
             Compilation compilation,
             INamedTypeSymbol classSymbol,
             List<IPropertySymbol> allProperties,
@@ -245,6 +245,7 @@ namespace ReactiveGenerator
             if (typeProperties.Any())
                 sb.AppendLine();
 
+
             // Generate backing fields and properties
             foreach (var property in typeProperties)
             {
@@ -253,21 +254,36 @@ namespace ReactiveGenerator
                 var backingFieldName = GetBackingFieldName(propertyName);
                 var eventArgsFieldName = GetEventArgsFieldName(propertyName);
 
+                // Backing field should be private regardless of property accessibility
                 sb.AppendLine($"        private {propertyType} {backingFieldName};");
                 sb.AppendLine();
 
+                // Get property accessors' modifiers
+                var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
+                var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
                 var propertyAccessibility = property.DeclaredAccessibility.ToString().ToLowerInvariant();
+
                 sb.AppendLine($"        {propertyAccessibility} partial {propertyType} {propertyName}");
                 sb.AppendLine("        {");
-                sb.AppendLine($"            get => {backingFieldName};");
-                sb.AppendLine("            set");
-                sb.AppendLine("            {");
-                sb.AppendLine($"                if (!Equals({backingFieldName}, value))");
-                sb.AppendLine("                {");
-                sb.AppendLine($"                    {backingFieldName} = value;");
-                sb.AppendLine($"                    OnPropertyChanged({eventArgsFieldName});");
-                sb.AppendLine("                }");
-                sb.AppendLine("            }");
+
+                // Generate getter
+                var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
+                sb.AppendLine($"            {getterModifier}get => {backingFieldName};");
+
+                // Generate setter if it exists
+                if (property.SetMethod != null)
+                {
+                    var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
+                    sb.AppendLine($"            {setterModifier}set");
+                    sb.AppendLine("            {");
+                    sb.AppendLine($"                if (!Equals({backingFieldName}, value))");
+                    sb.AppendLine("                {");
+                    sb.AppendLine($"                    {backingFieldName} = value;");
+                    sb.AppendLine($"                    OnPropertyChanged({eventArgsFieldName});");
+                    sb.AppendLine("                }");
+                    sb.AppendLine("            }");
+                }
+
                 sb.AppendLine("        }");
                 sb.AppendLine();
             }
@@ -281,7 +297,23 @@ namespace ReactiveGenerator
 
             return sb.ToString();
         }
-        
+
+        private static string GetAccessorAccessibility(IMethodSymbol accessor)
+        {
+            if (accessor == null)
+                return "private";
+
+            return accessor.DeclaredAccessibility switch
+            {
+                Accessibility.Private => "private",
+                Accessibility.Protected => "protected",
+                Accessibility.Internal => "internal",
+                Accessibility.ProtectedOrInternal => "protected internal",
+                Accessibility.ProtectedAndInternal => "private protected",
+                _ => accessor.DeclaredAccessibility.ToString().ToLowerInvariant()
+            };
+        }
+                
         private static string GetBackingFieldName(string propertyName)
         {
             return "_" + char.ToLowerInvariant(propertyName[0]) + propertyName.Substring(1);
