@@ -45,7 +45,10 @@ namespace ReactiveGenerator
 
         private static IPropertySymbol? GetSemanticTarget(GeneratorSyntaxContext context)
         {
-            var propertyDeclaration = (PropertyDeclarationSyntax)context.Node;
+            if (context.Node is not PropertyDeclarationSyntax propertyDeclaration)
+                return null;
+
+            var semanticModel = context.SemanticModel;
 
             foreach (var attributeList in propertyDeclaration.AttributeLists)
             {
@@ -54,7 +57,8 @@ namespace ReactiveGenerator
                     var name = attribute.Name.ToString();
                     if (name is "Reactive" or "ReactiveAttribute")
                     {
-                        return context.SemanticModel.GetDeclaredSymbol(propertyDeclaration);
+                        var symbol = semanticModel.GetDeclaredSymbol(propertyDeclaration);
+                        return symbol;
                     }
                 }
             }
@@ -62,6 +66,7 @@ namespace ReactiveGenerator
             return null;
         }
 
+        // Rest of the class implementation unchanged...
         private static bool InheritsFromReactiveObject(INamedTypeSymbol typeSymbol)
         {
             var current = typeSymbol;
@@ -179,12 +184,11 @@ namespace ReactiveGenerator
                 _ => accessor.DeclaredAccessibility.ToString().ToLowerInvariant()
             };
         }
-        
-        private static string GenerateClassSource(INamedTypeSymbol classSymbol,
+        private static string GenerateClassSource(
+            INamedTypeSymbol classSymbol,
             List<IPropertySymbol> allProperties,
             bool implementInpc)
         {
-            // Get properties for this specific type
             var typeProperties = allProperties.Where(p => 
                 SymbolEqualityComparer.Default.Equals(p.ContainingType, classSymbol)).ToList();
 
@@ -198,7 +202,6 @@ namespace ReactiveGenerator
 
             var sb = new StringBuilder();
             
-            // Add using statements
             if (isReactiveObject)
             {
                 sb.AppendLine("using ReactiveUI;");
@@ -210,22 +213,17 @@ namespace ReactiveGenerator
             }
             sb.AppendLine();
 
-            // Begin namespace
             if (namespaceName != null)
             {
                 sb.AppendLine($"namespace {namespaceName}");
                 sb.AppendLine("{");
             }
 
-            // Begin class
             var accessibility = classSymbol.DeclaredAccessibility.ToString().ToLowerInvariant();
-            
-            // Add INPC interface only if this is the base implementation and not a ReactiveObject
             var interfaces = (implementInpc && !isReactiveObject) ? " : INotifyPropertyChanged" : "";
             sb.AppendLine($"    {accessibility} partial class {classSymbol.Name}{interfaces}");
             sb.AppendLine("    {");
 
-            // Add cached PropertyChangedEventArgs fields for INPC implementations
             if (!isReactiveObject)
             {
                 foreach (var property in typeProperties)
@@ -239,13 +237,12 @@ namespace ReactiveGenerator
                     sb.AppendLine();
             }
 
-            // Add PropertyChanged event and methods only if implementing INPC and not ReactiveObject
             if (implementInpc && !isReactiveObject)
             {
-                sb.AppendLine("        public event PropertyChangedEventHandler PropertyChanged;");
+                sb.AppendLine("        public event PropertyChangedEventHandler? PropertyChanged;");
                 sb.AppendLine();
 
-                sb.AppendLine("        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)");
+                sb.AppendLine("        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)");
                 sb.AppendLine("        {");
                 sb.AppendLine("            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));");
                 sb.AppendLine("        }");
@@ -258,14 +255,12 @@ namespace ReactiveGenerator
                 sb.AppendLine();
             }
 
-            // Generate properties
             foreach (var property in typeProperties)
             {
                 var propertyName = property.Name;
                 var propertyType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                 var backingFieldName = GetBackingFieldName(propertyName);
                 
-                // Backing field should be private regardless of property accessibility
                 sb.AppendLine($"        private {propertyType} {backingFieldName};");
                 sb.AppendLine();
 
@@ -273,13 +268,11 @@ namespace ReactiveGenerator
 
                 if (isReactiveObject)
                 {
-                    // Get property accessors' modifiers
                     var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
                     var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
                     var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
                     var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
 
-                    // ReactiveUI property format with partial and access modifiers
                     sb.AppendLine($"        {propertyAccessibility} partial {propertyType} {propertyName}");
                     sb.AppendLine("        {");
                     sb.AppendLine($"            {getterModifier}get => {backingFieldName};");
@@ -291,7 +284,6 @@ namespace ReactiveGenerator
                 }
                 else
                 {
-                    // Get property accessors' modifiers
                     var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
                     var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
                     var eventArgsFieldName = GetEventArgsFieldName(propertyName);
@@ -299,11 +291,9 @@ namespace ReactiveGenerator
                     sb.AppendLine($"        {propertyAccessibility} partial {propertyType} {propertyName}");
                     sb.AppendLine("        {");
 
-                    // Generate getter
                     var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
                     sb.AppendLine($"            {getterModifier}get => {backingFieldName};");
 
-                    // Generate setter if it exists
                     if (property.SetMethod != null)
                     {
                         var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
@@ -331,7 +321,7 @@ namespace ReactiveGenerator
 
             return sb.ToString();
         }
-         
+                
         private static string GetBackingFieldName(string propertyName)
         {
             return "_" + char.ToLowerInvariant(propertyName[0]) + propertyName.Substring(1);
