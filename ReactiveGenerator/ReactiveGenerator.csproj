@@ -9,7 +9,7 @@
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
         <IsPackable>true</IsPackable>
 
-        <VersionPrefix>0.4.0</VersionPrefix>
+        <VersionPrefix>0.5.0</VersionPrefix>
         <VersionSuffix></VersionSuffix>
         <Authors>Wiesław Šoltés</Authors>
         <Company>Wiesław Šoltés</Company>
