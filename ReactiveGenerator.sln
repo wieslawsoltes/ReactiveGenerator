@@ -4,7 +4,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReactiveGeneratorDemo", "Re
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReactiveGenerator", "ReactiveGenerator\ReactiveGenerator.csproj", "{1CB4E13F-3FF0-43A5-AA31-73DD6F61F571}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReactiveGenerator.Test", "ReactiveGenerator.Test\ReactiveGenerator.Test.csproj", "{0AC69538-BCD6-4B79-BD6F-AE12A27C6557}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReactiveGenerator.Tests", "ReactiveGenerator.Tests\ReactiveGenerator.Tests.csproj", "{0AC69538-BCD6-4B79-BD6F-AE12A27C6557}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
