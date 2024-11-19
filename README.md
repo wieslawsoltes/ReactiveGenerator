@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/wieslawsoltes/ReactiveGenerator/actions/workflows/build.yml/badge.svg)](https://github.com/wieslawsoltes/ReactiveGenerator/actions/workflows/build.yml)
 
-[![NuGet](https://img.shields.io/nuget/v/ReactiveGenerators.svg)](https://www.nuget.org/packages/ReactiveGenerator)
+[![NuGet](https://img.shields.io/nuget/v/ReactiveGenerator.svg)](https://www.nuget.org/packages/ReactiveGenerator)
 [![NuGet](https://img.shields.io/nuget/dt/ReactiveGenerator.svg)](https://www.nuget.org/packages/ReactiveGenerator)
 
 Source generator for implementing INotifyPropertyChanged using C# partial properties
