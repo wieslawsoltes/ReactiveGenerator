@@ -2,22 +2,37 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:inpcDemo="clr-namespace:ReactiveGeneratorDemo"
+        xmlns:viewModels="clr-namespace:ReactiveGeneratorDemo.ViewModels"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="ReactiveGeneratorDemo.MainWindow"
         Title="ReactiveGeneratorDemo"
         Width="500" Height="400" WindowStartupLocation="CenterScreen"
-        x:DataType="inpcDemo:Person" x:CompileBindings="True">
-    <StackPanel Spacing="10">
-        <StackPanel Spacing="10">
-            <TextBox Text="{Binding FirstName}" />
-            <TextBox Text="{Binding LastName}" />
-            <TextBox Text="{Binding Age}" />
-        </StackPanel>
-        <StackPanel Spacing="10">
-            <TextBlock Text="{Binding FirstName}" />
-            <TextBlock Text="{Binding LastName}" />
-            <TextBlock Text="{Binding Age}" />
-        </StackPanel>
+        x:DataType="viewModels:Test" x:CompileBindings="True">
+  <StackPanel>
+
+    <StackPanel Spacing="10" DataContext="{Binding Person}">
+      <TextBlock Text="Person" />
+      <StackPanel Spacing="10">
+        <TextBox Text="{Binding FirstName}" />
+        <TextBox Text="{Binding LastName}" />
+        <TextBox Text="{Binding Age}" />
+      </StackPanel>
+      <StackPanel Spacing="10">
+        <TextBlock Text="{Binding FirstName}" />
+        <TextBlock Text="{Binding LastName}" />
+        <TextBlock Text="{Binding Age}" />
+      </StackPanel>
     </StackPanel>
+
+    <StackPanel Spacing="10" DataContext="{Binding Car}">
+      <TextBlock Text="Car" />
+      <StackPanel Spacing="10">
+        <TextBox Text="{Binding Make}" />
+      </StackPanel>
+      <StackPanel Spacing="10">
+        <TextBlock Text="{Binding Make}" />
+      </StackPanel>
+    </StackPanel>
+
+  </StackPanel>
 </Window>
