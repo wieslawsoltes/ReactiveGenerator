@@ -9,7 +9,9 @@ Source generator for implementing INotifyPropertyChanged using C# partial proper
 
 ## Usage
 
-Add `UseCanvas()` to tour app builder.
+### Without MVVM library
+
+The ReactiveGenerator will add INotifyPropertyChanged, backing fields and generate property changed event invocation inside setter.
 
 ```C#
 public partial class Person
@@ -36,6 +38,18 @@ public partial class Teacher : Person
     public partial List<Student> Students { get; set; }
 }
 
+```
+
+### Wtih ReactiveUI
+
+The ReactiveGenerator will add backing fields and generate property changed event invocation inside setter using ReactiveUI buil-in extension method.
+
+```
+public partial class Car : ReactiveObject
+{
+    [Reactive]
+    public partial string Make { get; set; }
+}
 ```
 
 ## License
