@@ -185,7 +185,12 @@ namespace ReactiveGenerator
             var sb = new StringBuilder();
             
             // Add using statements
-            if (!isReactiveObject)
+            if (isReactiveObject)
+            {
+                sb.AppendLine("using System.ComponentModel;");
+                sb.AppendLine("using ReactiveUI;");
+            }
+            else
             {
                 sb.AppendLine("using System.ComponentModel;");
                 sb.AppendLine("using System.Runtime.CompilerServices;");
@@ -278,7 +283,7 @@ namespace ReactiveGenerator
                     // Use different notification method based on type
                     if (isReactiveObject)
                     {
-                        sb.AppendLine($"                    this.RaisePropertyChanged(nameof({propertyName}));");
+                        sb.AppendLine($"                    this.RaiseAndSetIfChanged(ref {backingFieldName}, value);");
                     }
                     else
                     {
