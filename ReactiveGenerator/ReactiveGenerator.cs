@@ -70,7 +70,19 @@ namespace ReactiveGenerator
             return null;
         }
 
-    private static void Execute(
+        private static bool InheritsFromReactiveObject(INamedTypeSymbol typeSymbol)
+        {
+            var current = typeSymbol;
+            while (current != null)
+            {
+                if (current.Name == "ReactiveObject")
+                    return true;
+                current = current.BaseType;
+            }
+            return false;
+        }
+
+        private static void Execute(
             Compilation compilation,
             List<IPropertySymbol> properties,
             SourceProductionContext context)
@@ -121,23 +133,16 @@ namespace ReactiveGenerator
                 }
             }
         }
-        private static bool IsTypeOrDerived(INamedTypeSymbol type, INamedTypeSymbol baseType)
-        {
-            var current = type;
-            while (current != null)
-            {
-                if (SymbolEqualityComparer.Default.Equals(current, baseType))
-                    return true;
-                current = current.BaseType;
-            }
-            return false;
-        }
 
         private static INamedTypeSymbol FindFirstTypeNeedingINPC(Compilation compilation, INamedTypeSymbol typeSymbol)
         {
             var inpcType = compilation.GetTypeByMetadataName("System.ComponentModel.INotifyPropertyChanged");
             if (inpcType == null)
                 return typeSymbol;
+
+            // Check if the type inherits from ReactiveObject
+            if (InheritsFromReactiveObject(typeSymbol))
+                return null;  // No need for INPC implementation if it's a ReactiveObject
 
             var current = typeSymbol;
             while (current != null)
@@ -159,22 +164,6 @@ namespace ReactiveGenerator
             return typeSymbol;
         }
 
-        private static bool HasReactivePropertiesInHierarchy(INamedTypeSymbol typeSymbol)
-        {
-            foreach (var member in typeSymbol.GetMembers().OfType<IPropertySymbol>())
-            {
-                if (member.GetAttributes().Any(attr => 
-                    attr.AttributeClass != null &&
-                    (attr.AttributeClass.Name == "ReactiveAttribute" || 
-                     attr.AttributeClass.Name == "Reactive")))
-                {
-                    return true;
-                }
-            }
-
-            return typeSymbol.BaseType != null && HasReactivePropertiesInHierarchy(typeSymbol.BaseType);
-        }
-
         private static string GenerateClassSource(
             Compilation compilation,
             INamedTypeSymbol classSymbol,
@@ -188,6 +177,7 @@ namespace ReactiveGenerator
             if (!typeProperties.Any())
                 return string.Empty;
 
+            var isReactiveObject = InheritsFromReactiveObject(classSymbol);
             var namespaceName = classSymbol.ContainingNamespace.IsGlobalNamespace
                 ? null
                 : classSymbol.ContainingNamespace.ToDisplayString();
@@ -195,8 +185,11 @@ namespace ReactiveGenerator
             var sb = new StringBuilder();
             
             // Add using statements
-            sb.AppendLine("using System.ComponentModel;");
-            sb.AppendLine("using System.Runtime.CompilerServices;");
+            if (!isReactiveObject)
+            {
+                sb.AppendLine("using System.ComponentModel;");
+                sb.AppendLine("using System.Runtime.CompilerServices;");
+            }
             sb.AppendLine();
 
             // Begin namespace
@@ -209,13 +202,13 @@ namespace ReactiveGenerator
             // Begin class
             var accessibility = classSymbol.DeclaredAccessibility.ToString().ToLowerInvariant();
             
-            // Add INPC interface only if this is the base implementation
-            var interfaces = implementInpc ? " : INotifyPropertyChanged" : "";
+            // Add INPC interface only if this is the base implementation and not a ReactiveObject
+            var interfaces = (implementInpc && !isReactiveObject) ? " : INotifyPropertyChanged" : "";
             sb.AppendLine($"    {accessibility} partial class {classSymbol.Name}{interfaces}");
             sb.AppendLine("    {");
 
-            // Add PropertyChanged event and methods only if implementing INPC
-            if (implementInpc)
+            // Add PropertyChanged event and methods only if implementing INPC and not ReactiveObject
+            if (implementInpc && !isReactiveObject)
             {
                 sb.AppendLine("        public event PropertyChangedEventHandler PropertyChanged;");
                 sb.AppendLine();
@@ -233,18 +226,20 @@ namespace ReactiveGenerator
                 sb.AppendLine();
             }
 
-            // Add cached PropertyChangedEventArgs fields for this type's properties
-            foreach (var property in typeProperties)
+            // Add cached PropertyChangedEventArgs fields only if not using ReactiveObject
+            if (!isReactiveObject)
             {
-                var propertyName = property.Name;
-                var fieldName = GetEventArgsFieldName(propertyName);
-                
-                sb.AppendLine($"        private static readonly PropertyChangedEventArgs {fieldName} = new PropertyChangedEventArgs(nameof({propertyName}));");
+                foreach (var property in typeProperties)
+                {
+                    var propertyName = property.Name;
+                    var fieldName = GetEventArgsFieldName(propertyName);
+                    
+                    sb.AppendLine($"        private static readonly PropertyChangedEventArgs {fieldName} = new PropertyChangedEventArgs(nameof({propertyName}));");
+                }
+
+                if (typeProperties.Any())
+                    sb.AppendLine();
             }
-
-            if (typeProperties.Any())
-                sb.AppendLine();
-
 
             // Generate backing fields and properties
             foreach (var property in typeProperties)
@@ -279,7 +274,17 @@ namespace ReactiveGenerator
                     sb.AppendLine($"                if (!Equals({backingFieldName}, value))");
                     sb.AppendLine("                {");
                     sb.AppendLine($"                    {backingFieldName} = value;");
-                    sb.AppendLine($"                    OnPropertyChanged({eventArgsFieldName});");
+                    
+                    // Use different notification method based on type
+                    if (isReactiveObject)
+                    {
+                        sb.AppendLine($"                    this.RaisePropertyChanged(nameof({propertyName}));");
+                    }
+                    else
+                    {
+                        sb.AppendLine($"                    OnPropertyChanged({eventArgsFieldName});");
+                    }
+                    
                     sb.AppendLine("                }");
                     sb.AppendLine("            }");
                 }
@@ -296,6 +301,22 @@ namespace ReactiveGenerator
             }
 
             return sb.ToString();
+        }
+
+        private static bool HasReactivePropertiesInHierarchy(INamedTypeSymbol typeSymbol)
+        {
+            foreach (var member in typeSymbol.GetMembers().OfType<IPropertySymbol>())
+            {
+                if (member.GetAttributes().Any(attr => 
+                    attr.AttributeClass != null &&
+                    (attr.AttributeClass.Name == "ReactiveAttribute" || 
+                     attr.AttributeClass.Name == "Reactive")))
+                {
+                    return true;
+                }
+            }
+
+            return typeSymbol.BaseType != null && HasReactivePropertiesInHierarchy(typeSymbol.BaseType);
         }
 
         private static string GetAccessorAccessibility(IMethodSymbol accessor)
