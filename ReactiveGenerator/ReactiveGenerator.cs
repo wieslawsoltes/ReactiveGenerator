@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
@@ -56,7 +54,7 @@ namespace ReactiveGenerator
                     var name = attribute.Name.ToString();
                     if (name is "Reactive" or "ReactiveAttribute")
                     {
-                        return context.SemanticModel.GetDeclaredSymbol(propertyDeclaration) as IPropertySymbol;
+                        return context.SemanticModel.GetDeclaredSymbol(propertyDeclaration);
                     }
                 }
             }
@@ -112,7 +110,7 @@ namespace ReactiveGenerator
                 var baseType = FindFirstTypeNeedingINPC(compilation, typeSymbol);
                 if (baseType is not null && !processedTypes.Contains(baseType))
                 {
-                    var source = GenerateClassSource(compilation, baseType, properties, implementInpc: true);
+                    var source = GenerateClassSource(baseType, properties, implementInpc: true);
                     if (!string.IsNullOrEmpty(source))
                     {
                         context.AddSource(
@@ -127,7 +125,7 @@ namespace ReactiveGenerator
             {
                 if (group.Key is not INamedTypeSymbol typeSymbol || processedTypes.Contains(typeSymbol)) continue;
 
-                var source = GenerateClassSource(compilation, typeSymbol, properties, implementInpc: false);
+                var source = GenerateClassSource(typeSymbol, properties, implementInpc: false);
                 if (!string.IsNullOrEmpty(source))
                 {
                     context.AddSource(
@@ -182,9 +180,7 @@ namespace ReactiveGenerator
             };
         }
         
-        private static string GenerateClassSource(
-            Compilation compilation,
-            INamedTypeSymbol classSymbol,
+        private static string GenerateClassSource(INamedTypeSymbol classSymbol,
             List<IPropertySymbol> allProperties,
             bool implementInpc)
         {
