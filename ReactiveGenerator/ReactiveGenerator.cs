@@ -15,24 +15,20 @@ namespace ReactiveGenerator
     {
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
-            // Register our attribute source
             context.RegisterPostInitializationOutput(ctx =>
             {
                 ctx.AddSource("ReactiveAttribute.g.cs", SourceText.From(AttributeSource, Encoding.UTF8));
             });
 
-            // Get properties with [Reactive] attribute
             var propertyDeclarations = context.SyntaxProvider
                 .CreateSyntaxProvider(
                     predicate: (s, _) => IsCandidateProperty(s),
                     transform: (ctx, _) => GetSemanticTarget(ctx))
-                .Where(m => m != null);
+                .Where(m => m is not null);
 
-            // Group properties by containing type and include the compilation
             var compilationAndProperties = context.CompilationProvider
                 .Combine(propertyDeclarations.Collect());
 
-            // Process each type that contains reactive properties
             context.RegisterSourceOutput(
                 compilationAndProperties,
                 (spc, source) => Execute(source.Left, source.Right.Cast<IPropertySymbol>().ToList(), spc));
@@ -43,15 +39,13 @@ namespace ReactiveGenerator
             if (node is not PropertyDeclarationSyntax propertyDeclaration)
                 return false;
 
-            // Must be partial property
             if (!propertyDeclaration.Modifiers.Any(m => m.ValueText == "partial"))
                 return false;
 
-            // Check for [Reactive] attribute
             return propertyDeclaration.AttributeLists.Count > 0;
         }
 
-        private static IPropertySymbol GetSemanticTarget(GeneratorSyntaxContext context)
+        private static IPropertySymbol? GetSemanticTarget(GeneratorSyntaxContext context)
         {
             var propertyDeclaration = (PropertyDeclarationSyntax)context.Node;
 
@@ -60,7 +54,7 @@ namespace ReactiveGenerator
                 foreach (var attribute in attributeList.Attributes)
                 {
                     var name = attribute.Name.ToString();
-                    if (name == "Reactive" || name == "ReactiveAttribute")
+                    if (name is "Reactive" or "ReactiveAttribute")
                     {
                         return context.SemanticModel.GetDeclaredSymbol(propertyDeclaration) as IPropertySymbol;
                     }
@@ -73,7 +67,7 @@ namespace ReactiveGenerator
         private static bool InheritsFromReactiveObject(INamedTypeSymbol typeSymbol)
         {
             var current = typeSymbol;
-            while (current != null)
+            while (current is not null)
             {
                 if (current.Name == "ReactiveObject")
                     return true;
@@ -87,15 +81,14 @@ namespace ReactiveGenerator
             foreach (var member in typeSymbol.GetMembers().OfType<IPropertySymbol>())
             {
                 if (member.GetAttributes().Any(attr => 
-                    attr.AttributeClass != null &&
-                    (attr.AttributeClass.Name == "ReactiveAttribute" || 
-                     attr.AttributeClass.Name == "Reactive")))
+                    attr.AttributeClass is not null &&
+                    (attr.AttributeClass.Name is "ReactiveAttribute" or "Reactive")))
                 {
                     return true;
                 }
             }
 
-            return typeSymbol.BaseType != null && HasReactivePropertiesInHierarchy(typeSymbol.BaseType);
+            return typeSymbol.BaseType is not null && HasReactivePropertiesInHierarchy(typeSymbol.BaseType);
         }
 
         private static void Execute(
@@ -106,22 +99,18 @@ namespace ReactiveGenerator
             if (properties.Count == 0)
                 return;
 
-            // Group properties by containing type
             var propertyGroups = properties
                 .GroupBy(p => p.ContainingType, SymbolEqualityComparer.Default)
                 .ToList();
 
-            // Process all types that have [Reactive] properties
             var processedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
 
-            // First, find and process base types that need INPC
             foreach (var group in propertyGroups)
             {
-                var typeSymbol = group.Key as INamedTypeSymbol;
-                if (typeSymbol == null) continue;
+                if (group.Key is not INamedTypeSymbol typeSymbol) continue;
 
                 var baseType = FindFirstTypeNeedingINPC(compilation, typeSymbol);
-                if (baseType != null && !processedTypes.Contains(baseType))
+                if (baseType is not null && !processedTypes.Contains(baseType))
                 {
                     var source = GenerateClassSource(compilation, baseType, properties, implementInpc: true);
                     if (!string.IsNullOrEmpty(source))
@@ -134,11 +123,9 @@ namespace ReactiveGenerator
                 }
             }
 
-            // Then process all derived types that have [Reactive] properties
             foreach (var group in propertyGroups)
             {
-                var typeSymbol = group.Key as INamedTypeSymbol;
-                if (typeSymbol == null || processedTypes.Contains(typeSymbol)) continue;
+                if (group.Key is not INamedTypeSymbol typeSymbol || processedTypes.Contains(typeSymbol)) continue;
 
                 var source = GenerateClassSource(compilation, typeSymbol, properties, implementInpc: false);
                 if (!string.IsNullOrEmpty(source))
@@ -150,28 +137,27 @@ namespace ReactiveGenerator
             }
         }
 
-        private static INamedTypeSymbol FindFirstTypeNeedingINPC(Compilation compilation, INamedTypeSymbol typeSymbol)
+        private static INamedTypeSymbol? FindFirstTypeNeedingINPC(Compilation compilation, INamedTypeSymbol typeSymbol)
         {
             var inpcType = compilation.GetTypeByMetadataName("System.ComponentModel.INotifyPropertyChanged");
-            if (inpcType == null)
+            if (inpcType is null)
                 return typeSymbol;
 
-            // Check if the type inherits from ReactiveObject
             if (InheritsFromReactiveObject(typeSymbol))
-                return null;  // No need for INPC implementation if it's a ReactiveObject
+                return null;
 
             var current = typeSymbol;
-            while (current != null)
+            while (current is not null)
             {
                 if (current.AllInterfaces.Contains(inpcType, SymbolEqualityComparer.Default))
                 {
-                    return null;  // Found existing INPC implementation
+                    return null;
                 }
 
-                if (current.BaseType == null || 
+                if (current.BaseType is null || 
                     !HasReactivePropertiesInHierarchy(current.BaseType))
                 {
-                    return current;  // This is the highest type that needs INPC
+                    return current;
                 }
 
                 current = current.BaseType;
@@ -180,6 +166,22 @@ namespace ReactiveGenerator
             return typeSymbol;
         }
 
+        private static string GetAccessorAccessibility(IMethodSymbol? accessor)
+        {
+            if (accessor is null)
+                return "private";
+
+            return accessor.DeclaredAccessibility switch
+            {
+                Accessibility.Private => "private",
+                Accessibility.Protected => "protected",
+                Accessibility.Internal => "internal",
+                Accessibility.ProtectedOrInternal => "protected internal",
+                Accessibility.ProtectedAndInternal => "private protected",
+                _ => accessor.DeclaredAccessibility.ToString().ToLowerInvariant()
+            };
+        }
+        
         private static string GenerateClassSource(
             Compilation compilation,
             INamedTypeSymbol classSymbol,
@@ -333,23 +335,7 @@ namespace ReactiveGenerator
 
             return sb.ToString();
         }
-
-        private static string GetAccessorAccessibility(IMethodSymbol accessor)
-        {
-            if (accessor == null)
-                return "private";
-
-            return accessor.DeclaredAccessibility switch
-            {
-                Accessibility.Private => "private",
-                Accessibility.Protected => "protected",
-                Accessibility.Internal => "internal",
-                Accessibility.ProtectedOrInternal => "protected internal",
-                Accessibility.ProtectedAndInternal => "private protected",
-                _ => accessor.DeclaredAccessibility.ToString().ToLowerInvariant()
-            };
-        }
-                
+         
         private static string GetBackingFieldName(string propertyName)
         {
             return "_" + char.ToLowerInvariant(propertyName[0]) + propertyName.Substring(1);
