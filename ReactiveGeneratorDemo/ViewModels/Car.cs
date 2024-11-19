@@ -6,4 +6,7 @@ public partial class Car : ReactiveObject
 {
     [Reactive]
     public partial string Make { get; set; }
+
+    [Reactive]
+    public partial decimal Price { get; private set; }
 }
