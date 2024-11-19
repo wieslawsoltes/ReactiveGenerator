@@ -23,3 +23,5 @@ jobs:
       uses: actions/setup-dotnet@v1
     - name: Build Release
       run: dotnet build --configuration Release
+    - name: Test Release
+      run: dotnet test --configuration Release
