@@ -82,6 +82,22 @@ namespace ReactiveGenerator
             return false;
         }
 
+        private static bool HasReactivePropertiesInHierarchy(INamedTypeSymbol typeSymbol)
+        {
+            foreach (var member in typeSymbol.GetMembers().OfType<IPropertySymbol>())
+            {
+                if (member.GetAttributes().Any(attr => 
+                    attr.AttributeClass != null &&
+                    (attr.AttributeClass.Name == "ReactiveAttribute" || 
+                     attr.AttributeClass.Name == "Reactive")))
+                {
+                    return true;
+                }
+            }
+
+            return typeSymbol.BaseType != null && HasReactivePropertiesInHierarchy(typeSymbol.BaseType);
+        }
+
         private static void Execute(
             Compilation compilation,
             List<IPropertySymbol> properties,
@@ -187,7 +203,6 @@ namespace ReactiveGenerator
             // Add using statements
             if (isReactiveObject)
             {
-                sb.AppendLine("using System.ComponentModel;");
                 sb.AppendLine("using ReactiveUI;");
             }
             else
@@ -212,6 +227,20 @@ namespace ReactiveGenerator
             sb.AppendLine($"    {accessibility} partial class {classSymbol.Name}{interfaces}");
             sb.AppendLine("    {");
 
+            // Add cached PropertyChangedEventArgs fields for INPC implementations
+            if (!isReactiveObject)
+            {
+                foreach (var property in typeProperties)
+                {
+                    var propertyName = property.Name;
+                    var fieldName = GetEventArgsFieldName(propertyName);
+                    sb.AppendLine($"        private static readonly PropertyChangedEventArgs {fieldName} = new PropertyChangedEventArgs(nameof({propertyName}));");
+                }
+
+                if (typeProperties.Any())
+                    sb.AppendLine();
+            }
+
             // Add PropertyChanged event and methods only if implementing INPC and not ReactiveObject
             if (implementInpc && !isReactiveObject)
             {
@@ -231,70 +260,67 @@ namespace ReactiveGenerator
                 sb.AppendLine();
             }
 
-            // Add cached PropertyChangedEventArgs fields only if not using ReactiveObject
-            if (!isReactiveObject)
-            {
-                foreach (var property in typeProperties)
-                {
-                    var propertyName = property.Name;
-                    var fieldName = GetEventArgsFieldName(propertyName);
-                    
-                    sb.AppendLine($"        private static readonly PropertyChangedEventArgs {fieldName} = new PropertyChangedEventArgs(nameof({propertyName}));");
-                }
-
-                if (typeProperties.Any())
-                    sb.AppendLine();
-            }
-
-            // Generate backing fields and properties
+            // Generate properties
             foreach (var property in typeProperties)
             {
                 var propertyName = property.Name;
                 var propertyType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                 var backingFieldName = GetBackingFieldName(propertyName);
-                var eventArgsFieldName = GetEventArgsFieldName(propertyName);
-
+                
                 // Backing field should be private regardless of property accessibility
                 sb.AppendLine($"        private {propertyType} {backingFieldName};");
                 sb.AppendLine();
 
-                // Get property accessors' modifiers
-                var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
-                var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
                 var propertyAccessibility = property.DeclaredAccessibility.ToString().ToLowerInvariant();
 
-                sb.AppendLine($"        {propertyAccessibility} partial {propertyType} {propertyName}");
-                sb.AppendLine("        {");
-
-                // Generate getter
-                var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
-                sb.AppendLine($"            {getterModifier}get => {backingFieldName};");
-
-                // Generate setter if it exists
-                if (property.SetMethod != null)
+                if (isReactiveObject)
                 {
+                    // Get property accessors' modifiers
+                    var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
+                    var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
+                    var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
                     var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
-                    sb.AppendLine($"            {setterModifier}set");
-                    sb.AppendLine("            {");
-                    sb.AppendLine($"                if (!Equals({backingFieldName}, value))");
-                    sb.AppendLine("                {");
-                    sb.AppendLine($"                    {backingFieldName} = value;");
-                    
-                    // Use different notification method based on type
-                    if (isReactiveObject)
-                    {
-                        sb.AppendLine($"                    this.RaiseAndSetIfChanged(ref {backingFieldName}, value);");
-                    }
-                    else
-                    {
-                        sb.AppendLine($"                    OnPropertyChanged({eventArgsFieldName});");
-                    }
-                    
-                    sb.AppendLine("                }");
-                    sb.AppendLine("            }");
-                }
 
-                sb.AppendLine("        }");
+                    // ReactiveUI property format with partial and access modifiers
+                    sb.AppendLine($"        {propertyAccessibility} partial {propertyType} {propertyName}");
+                    sb.AppendLine("        {");
+                    sb.AppendLine($"            {getterModifier}get => {backingFieldName};");
+                    if (property.SetMethod != null)
+                    {
+                        sb.AppendLine($"            {setterModifier}set => this.RaiseAndSetIfChanged(ref {backingFieldName}, value);");
+                    }
+                    sb.AppendLine("        }");
+                }
+                else
+                {
+                    // Get property accessors' modifiers
+                    var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
+                    var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
+                    var eventArgsFieldName = GetEventArgsFieldName(propertyName);
+
+                    sb.AppendLine($"        {propertyAccessibility} partial {propertyType} {propertyName}");
+                    sb.AppendLine("        {");
+
+                    // Generate getter
+                    var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
+                    sb.AppendLine($"            {getterModifier}get => {backingFieldName};");
+
+                    // Generate setter if it exists
+                    if (property.SetMethod != null)
+                    {
+                        var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
+                        sb.AppendLine($"            {setterModifier}set");
+                        sb.AppendLine("            {");
+                        sb.AppendLine($"                if (!Equals({backingFieldName}, value))");
+                        sb.AppendLine("                {");
+                        sb.AppendLine($"                    {backingFieldName} = value;");
+                        sb.AppendLine($"                    OnPropertyChanged({eventArgsFieldName});");
+                        sb.AppendLine("                }");
+                        sb.AppendLine("            }");
+                    }
+
+                    sb.AppendLine("        }");
+                }
                 sb.AppendLine();
             }
 
@@ -306,22 +332,6 @@ namespace ReactiveGenerator
             }
 
             return sb.ToString();
-        }
-
-        private static bool HasReactivePropertiesInHierarchy(INamedTypeSymbol typeSymbol)
-        {
-            foreach (var member in typeSymbol.GetMembers().OfType<IPropertySymbol>())
-            {
-                if (member.GetAttributes().Any(attr => 
-                    attr.AttributeClass != null &&
-                    (attr.AttributeClass.Name == "ReactiveAttribute" || 
-                     attr.AttributeClass.Name == "Reactive")))
-                {
-                    return true;
-                }
-            }
-
-            return typeSymbol.BaseType != null && HasReactivePropertiesInHierarchy(typeSymbol.BaseType);
         }
 
         private static string GetAccessorAccessibility(IMethodSymbol accessor)
