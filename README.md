@@ -44,7 +44,7 @@ public partial class Teacher : Person
 
 The ReactiveGenerator will add backing fields and generate property changed event invocation inside setter using ReactiveUI buil-in extension method.
 
-```
+```C#
 public partial class Car : ReactiveObject
 {
     [Reactive]
