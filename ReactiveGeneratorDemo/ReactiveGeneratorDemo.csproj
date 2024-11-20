@@ -11,6 +11,15 @@
     <RootNamespace>ReactiveGeneratorDemo</RootNamespace>
   </PropertyGroup>
 
+  <Import Project="..\ReactiveGenerator\build\ReactiveGenerator.props" />
+
+  <PropertyGroup>
+    <LangVersion>preview</LangVersion>
+    <UseBackingFields>false</UseBackingFields>
+<!--    <LangVersion>13</LangVersion>-->
+<!--    <UseBackingFields>true</UseBackingFields>-->
+  </PropertyGroup>
+  
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.1.5"/>
     <PackageReference Include="Avalonia.Desktop" Version="11.1.5"/>
