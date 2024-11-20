@@ -21,11 +21,13 @@ namespace ReactiveGenerator
                 ctx.AddSource("ReactiveAttribute.g.cs", SourceText.From(AttributeSource, Encoding.UTF8));
             });
 
-            
+
             // Get MSBuild property for enabling legacy mode
             var useLegacyMode = context.AnalyzerConfigOptionsProvider
                 .Select((provider, _) => bool.TryParse(
-                    provider.GlobalOptions.TryGetValue("build_property.UseBackingFields", out var value) ? value : "false",
+                    provider.GlobalOptions.TryGetValue("build_property.UseBackingFields", out var value)
+                        ? value
+                        : "false",
                     out var result) && result);
 
             // Get property declarations
@@ -48,8 +50,8 @@ namespace ReactiveGenerator
                     source.Right,
                     spc));
         }
-        
-        private static bool IsCandidateProperty(SyntaxNode node) 
+
+        private static bool IsCandidateProperty(SyntaxNode node)
         {
             // Same as before
             if (node is not PropertyDeclarationSyntax propertyDeclaration)
@@ -84,17 +86,18 @@ namespace ReactiveGenerator
 
             return null;
         }
-        
+
         private static bool InheritsFromReactiveObject(INamedTypeSymbol typeSymbol)
         {
             var current = typeSymbol;
             while (current is not null)
             {
-                if (current.Name == "ReactiveObject" && 
+                if (current.Name == "ReactiveObject" &&
                     current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat).StartsWith("global::ReactiveUI."))
                     return true;
                 current = current.BaseType;
             }
+
             return false;
         }
 
@@ -102,9 +105,9 @@ namespace ReactiveGenerator
         {
             foreach (var member in typeSymbol.GetMembers().OfType<IPropertySymbol>())
             {
-                if (member.GetAttributes().Any(attr => 
-                    attr.AttributeClass is not null &&
-                    (attr.AttributeClass.Name is "ReactiveAttribute" or "Reactive")))
+                if (member.GetAttributes().Any(attr =>
+                        attr.AttributeClass is not null &&
+                        (attr.AttributeClass.Name is "ReactiveAttribute" or "Reactive")))
                 {
                     return true;
                 }
@@ -130,7 +133,7 @@ namespace ReactiveGenerator
                     return null;
                 }
 
-                if (current.BaseType is null || 
+                if (current.BaseType is null ||
                     !HasReactivePropertiesInHierarchy(current.BaseType))
                 {
                     return current;
@@ -205,7 +208,7 @@ namespace ReactiveGenerator
             };
         }
 
-   private static string GenerateClassSource(
+        private static string GenerateClassSource(
             INamedTypeSymbol classSymbol,
             List<IPropertySymbol> allProperties,
             bool implementInpc,
@@ -238,6 +241,7 @@ namespace ReactiveGenerator
                 sb.AppendLine("using System.ComponentModel;");
                 sb.AppendLine("using System.Runtime.CompilerServices;");
             }
+
             sb.AppendLine();
 
             if (namespaceName != null)
@@ -257,7 +261,8 @@ namespace ReactiveGenerator
                 {
                     var propertyName = property.Name;
                     var fieldName = GetEventArgsFieldName(propertyName);
-                    sb.AppendLine($"        private static readonly PropertyChangedEventArgs {fieldName} = new PropertyChangedEventArgs(nameof({propertyName}));");
+                    sb.AppendLine(
+                        $"        private static readonly PropertyChangedEventArgs {fieldName} = new PropertyChangedEventArgs(nameof({propertyName}));");
                 }
 
                 if (typeProperties.Any())
@@ -269,7 +274,8 @@ namespace ReactiveGenerator
                 sb.AppendLine("        public event PropertyChangedEventHandler? PropertyChanged;");
                 sb.AppendLine();
 
-                sb.AppendLine("        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)");
+                sb.AppendLine(
+                    "        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)");
                 sb.AppendLine("        {");
                 sb.AppendLine("            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));");
                 sb.AppendLine("        }");
@@ -320,22 +326,22 @@ namespace ReactiveGenerator
 
             return sb.ToString();
         }
-   
+
         private static string GetPropertyTypeWithNullability(IPropertySymbol property)
         {
             var nullableAnnotation = property.NullableAnnotation;
             var baseType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            
+
             // If the type is a reference type and it's nullable, add the ? annotation
-            if (nullableAnnotation == NullableAnnotation.Annotated && 
+            if (nullableAnnotation == NullableAnnotation.Annotated &&
                 !property.Type.IsValueType)
             {
                 return baseType + "?";
             }
-            
+
             return baseType;
         }
-        
+
         private static void GenerateLegacyProperty(
             StringBuilder sb,
             IPropertySymbol property,
@@ -359,7 +365,8 @@ namespace ReactiveGenerator
                 sb.AppendLine($"            {getterModifier}get => {backingFieldName};");
                 if (property.SetMethod != null)
                 {
-                    sb.AppendLine($"            {setterModifier}set => this.RaiseAndSetIfChanged(ref {backingFieldName}, value);");
+                    sb.AppendLine(
+                        $"            {setterModifier}set => this.RaiseAndSetIfChanged(ref {backingFieldName}, value);");
                 }
             }
             else
@@ -434,7 +441,7 @@ namespace ReactiveGenerator
 
             sb.AppendLine("        }");
         }
-        
+
         private static string GetBackingFieldName(string propertyName)
         {
             return "_" + char.ToLowerInvariant(propertyName[0]) + propertyName.Substring(1);
