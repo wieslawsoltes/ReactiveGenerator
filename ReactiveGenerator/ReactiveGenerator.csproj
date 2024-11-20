@@ -29,7 +29,7 @@
 
   <ItemGroup>
     <!-- Make sure the props file gets included in the NuGet package -->
-    <None Include="build\ReactiveGenerator.props" Pack="true" PackagePath="build" Visible="false" />
+    <None Include="build\ReactiveGenerator.props" Pack="true" PackagePath="build" Visible="true" />
   </ItemGroup>
 
   <ItemGroup>
