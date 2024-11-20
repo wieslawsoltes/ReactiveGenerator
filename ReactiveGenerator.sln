@@ -6,6 +6,24 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReactiveGenerator", "Reacti
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReactiveGenerator.Tests", "ReactiveGenerator.Tests\ReactiveGenerator.Tests.csproj", "{0AC69538-BCD6-4B79-BD6F-AE12A27C6557}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{87BB1456-51D5-4190-A87F-52533B24D9DB}"
+	ProjectSection(SolutionItems) = preProject
+		LICENSE.TXT = LICENSE.TXT
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{D1A6A247-0682-49EF-AB3C-7A0D36EB69F1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{C6278E1F-E680-48E6-9ED1-51F92ACEC074}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{1BE41893-88EA-45C4-BD01-2F5E59A97110}"
+	ProjectSection(SolutionItems) = preProject
+		global.json = global.json
+		NuGet.Config = NuGet.Config
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{9BCC3FB1-02CE-4C52-BF4E-B44C4143174F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +42,10 @@ Global
 		{0AC69538-BCD6-4B79-BD6F-AE12A27C6557}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0AC69538-BCD6-4B79-BD6F-AE12A27C6557}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0AC69538-BCD6-4B79-BD6F-AE12A27C6557}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{1CB4E13F-3FF0-43A5-AA31-73DD6F61F571} = {D1A6A247-0682-49EF-AB3C-7A0D36EB69F1}
+		{0AC69538-BCD6-4B79-BD6F-AE12A27C6557} = {9BCC3FB1-02CE-4C52-BF4E-B44C4143174F}
+		{E7DD1F82-ECB2-4780-B823-9DDFF85CF078} = {C6278E1F-E680-48E6-9ED1-51F92ACEC074}
 	EndGlobalSection
 EndGlobal
