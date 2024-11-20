@@ -72,7 +72,8 @@ namespace ReactiveGenerator
             var current = typeSymbol;
             while (current is not null)
             {
-                if (current.Name == "ReactiveObject")
+                if (current.Name == "ReactiveObject" && 
+                    current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat).StartsWith("global::ReactiveUI."))
                     return true;
                 current = current.BaseType;
             }
@@ -315,7 +316,7 @@ namespace ReactiveGenerator
                     sb.AppendLine("        }");
                 }
 
-                if (!property.Equals(lastProperty))
+                if (!SymbolEqualityComparer.Default.Equals(property, lastProperty))
                 {
                     sb.AppendLine();
                 }
