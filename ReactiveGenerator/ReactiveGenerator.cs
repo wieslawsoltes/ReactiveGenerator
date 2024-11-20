@@ -7,457 +7,456 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 
-namespace ReactiveGenerator
+namespace ReactiveGenerator;
+
+[Generator]
+public class ReactiveGenerator : IIncrementalGenerator
 {
-    [Generator]
-    public class ReactiveGenerator : IIncrementalGenerator
+    public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        public void Initialize(IncrementalGeneratorInitializationContext context)
+        // Register the attribute source
+        context.RegisterPostInitializationOutput(ctx =>
         {
-            // Register the attribute source
-            context.RegisterPostInitializationOutput(ctx =>
-            {
-                // Add the attribute source
-                ctx.AddSource("ReactiveAttribute.g.cs", SourceText.From(AttributeSource, Encoding.UTF8));
-            });
+            // Add the attribute source
+            ctx.AddSource("ReactiveAttribute.g.cs", SourceText.From(AttributeSource, Encoding.UTF8));
+        });
 
 
-            // Get MSBuild property for enabling legacy mode
-            var useLegacyMode = context.AnalyzerConfigOptionsProvider
-                .Select((provider, _) => bool.TryParse(
-                    provider.GlobalOptions.TryGetValue("build_property.UseBackingFields", out var value)
-                        ? value
-                        : "false",
-                    out var result) && result);
+        // Get MSBuild property for enabling legacy mode
+        var useLegacyMode = context.AnalyzerConfigOptionsProvider
+            .Select((provider, _) => bool.TryParse(
+                provider.GlobalOptions.TryGetValue("build_property.UseBackingFields", out var value)
+                    ? value
+                    : "false",
+                out var result) && result);
 
-            // Get property declarations
-            var propertyDeclarations = context.SyntaxProvider
-                .CreateSyntaxProvider(
-                    predicate: (s, _) => IsCandidateProperty(s),
-                    transform: (ctx, _) => GetSemanticTarget(ctx))
-                .Where(m => m is not null);
+        // Get property declarations
+        var propertyDeclarations = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                predicate: (s, _) => IsCandidateProperty(s),
+                transform: (ctx, _) => GetSemanticTarget(ctx))
+            .Where(m => m is not null);
 
-            // Combine compilation, properties, and configuration
-            var compilationAndProperties = context.CompilationProvider
-                .Combine(propertyDeclarations.Collect())
-                .Combine(useLegacyMode);
+        // Combine compilation, properties, and configuration
+        var compilationAndProperties = context.CompilationProvider
+            .Combine(propertyDeclarations.Collect())
+            .Combine(useLegacyMode);
 
-            context.RegisterSourceOutput(
-                compilationAndProperties,
-                (spc, source) => Execute(
-                    source.Left.Left,
-                    source.Left.Right.Cast<IPropertySymbol>().ToList(),
-                    source.Right,
-                    spc));
-        }
+        context.RegisterSourceOutput(
+            compilationAndProperties,
+            (spc, source) => Execute(
+                source.Left.Left,
+                source.Left.Right.Cast<IPropertySymbol>().ToList(),
+                source.Right,
+                spc));
+    }
 
-        private static bool IsCandidateProperty(SyntaxNode node)
-        {
-            // Same as before
-            if (node is not PropertyDeclarationSyntax propertyDeclaration)
-                return false;
-
-            if (!propertyDeclaration.Modifiers.Any(m => m.ValueText == "partial"))
-                return false;
-
-            return propertyDeclaration.AttributeLists.Count > 0;
-        }
-
-        private static IPropertySymbol? GetSemanticTarget(GeneratorSyntaxContext context)
-        {
-            // Same as before
-            if (context.Node is not PropertyDeclarationSyntax propertyDeclaration)
-                return null;
-
-            var semanticModel = context.SemanticModel;
-
-            foreach (var attributeList in propertyDeclaration.AttributeLists)
-            {
-                foreach (var attribute in attributeList.Attributes)
-                {
-                    var name = attribute.Name.ToString();
-                    if (name is "Reactive" or "ReactiveAttribute")
-                    {
-                        var symbol = semanticModel.GetDeclaredSymbol(propertyDeclaration);
-                        return symbol;
-                    }
-                }
-            }
-
-            return null;
-        }
-
-        private static bool InheritsFromReactiveObject(INamedTypeSymbol typeSymbol)
-        {
-            var current = typeSymbol;
-            while (current is not null)
-            {
-                if (current.Name == "ReactiveObject" &&
-                    current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat).StartsWith("global::ReactiveUI."))
-                    return true;
-                current = current.BaseType;
-            }
-
+    private static bool IsCandidateProperty(SyntaxNode node)
+    {
+        // Same as before
+        if (node is not PropertyDeclarationSyntax propertyDeclaration)
             return false;
-        }
 
-        private static bool HasReactivePropertiesInHierarchy(INamedTypeSymbol typeSymbol)
+        if (!propertyDeclaration.Modifiers.Any(m => m.ValueText == "partial"))
+            return false;
+
+        return propertyDeclaration.AttributeLists.Count > 0;
+    }
+
+    private static IPropertySymbol? GetSemanticTarget(GeneratorSyntaxContext context)
+    {
+        // Same as before
+        if (context.Node is not PropertyDeclarationSyntax propertyDeclaration)
+            return null;
+
+        var semanticModel = context.SemanticModel;
+
+        foreach (var attributeList in propertyDeclaration.AttributeLists)
         {
-            foreach (var member in typeSymbol.GetMembers().OfType<IPropertySymbol>())
+            foreach (var attribute in attributeList.Attributes)
             {
-                if (member.GetAttributes().Any(attr =>
-                        attr.AttributeClass is not null &&
-                        (attr.AttributeClass.Name is "ReactiveAttribute" or "Reactive")))
+                var name = attribute.Name.ToString();
+                if (name is "Reactive" or "ReactiveAttribute")
                 {
-                    return true;
+                    var symbol = semanticModel.GetDeclaredSymbol(propertyDeclaration);
+                    return symbol;
                 }
             }
-
-            return typeSymbol.BaseType is not null && HasReactivePropertiesInHierarchy(typeSymbol.BaseType);
         }
 
-        private static INamedTypeSymbol? FindFirstTypeNeedingINPC(Compilation compilation, INamedTypeSymbol typeSymbol)
+        return null;
+    }
+
+    private static bool InheritsFromReactiveObject(INamedTypeSymbol typeSymbol)
+    {
+        var current = typeSymbol;
+        while (current is not null)
         {
-            var inpcType = compilation.GetTypeByMetadataName("System.ComponentModel.INotifyPropertyChanged");
-            if (inpcType is null)
-                return typeSymbol;
+            if (current.Name == "ReactiveObject" &&
+                current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat).StartsWith("global::ReactiveUI."))
+                return true;
+            current = current.BaseType;
+        }
 
-            if (InheritsFromReactiveObject(typeSymbol))
-                return null;
+        return false;
+    }
 
-            var current = typeSymbol;
-            while (current is not null)
+    private static bool HasReactivePropertiesInHierarchy(INamedTypeSymbol typeSymbol)
+    {
+        foreach (var member in typeSymbol.GetMembers().OfType<IPropertySymbol>())
+        {
+            if (member.GetAttributes().Any(attr =>
+                    attr.AttributeClass is not null &&
+                    (attr.AttributeClass.Name is "ReactiveAttribute" or "Reactive")))
             {
-                if (current.AllInterfaces.Contains(inpcType, SymbolEqualityComparer.Default))
-                {
-                    return null;
-                }
-
-                if (current.BaseType is null ||
-                    !HasReactivePropertiesInHierarchy(current.BaseType))
-                {
-                    return current;
-                }
-
-                current = current.BaseType;
+                return true;
             }
+        }
 
+        return typeSymbol.BaseType is not null && HasReactivePropertiesInHierarchy(typeSymbol.BaseType);
+    }
+
+    private static INamedTypeSymbol? FindFirstTypeNeedingINPC(Compilation compilation, INamedTypeSymbol typeSymbol)
+    {
+        var inpcType = compilation.GetTypeByMetadataName("System.ComponentModel.INotifyPropertyChanged");
+        if (inpcType is null)
             return typeSymbol;
-        }
 
-        private static void Execute(
-            Compilation compilation,
-            List<IPropertySymbol> properties,
-            bool useLegacyMode,
-            SourceProductionContext context)
+        if (InheritsFromReactiveObject(typeSymbol))
+            return null;
+
+        var current = typeSymbol;
+        while (current is not null)
         {
-            if (properties.Count == 0)
-                return;
-
-            var propertyGroups = properties
-                .GroupBy(p => p.ContainingType, SymbolEqualityComparer.Default)
-                .ToList();
-
-            var processedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-
-            foreach (var group in propertyGroups)
+            if (current.AllInterfaces.Contains(inpcType, SymbolEqualityComparer.Default))
             {
-                if (group.Key is not INamedTypeSymbol typeSymbol) continue;
-
-                var baseType = FindFirstTypeNeedingINPC(compilation, typeSymbol);
-                if (baseType is not null && !processedTypes.Contains(baseType))
-                {
-                    var source = GenerateClassSource(baseType, properties, implementInpc: true, useLegacyMode);
-                    if (!string.IsNullOrEmpty(source))
-                    {
-                        context.AddSource(
-                            $"{baseType.Name}_ReactiveProperties.g.cs",
-                            SourceText.From(source, Encoding.UTF8));
-                        processedTypes.Add(baseType);
-                    }
-                }
+                return null;
             }
 
-            foreach (var group in propertyGroups)
+            if (current.BaseType is null ||
+                !HasReactivePropertiesInHierarchy(current.BaseType))
             {
-                if (group.Key is not INamedTypeSymbol typeSymbol || processedTypes.Contains(typeSymbol)) continue;
+                return current;
+            }
 
-                var source = GenerateClassSource(typeSymbol, properties, implementInpc: false, useLegacyMode);
+            current = current.BaseType;
+        }
+
+        return typeSymbol;
+    }
+
+    private static void Execute(
+        Compilation compilation,
+        List<IPropertySymbol> properties,
+        bool useLegacyMode,
+        SourceProductionContext context)
+    {
+        if (properties.Count == 0)
+            return;
+
+        var propertyGroups = properties
+            .GroupBy(p => p.ContainingType, SymbolEqualityComparer.Default)
+            .ToList();
+
+        var processedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+
+        foreach (var group in propertyGroups)
+        {
+            if (group.Key is not INamedTypeSymbol typeSymbol) continue;
+
+            var baseType = FindFirstTypeNeedingINPC(compilation, typeSymbol);
+            if (baseType is not null && !processedTypes.Contains(baseType))
+            {
+                var source = GenerateClassSource(baseType, properties, implementInpc: true, useLegacyMode);
                 if (!string.IsNullOrEmpty(source))
                 {
                     context.AddSource(
-                        $"{typeSymbol.Name}_ReactiveProperties.g.cs",
+                        $"{baseType.Name}_ReactiveProperties.g.cs",
                         SourceText.From(source, Encoding.UTF8));
+                    processedTypes.Add(baseType);
                 }
             }
         }
 
-        private static string GetAccessorAccessibility(IMethodSymbol? accessor)
+        foreach (var group in propertyGroups)
         {
-            if (accessor is null)
-                return "private";
+            if (group.Key is not INamedTypeSymbol typeSymbol || processedTypes.Contains(typeSymbol)) continue;
 
-            return accessor.DeclaredAccessibility switch
+            var source = GenerateClassSource(typeSymbol, properties, implementInpc: false, useLegacyMode);
+            if (!string.IsNullOrEmpty(source))
             {
-                Accessibility.Private => "private",
-                Accessibility.Protected => "protected",
-                Accessibility.Internal => "internal",
-                Accessibility.ProtectedOrInternal => "protected internal",
-                Accessibility.ProtectedAndInternal => "private protected",
-                _ => accessor.DeclaredAccessibility.ToString().ToLowerInvariant()
-            };
+                context.AddSource(
+                    $"{typeSymbol.Name}_ReactiveProperties.g.cs",
+                    SourceText.From(source, Encoding.UTF8));
+            }
+        }
+    }
+
+    private static string GetAccessorAccessibility(IMethodSymbol? accessor)
+    {
+        if (accessor is null)
+            return "private";
+
+        return accessor.DeclaredAccessibility switch
+        {
+            Accessibility.Private => "private",
+            Accessibility.Protected => "protected",
+            Accessibility.Internal => "internal",
+            Accessibility.ProtectedOrInternal => "protected internal",
+            Accessibility.ProtectedAndInternal => "private protected",
+            _ => accessor.DeclaredAccessibility.ToString().ToLowerInvariant()
+        };
+    }
+
+    private static string GenerateClassSource(
+        INamedTypeSymbol classSymbol,
+        List<IPropertySymbol> allProperties,
+        bool implementInpc,
+        bool useLegacyMode)
+    {
+        var typeProperties = allProperties
+            .Where(p => SymbolEqualityComparer.Default.Equals(p.ContainingType, classSymbol))
+            .ToList();
+
+        if (!typeProperties.Any())
+            return string.Empty;
+
+        var isReactiveObject = InheritsFromReactiveObject(classSymbol);
+        var namespaceName = classSymbol.ContainingNamespace.IsGlobalNamespace
+            ? null
+            : classSymbol.ContainingNamespace.ToDisplayString();
+
+        var sb = new StringBuilder();
+
+        sb.AppendLine("// <auto-generated/>");
+        sb.AppendLine("#nullable enable");
+        sb.AppendLine();
+
+        if (isReactiveObject)
+        {
+            sb.AppendLine("using ReactiveUI;");
+        }
+        else
+        {
+            sb.AppendLine("using System.ComponentModel;");
+            sb.AppendLine("using System.Runtime.CompilerServices;");
         }
 
-        private static string GenerateClassSource(
-            INamedTypeSymbol classSymbol,
-            List<IPropertySymbol> allProperties,
-            bool implementInpc,
-            bool useLegacyMode)
+        sb.AppendLine();
+
+        if (namespaceName != null)
         {
-            var typeProperties = allProperties
-                .Where(p => SymbolEqualityComparer.Default.Equals(p.ContainingType, classSymbol))
-                .ToList();
+            sb.AppendLine($"namespace {namespaceName}");
+            sb.AppendLine("{");
+        }
 
-            if (!typeProperties.Any())
-                return string.Empty;
+        var accessibility = classSymbol.DeclaredAccessibility.ToString().ToLowerInvariant();
+        var interfaces = (implementInpc && !isReactiveObject) ? " : INotifyPropertyChanged" : "";
+        sb.AppendLine($"    {accessibility} partial class {classSymbol.Name}{interfaces}");
+        sb.AppendLine("    {");
 
-            var isReactiveObject = InheritsFromReactiveObject(classSymbol);
-            var namespaceName = classSymbol.ContainingNamespace.IsGlobalNamespace
-                ? null
-                : classSymbol.ContainingNamespace.ToDisplayString();
-
-            var sb = new StringBuilder();
-
-            sb.AppendLine("// <auto-generated/>");
-            sb.AppendLine("#nullable enable");
-            sb.AppendLine();
-
-            if (isReactiveObject)
-            {
-                sb.AppendLine("using ReactiveUI;");
-            }
-            else
-            {
-                sb.AppendLine("using System.ComponentModel;");
-                sb.AppendLine("using System.Runtime.CompilerServices;");
-            }
-
-            sb.AppendLine();
-
-            if (namespaceName != null)
-            {
-                sb.AppendLine($"namespace {namespaceName}");
-                sb.AppendLine("{");
-            }
-
-            var accessibility = classSymbol.DeclaredAccessibility.ToString().ToLowerInvariant();
-            var interfaces = (implementInpc && !isReactiveObject) ? " : INotifyPropertyChanged" : "";
-            sb.AppendLine($"    {accessibility} partial class {classSymbol.Name}{interfaces}");
-            sb.AppendLine("    {");
-
-            if (!isReactiveObject)
-            {
-                foreach (var property in typeProperties)
-                {
-                    var propertyName = property.Name;
-                    var fieldName = GetEventArgsFieldName(propertyName);
-                    sb.AppendLine(
-                        $"        private static readonly PropertyChangedEventArgs {fieldName} = new PropertyChangedEventArgs(nameof({propertyName}));");
-                }
-
-                if (typeProperties.Any())
-                    sb.AppendLine();
-            }
-
-            if (implementInpc && !isReactiveObject)
-            {
-                sb.AppendLine("        public event PropertyChangedEventHandler? PropertyChanged;");
-                sb.AppendLine();
-
-                sb.AppendLine(
-                    "        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)");
-                sb.AppendLine("        {");
-                sb.AppendLine("            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));");
-                sb.AppendLine("        }");
-                sb.AppendLine();
-
-                sb.AppendLine("        protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)");
-                sb.AppendLine("        {");
-                sb.AppendLine("            PropertyChanged?.Invoke(this, args);");
-                sb.AppendLine("        }");
-                sb.AppendLine();
-            }
-
-            // Generate properties
-            var lastProperty = typeProperties.Last();
+        if (!isReactiveObject)
+        {
             foreach (var property in typeProperties)
             {
                 var propertyName = property.Name;
-                var propertyType = GetPropertyTypeWithNullability(property);
-                var propertyAccessibility = property.DeclaredAccessibility.ToString().ToLowerInvariant();
-
-                if (useLegacyMode)
-                {
-                    // Legacy mode with backing field
-                    var backingFieldName = GetBackingFieldName(propertyName);
-                    sb.AppendLine($"        private {propertyType} {backingFieldName};");
-                    sb.AppendLine();
-
-                    GenerateLegacyProperty(sb, property, propertyAccessibility, backingFieldName, isReactiveObject);
-                }
-                else
-                {
-                    // New C# 13 field keyword mode
-                    GenerateFieldKeywordProperty(sb, property, propertyAccessibility, isReactiveObject);
-                }
-
-                if (!SymbolEqualityComparer.Default.Equals(property, lastProperty))
-                {
-                    sb.AppendLine();
-                }
+                var fieldName = GetEventArgsFieldName(propertyName);
+                sb.AppendLine(
+                    $"        private static readonly PropertyChangedEventArgs {fieldName} = new PropertyChangedEventArgs(nameof({propertyName}));");
             }
 
-            sb.AppendLine("    }");
-
-            if (namespaceName != null)
-            {
-                sb.AppendLine("}");
-            }
-
-            return sb.ToString();
+            if (typeProperties.Any())
+                sb.AppendLine();
         }
 
-        private static string GetPropertyTypeWithNullability(IPropertySymbol property)
+        if (implementInpc && !isReactiveObject)
         {
-            var nullableAnnotation = property.NullableAnnotation;
-            var baseType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            sb.AppendLine("        public event PropertyChangedEventHandler? PropertyChanged;");
+            sb.AppendLine();
 
-            // If the type is a reference type and it's nullable, add the ? annotation
-            if (nullableAnnotation == NullableAnnotation.Annotated &&
-                !property.Type.IsValueType)
-            {
-                return baseType + "?";
-            }
+            sb.AppendLine(
+                "        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)");
+            sb.AppendLine("        {");
+            sb.AppendLine("            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));");
+            sb.AppendLine("        }");
+            sb.AppendLine();
 
-            return baseType;
+            sb.AppendLine("        protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)");
+            sb.AppendLine("        {");
+            sb.AppendLine("            PropertyChanged?.Invoke(this, args);");
+            sb.AppendLine("        }");
+            sb.AppendLine();
         }
 
-        private static void GenerateLegacyProperty(
-            StringBuilder sb,
-            IPropertySymbol property,
-            string propertyAccessibility,
-            string backingFieldName,
-            bool isReactiveObject)
+        // Generate properties
+        var lastProperty = typeProperties.Last();
+        foreach (var property in typeProperties)
         {
             var propertyName = property.Name;
             var propertyType = GetPropertyTypeWithNullability(property);
-            var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
-            var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
+            var propertyAccessibility = property.DeclaredAccessibility.ToString().ToLowerInvariant();
 
-            sb.AppendLine($"        {propertyAccessibility} partial {propertyType} {propertyName}");
-            sb.AppendLine("        {");
-
-            if (isReactiveObject)
+            if (useLegacyMode)
             {
-                var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
-                var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
+                // Legacy mode with backing field
+                var backingFieldName = GetBackingFieldName(propertyName);
+                sb.AppendLine($"        private {propertyType} {backingFieldName};");
+                sb.AppendLine();
 
-                sb.AppendLine($"            {getterModifier}get => {backingFieldName};");
-                if (property.SetMethod != null)
-                {
-                    sb.AppendLine(
-                        $"            {setterModifier}set => this.RaiseAndSetIfChanged(ref {backingFieldName}, value);");
-                }
+                GenerateLegacyProperty(sb, property, propertyAccessibility, backingFieldName, isReactiveObject);
             }
             else
             {
-                var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
-                var eventArgsFieldName = GetEventArgsFieldName(propertyName);
-
-                sb.AppendLine($"            {getterModifier}get => {backingFieldName};");
-
-                if (property.SetMethod != null)
-                {
-                    var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
-                    sb.AppendLine($"            {setterModifier}set");
-                    sb.AppendLine("            {");
-                    sb.AppendLine($"                if (!Equals({backingFieldName}, value))");
-                    sb.AppendLine("                {");
-                    sb.AppendLine($"                    {backingFieldName} = value;");
-                    sb.AppendLine($"                    OnPropertyChanged({eventArgsFieldName});");
-                    sb.AppendLine("                }");
-                    sb.AppendLine("            }");
-                }
+                // New C# 13 field keyword mode
+                GenerateFieldKeywordProperty(sb, property, propertyAccessibility, isReactiveObject);
             }
 
-            sb.AppendLine("        }");
+            if (!SymbolEqualityComparer.Default.Equals(property, lastProperty))
+            {
+                sb.AppendLine();
+            }
         }
 
-        private static void GenerateFieldKeywordProperty(
-            StringBuilder sb,
-            IPropertySymbol property,
-            string propertyAccessibility,
-            bool isReactiveObject)
+        sb.AppendLine("    }");
+
+        if (namespaceName != null)
         {
-            var propertyName = property.Name;
-            var propertyType = GetPropertyTypeWithNullability(property);
-            var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
-            var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
+            sb.AppendLine("}");
+        }
 
-            sb.AppendLine($"        {propertyAccessibility} partial {propertyType} {propertyName}");
-            sb.AppendLine("        {");
+        return sb.ToString();
+    }
 
-            if (isReactiveObject)
+    private static string GetPropertyTypeWithNullability(IPropertySymbol property)
+    {
+        var nullableAnnotation = property.NullableAnnotation;
+        var baseType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+        // If the type is a reference type and it's nullable, add the ? annotation
+        if (nullableAnnotation == NullableAnnotation.Annotated &&
+            !property.Type.IsValueType)
+        {
+            return baseType + "?";
+        }
+
+        return baseType;
+    }
+
+    private static void GenerateLegacyProperty(
+        StringBuilder sb,
+        IPropertySymbol property,
+        string propertyAccessibility,
+        string backingFieldName,
+        bool isReactiveObject)
+    {
+        var propertyName = property.Name;
+        var propertyType = GetPropertyTypeWithNullability(property);
+        var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
+        var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
+
+        sb.AppendLine($"        {propertyAccessibility} partial {propertyType} {propertyName}");
+        sb.AppendLine("        {");
+
+        if (isReactiveObject)
+        {
+            var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
+            var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
+
+            sb.AppendLine($"            {getterModifier}get => {backingFieldName};");
+            if (property.SetMethod != null)
             {
-                var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
+                sb.AppendLine(
+                    $"            {setterModifier}set => this.RaiseAndSetIfChanged(ref {backingFieldName}, value);");
+            }
+        }
+        else
+        {
+            var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
+            var eventArgsFieldName = GetEventArgsFieldName(propertyName);
+
+            sb.AppendLine($"            {getterModifier}get => {backingFieldName};");
+
+            if (property.SetMethod != null)
+            {
                 var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
-
-                sb.AppendLine($"            {getterModifier}get => field;");
-                if (property.SetMethod != null)
-                {
-                    sb.AppendLine($"            {setterModifier}set => this.RaiseAndSetIfChanged(ref field, value);");
-                }
+                sb.AppendLine($"            {setterModifier}set");
+                sb.AppendLine("            {");
+                sb.AppendLine($"                if (!Equals({backingFieldName}, value))");
+                sb.AppendLine("                {");
+                sb.AppendLine($"                    {backingFieldName} = value;");
+                sb.AppendLine($"                    OnPropertyChanged({eventArgsFieldName});");
+                sb.AppendLine("                }");
+                sb.AppendLine("            }");
             }
-            else
+        }
+
+        sb.AppendLine("        }");
+    }
+
+    private static void GenerateFieldKeywordProperty(
+        StringBuilder sb,
+        IPropertySymbol property,
+        string propertyAccessibility,
+        bool isReactiveObject)
+    {
+        var propertyName = property.Name;
+        var propertyType = GetPropertyTypeWithNullability(property);
+        var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
+        var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
+
+        sb.AppendLine($"        {propertyAccessibility} partial {propertyType} {propertyName}");
+        sb.AppendLine("        {");
+
+        if (isReactiveObject)
+        {
+            var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
+            var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
+
+            sb.AppendLine($"            {getterModifier}get => field;");
+            if (property.SetMethod != null)
             {
-                var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
-                var eventArgsFieldName = GetEventArgsFieldName(propertyName);
-
-                sb.AppendLine($"            {getterModifier}get => field;");
-
-                if (property.SetMethod != null)
-                {
-                    var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
-                    sb.AppendLine($"            {setterModifier}set");
-                    sb.AppendLine("            {");
-                    sb.AppendLine("                if (!Equals(field, value))");
-                    sb.AppendLine("                {");
-                    sb.AppendLine("                    field = value;");
-                    sb.AppendLine($"                    OnPropertyChanged({eventArgsFieldName});");
-                    sb.AppendLine("                }");
-                    sb.AppendLine("            }");
-                }
+                sb.AppendLine($"            {setterModifier}set => this.RaiseAndSetIfChanged(ref field, value);");
             }
-
-            sb.AppendLine("        }");
         }
-
-        private static string GetBackingFieldName(string propertyName)
+        else
         {
-            return "_" + char.ToLowerInvariant(propertyName[0]) + propertyName.Substring(1);
+            var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
+            var eventArgsFieldName = GetEventArgsFieldName(propertyName);
+
+            sb.AppendLine($"            {getterModifier}get => field;");
+
+            if (property.SetMethod != null)
+            {
+                var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
+                sb.AppendLine($"            {setterModifier}set");
+                sb.AppendLine("            {");
+                sb.AppendLine("                if (!Equals(field, value))");
+                sb.AppendLine("                {");
+                sb.AppendLine("                    field = value;");
+                sb.AppendLine($"                    OnPropertyChanged({eventArgsFieldName});");
+                sb.AppendLine("                }");
+                sb.AppendLine("            }");
+            }
         }
 
-        private static string GetEventArgsFieldName(string propertyName)
-        {
-            return "_" + char.ToLowerInvariant(propertyName[0]) + propertyName.Substring(1) + "ChangedEventArgs";
-        }
+        sb.AppendLine("        }");
+    }
 
-        private const string AttributeSource = @"using System;
+    private static string GetBackingFieldName(string propertyName)
+    {
+        return "_" + char.ToLowerInvariant(propertyName[0]) + propertyName.Substring(1);
+    }
+
+    private static string GetEventArgsFieldName(string propertyName)
+    {
+        return "_" + char.ToLowerInvariant(propertyName[0]) + propertyName.Substring(1) + "ChangedEventArgs";
+    }
+
+    private const string AttributeSource = @"using System;
 
 [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
 sealed class ReactiveAttribute : Attribute
 {
     public ReactiveAttribute() { }
 }";
-    }
 }
