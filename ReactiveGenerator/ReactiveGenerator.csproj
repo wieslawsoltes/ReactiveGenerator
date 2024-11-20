@@ -1,39 +1,39 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <TargetFramework>netstandard2.0</TargetFramework>
-        <Deterministic>true</Deterministic>
-        <LangVersion>13</LangVersion>
-        <ImplicitUsings>false</ImplicitUsings>
-        <Nullable>enable</Nullable>
-        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-        <IsPackable>true</IsPackable>
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Deterministic>true</Deterministic>
+    <LangVersion>13</LangVersion>
+    <ImplicitUsings>false</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <IsPackable>true</IsPackable>
 
-        <VersionPrefix>0.6.0</VersionPrefix>
-        <VersionSuffix></VersionSuffix>
-        <Authors>Wiesław Šoltés</Authors>
-        <Company>Wiesław Šoltés</Company>
-        <Description>A C# source generator that automatically implements property change notifications using either standard INotifyPropertyChanged or ReactiveUI patterns.</Description>
-        <Copyright>Copyright © Wiesław Šoltés 2024</Copyright>
-        <PackageProjectUrl>https://github.com/wieslawsoltes/ReactiveGenerator</PackageProjectUrl>
-        <PackageId>ReactiveGenerator</PackageId>
-        <PackageLicenseExpression>MIT</PackageLicenseExpression>
-        <PackageTags>reactive;property;inpc;INotifyPropertyChanged;generator</PackageTags>
+    <VersionPrefix>0.7.0</VersionPrefix>
+    <VersionSuffix></VersionSuffix>
+    <Authors>Wiesław Šoltés</Authors>
+    <Company>Wiesław Šoltés</Company>
+    <Description>A C# source generator that automatically implements property change notifications using either standard INotifyPropertyChanged or ReactiveUI patterns.</Description>
+    <Copyright>Copyright © Wiesław Šoltés 2024</Copyright>
+    <PackageProjectUrl>https://github.com/wieslawsoltes/ReactiveGenerator</PackageProjectUrl>
+    <PackageId>ReactiveGenerator</PackageId>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>reactive;property;inpc;INotifyPropertyChanged;generator</PackageTags>
 
-        <!-- Generator specific settings -->
-        <IsRoslynComponent>true</IsRoslynComponent>
-        <IncludeBuildOutput>false</IncludeBuildOutput>
-        <DevelopmentDependency>true</DevelopmentDependency>
-    </PropertyGroup>
+    <!-- Generator specific settings -->
+    <IsRoslynComponent>true</IsRoslynComponent>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <DevelopmentDependency>true</DevelopmentDependency>
+  </PropertyGroup>
 
-    <ItemGroup>
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" PrivateAssets="all" />
-        <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" PrivateAssets="all" />
-    </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" PrivateAssets="all"/>
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" PrivateAssets="all"/>
+  </ItemGroup>
 
-    <!-- Package the generator in the analyzer directory of the nuget package -->
-    <ItemGroup>
-        <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-    </ItemGroup>
+  <!-- Package the generator in the analyzer directory of the nuget package -->
+  <ItemGroup>
+    <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false"/>
+  </ItemGroup>
 
 </Project>
