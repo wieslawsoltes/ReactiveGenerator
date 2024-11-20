@@ -287,7 +287,7 @@ namespace ReactiveGenerator
             foreach (var property in typeProperties)
             {
                 var propertyName = property.Name;
-                var propertyType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                var propertyType = GetPropertyTypeWithNullability(property);
                 var propertyAccessibility = property.DeclaredAccessibility.ToString().ToLowerInvariant();
 
                 if (useLegacyMode)
@@ -320,7 +320,22 @@ namespace ReactiveGenerator
 
             return sb.ToString();
         }
-          
+   
+        private static string GetPropertyTypeWithNullability(IPropertySymbol property)
+        {
+            var nullableAnnotation = property.NullableAnnotation;
+            var baseType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            
+            // If the type is a reference type and it's nullable, add the ? annotation
+            if (nullableAnnotation == NullableAnnotation.Annotated && 
+                !property.Type.IsValueType)
+            {
+                return baseType + "?";
+            }
+            
+            return baseType;
+        }
+        
         private static void GenerateLegacyProperty(
             StringBuilder sb,
             IPropertySymbol property,
@@ -329,7 +344,7 @@ namespace ReactiveGenerator
             bool isReactiveObject)
         {
             var propertyName = property.Name;
-            var propertyType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            var propertyType = GetPropertyTypeWithNullability(property);
             var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
             var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
 
@@ -378,7 +393,7 @@ namespace ReactiveGenerator
             bool isReactiveObject)
         {
             var propertyName = property.Name;
-            var propertyType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            var propertyType = GetPropertyTypeWithNullability(property);
             var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
             var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
 
@@ -419,7 +434,7 @@ namespace ReactiveGenerator
 
             sb.AppendLine("        }");
         }
-      
+        
         private static string GetBackingFieldName(string propertyName)
         {
             return "_" + char.ToLowerInvariant(propertyName[0]) + propertyName.Substring(1);
