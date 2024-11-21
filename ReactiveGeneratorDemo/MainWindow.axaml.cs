@@ -24,7 +24,7 @@ public partial class MainWindow : Window
                 var (firstName, lastName) = tuple;
                 Console.WriteLine($"{firstName} {lastName}");
             });
-        
+
         var test = new Test
         {
             Person = person,
