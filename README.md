@@ -11,6 +11,7 @@ A C# source generator that automatically implements property change notification
 ### Core Features
 - Automatic `INotifyPropertyChanged` implementation
 - Support for ReactiveUI's `ReactiveObject` pattern
+- Automatic `WhenAnyValue` observable generation for reactive properties
 - Modern C# 13 field keyword support for cleaner property implementation
 - Legacy mode with explicit backing fields (also C# 13)
 - Full nullable reference type support
@@ -23,6 +24,7 @@ A C# source generator that automatically implements property change notification
 - Efficient property change detection using Equals
 - Minimal memory allocation during property updates
 - Zero-overhead property access for unchanged values
+- Optimized WhenAnyValue observable implementation
 
 ### Developer Experience
 - Clean and readable generated code
@@ -70,7 +72,7 @@ Uses C# 13's field keyword for cleaner implementation. This mode:
 - Reduces boilerplate code
 - Improves code readability
 - Maintains encapsulation
-- Requires C# 12 or later
+- Requires C# 13 or later
 
 Example of generated code:
 ```csharp
@@ -113,8 +115,6 @@ Add these to your project file (.csproj) to customize the generator's behavior:
     <UseBackingFields>true</UseBackingFields>
 </PropertyGroup>
 ```
-
-Note: When using the generator with the field keyword (modern mode), you must set `<LangVersion>preview</LangVersion>` in your project file as the feature is part of C# 13 preview.
 
 ## Usage
 
@@ -177,180 +177,159 @@ public partial class Person : INotifyPropertyChanged
 }
 ```
 
-### ReactiveUI Integration
-
-#### Basic ReactiveUI Usage
+### ReactiveUI Integration with WhenAnyValue Support
 
 ```csharp
-public partial class Vehicle : ReactiveObject
-{
-    [Reactive]
-    public partial string? Make { get; set; }  // Nullable reference type
-
-    [Reactive]
-    public partial string Model { get; set; }  // Non-nullable reference type
-
-    [Reactive]
-    public partial int Year { get; set; }      // Value type
-}
-```
-
-#### Advanced ReactiveUI Patterns
-
-```csharp
-public partial class AdvancedViewModel : ReactiveObject
-{
-    [Reactive]
-    public partial ObservableCollection<string> Items { get; set; }
-
-    [Reactive]
-    public partial bool IsLoading { get; set; }
-
-    // Read-only property
-    [Reactive]
-    public partial string Status { get; }
-
-    // Property with custom setter visibility
-    [Reactive]
-    public partial int Count { get; private set; }
-}
-```
-
-### Inheritance and Interface Implementation
-
-#### Base Classes
-
-```csharp
-public partial class EntityBase
-{
-    [Reactive]
-    public partial Guid Id { get; set; }
-
-    [Reactive]
-    public partial DateTime CreatedAt { get; set; }
-}
-
-public partial class User : EntityBase
+public partial class UserViewModel : ReactiveObject
 {
     [Reactive]
     public partial string Username { get; set; }
 
     [Reactive]
     public partial string Email { get; set; }
+
+    [Reactive]
+    public partial bool IsValid { get; private set; }
+
+    public UserViewModel()
+    {
+        // Use generated type-safe WhenAnyValue extensions
+        this.WhenAnyUsername()
+            .Subscribe(username => Console.WriteLine($"Username changed to: {username}"));
+
+        // Combine multiple property observations
+        this.WhenAnyUsername()
+            .CombineLatest(this.WhenAnyEmail())
+            .Subscribe(tuple => 
+            {
+                var (username, email) = tuple;
+                IsValid = !string.IsNullOrEmpty(username) && email.Contains("@");
+            });
+    }
 }
 ```
 
-#### Interface Implementation
+### Advanced Scenarios
+
+#### Property Change Notifications with Validation
 
 ```csharp
-public interface INamedEntity
-{
-    string Name { get; set; }
-}
-
-public partial class NamedEntity : INamedEntity
+public partial class AdvancedViewModel : ReactiveObject
 {
     [Reactive]
-    public partial string Name { get; set; }
+    public partial decimal Price { get; set; }
+
+    [Reactive]
+    public partial int Quantity { get; set; }
+
+    [Reactive]
+    public partial string? ValidationMessage { get; private set; }
+
+    public decimal Total => Price * Quantity;
+
+    public AdvancedViewModel()
+    {
+        // Validate price changes
+        this.WhenAnyPrice()
+            .Subscribe(price => 
+            {
+                ValidationMessage = price < 0 
+                    ? "Price cannot be negative" 
+                    : null;
+            });
+
+        // Update total on any relevant change
+        this.WhenAnyPrice()
+            .CombineLatest(this.WhenAnyQuantity())
+            .Select(tuple => tuple.Item1 * tuple.Item2)
+            .Subscribe(total => Console.WriteLine($"Total: {total:C}"));
+    }
 }
 ```
 
-### Access Modifiers and Visibility
+#### Working with Collections
 
 ```csharp
-public partial class Example
+public partial class CollectionViewModel : ReactiveObject
 {
-    // Public property with public getter/setter
     [Reactive]
-    public partial string PublicProperty { get; set; }
+    public partial ObservableCollection<string> Items { get; set; } = new();
 
-    // Protected property with private setter
     [Reactive]
-    protected partial string ProtectedProperty { get; private set; }
+    public partial int SelectedIndex { get; set; }
 
-    // Internal property with protected setter
-    [Reactive]
-    internal partial string InternalProperty { get; protected set; }
+    public CollectionViewModel()
+    {
+        // Monitor collection changes
+        this.WhenAnyItems()
+            .SelectMany(items => items.ToObservable())
+            .Subscribe(_ => UpdateUI());
 
-    // Private property
-    [Reactive]
-    private partial string PrivateProperty { get; set; }
-
-    // Protected internal property
-    [Reactive]
-    protected internal partial string ProtectedInternalProperty { get; set; }
-
-    // Private protected property
-    [Reactive]
-    private protected partial string PrivateProtectedProperty { get; set; }
+        // Monitor selection changes
+        this.WhenAnySelectedIndex()
+            .Where(index => index >= 0 && index < Items.Count)
+            .Subscribe(index => Console.WriteLine($"Selected: {Items[index]}"));
+    }
 }
 ```
 
-### Nullable Reference Types
+### Best Practices
+
+#### 1. Managing Subscriptions
 
 ```csharp
-public partial class NullableExample
+public partial class ViewModel : ReactiveObject, IDisposable
 {
-    // Nullable string
-    [Reactive]
-    public partial string? NullableString { get; set; }
+    private readonly CompositeDisposable _disposables = new();
 
-    // Non-nullable string
     [Reactive]
-    public partial string RequiredString { get; set; }
+    public partial string SearchText { get; set; }
 
-    // Nullable complex type
-    [Reactive]
-    public partial List<string>? OptionalList { get; set; }
+    public ViewModel()
+    {
+        this.WhenAnySearchText()
+            .Throttle(TimeSpan.FromMilliseconds(300))
+            .Subscribe(text => PerformSearch(text))
+            .DisposeWith(_disposables);
+    }
 
-    // Non-nullable complex type
-    [Reactive]
-    public partial List<string> RequiredList { get; set; }
+    public void Dispose()
+    {
+        _disposables.Dispose();
+    }
 }
 ```
 
-## Best Practices
+#### 2. Property Change Detection
 
-### Performance Considerations
+```csharp
+public partial class OrderViewModel : ReactiveObject
+{
+    [Reactive]
+    public partial decimal Price { get; set; }
 
-1. **Property Change Detection**
-    - Use value equality comparison for reference types
-    - Implement IEquatable<T> for complex types
-    - Consider custom equality comparers for specific scenarios
+    // Implement IEquatable<T> for complex types
+    [Reactive]
+    public partial CustomType ComplexProperty { get; set; }
+}
+```
 
-2. **Event Handler Management**
-    - Weak event patterns for long-lived objects
-    - Proper event handler cleanup in disposable objects
-    - Avoid circular references in event handlers
+#### 3. Thread Safety
 
-### Design Patterns
+```csharp
+public partial class ThreadSafeViewModel : ReactiveObject
+{
+    [Reactive]
+    public partial string Status { get; set; }
 
-1. **MVVM Pattern Integration**
-   ```csharp
-   public partial class ViewModel : ReactiveObject
-   {
-       [Reactive]
-       public partial Model DataModel { get; set; }
-
-       [Reactive]
-       public partial bool IsBusy { get; set; }
-
-       // Command properties don't need [Reactive]
-       public ReactiveCommand<Unit, Unit> SaveCommand { get; }
-   }
-   ```
-
-2. **Repository Pattern**
-   ```csharp
-   public partial class Repository<T> where T : class
-   {
-       [Reactive]
-       public partial IReadOnlyList<T> Items { get; private set; }
-
-       [Reactive]
-       public partial bool IsLoading { get; private set; }
-   }
-   ```
+    public ThreadSafeViewModel()
+    {
+        this.WhenAnyStatus()
+            .ObserveOn(RxApp.MainThread)
+            .Subscribe(status => UpdateUI(status));
+    }
+}
+```
 
 ## Common Pitfalls and Solutions
 
@@ -405,9 +384,37 @@ public partial class Example : ReactiveObject
 }
 ```
 
-## Advanced Scenarios
+### 4. Improper WhenAnyValue Usage
+```csharp
+// ❌ Wrong: Not disposing subscriptions
+public partial class Example : ReactiveObject
+{
+    public Example()
+    {
+        this.WhenAnyProperty()
+            .Subscribe(value => DoSomething(value));
+    }
+}
 
-### Custom Property Change Notifications
+// ✅ Correct: Proper subscription management
+public partial class Example : ReactiveObject, IDisposable
+{
+    private readonly CompositeDisposable _cleanup = new();
+
+    public Example()
+    {
+        this.WhenAnyProperty()
+            .Subscribe(value => DoSomething(value))
+            .DisposeWith(_cleanup);
+    }
+
+    public void Dispose() => _cleanup.Dispose();
+}
+```
+
+## Advanced Features
+
+### 1. Custom Property Change Notifications
 
 ```csharp
 public partial class AdvancedExample : ReactiveObject
@@ -421,18 +428,17 @@ public partial class AdvancedExample : ReactiveObject
     // Dependent property
     public decimal Total => Price * Quantity;
 
-    // Constructor sets up property change propagation
     public AdvancedExample()
     {
-        this.WhenAnyValue(x => x.Price, x => x.Quantity)
+        this.WhenAnyPrice()
+            .CombineLatest(this.WhenAnyQuantity())
             .Subscribe(_ => this.RaisePropertyChanged(nameof(Total)));
     }
 }
 ```
 
-### Integration with Other Frameworks
+### 2. Integration with Entity Framework Core
 
-#### Entity Framework Core
 ```csharp
 public partial class DbEntity
 {
@@ -447,7 +453,8 @@ public partial class DbEntity
 }
 ```
 
-#### ASP.NET Core MVC
+### 3. ASP.NET Core MVC Integration
+
 ```csharp
 public partial class ViewModel
 {
@@ -462,6 +469,20 @@ public partial class ViewModel
 }
 ```
 
+## Performance Considerations
+
+1. **Property Change Detection**
+    - Uses value equality comparison for reference types
+    - Implements IEquatable<T> for complex types
+    - Caches PropertyChangedEventArgs instances
+    - Minimal allocations during property updates
+
+2. **WhenAnyValue Optimization**
+    - Efficient subscription management
+    - Smart change detection to avoid unnecessary notifications
+    - Thread-safe event handling
+    - Memory-efficient implementation
+
 ## Notes
 
 - Properties must be marked as `partial`
@@ -472,6 +493,7 @@ public partial class ViewModel
 - Nullable reference types are fully supported and respected in the generated code
 - Compiler errors will help identify common configuration mistakes
 - Property change notifications are thread-safe when using ReactiveUI
+- WhenAnyValue extensions are automatically generated for all reactive properties
 
 ## License
 
