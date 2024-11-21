@@ -1,3 +1,4 @@
+using System;
 using Avalonia.Controls;
 using ReactiveGeneratorDemo.ViewModels;
 
@@ -9,9 +10,17 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
+        var person = new Person { FirstName = "John", LastName = "Doe", Age = 30 };
+
+        person
+            .WhenAnyFirstName()
+            .Subscribe(name => Console.WriteLine($"Name changed to: {name}"));
+
+        person.FirstName = "Jane";
+
         var test = new Test
         {
-            Person = new Person { FirstName = "John", LastName = "Doe", Age = 30 },
+            Person = person,
             Car = new Car { Make = "Toyota" }
         };
             
