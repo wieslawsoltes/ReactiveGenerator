@@ -17,9 +17,6 @@ public partial class MainWindow : Window
             .WhenAnyFirstName()
             .Subscribe(name => Console.WriteLine($"Name changed to: {name}"));
 
-        person.FirstName = "Jane";
-
-        
         person.WhenAnyFirstName()
             .CombineLatest(person.WhenAnyLastName())
             .Subscribe(tuple => 
