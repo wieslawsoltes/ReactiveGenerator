@@ -24,10 +24,14 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         // Register the attribute source
         context.RegisterPostInitializationOutput(ctx =>
         {
-            // Add the base observer type
+            // Add the base observer types
             ctx.AddSource(
                 "PropertyObserver.g.cs", 
                 SourceText.From(PropertyObserverSource, Encoding.UTF8));
+            
+            ctx.AddSource(
+                "WeakEventManager.g.cs",
+                SourceText.From(WeakEventManagerSource, Encoding.UTF8));
         });
 
         // Combine compilation and classes
@@ -89,6 +93,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         sb.AppendLine();
         sb.AppendLine("using System;");
         sb.AppendLine("using System.ComponentModel;");
+        sb.AppendLine("using System.Threading;");
         sb.AppendLine("using ReactiveGenerator.Internal;");
         sb.AppendLine();
 
@@ -145,60 +150,268 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
 
     private const string PropertyObserverSource = @"
 using System;
+using System.Collections.Concurrent;
 using System.ComponentModel;
+using System.Threading;
 
 namespace ReactiveGenerator.Internal
 {
-    internal class PropertyObserver<TSource, TProperty> : IObservable<TProperty>
+    internal sealed class PropertyObserver<TSource, TProperty> : IObservable<TProperty>, IDisposable
         where TSource : INotifyPropertyChanged
     {
+        private readonly object _gate = new object();
         private readonly TSource _source;
         private readonly string _propertyName;
         private readonly Func<TProperty> _getter;
+        private readonly WeakEventManager<PropertyChangedEventHandler> _eventManager;
+        private readonly PropertyChangedEventHandler _handler;
+        private bool _isDisposed;
+        private readonly ConcurrentDictionary<IDisposable, byte> _subscriptions;
 
         public PropertyObserver(TSource source, string propertyName, Func<TProperty> getter)
         {
-            _source = source;
-            _propertyName = propertyName;
-            _getter = getter;
+            _source = source ?? throw new ArgumentNullException(nameof(source));
+            _propertyName = propertyName ?? throw new ArgumentNullException(nameof(propertyName));
+            _getter = getter ?? throw new ArgumentNullException(nameof(getter));
+            _eventManager = new WeakEventManager<PropertyChangedEventHandler>();
+            _subscriptions = new ConcurrentDictionary<IDisposable, byte>();
+            _handler = HandlePropertyChanged;
         }
 
         public IDisposable Subscribe(IObserver<TProperty> observer)
         {
-            // Send initial value
-            observer.OnNext(_getter());
+            if (observer == null) throw new ArgumentNullException(nameof(observer));
 
-            // Subscribe to property changes
-            void Handler(object? s, PropertyChangedEventArgs e)
+            lock (_gate)
             {
-                if (e.PropertyName == _propertyName)
+                if (_isDisposed)
                 {
-                    observer.OnNext(_getter());
+                    observer.OnCompleted();
+                    return Disposable.Empty;
                 }
+
+                var subscription = new Subscription(this, observer);
+                _subscriptions.TryAdd(subscription, 0);
+
+                try
+                {
+                    // Send initial value
+                    observer.OnNext(_getter());
+
+                    // Subscribe to property changes
+                    _eventManager.AddEventHandler(_source, ""PropertyChanged"", _handler);
+                }
+                catch (Exception ex)
+                {
+                    observer.OnError(ex);
+                    subscription.Dispose();
+                    return Disposable.Empty;
+                }
+
+                return subscription;
             }
-
-            _source.PropertyChanged += Handler;
-
-            // Return disposable to cleanup subscription
-            return new SubscriptionDisposable(() => _source.PropertyChanged -= Handler);
         }
 
-        private class SubscriptionDisposable : IDisposable
+        public void Dispose()
         {
-            private readonly Action _cleanup;
-            private bool _isDisposed;
-
-            public SubscriptionDisposable(Action cleanup)
+            lock (_gate)
             {
-                _cleanup = cleanup;
+                if (!_isDisposed)
+                {
+                    foreach (var subscription in _subscriptions.Keys)
+                    {
+                        subscription.Dispose();
+                    }
+                    _subscriptions.Clear();
+                    _eventManager.RemoveEventHandler(_source, ""PropertyChanged"", _handler);
+                    _isDisposed = true;
+                }
+            }
+        }
+
+        private void HandlePropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != _propertyName && !string.IsNullOrEmpty(e.PropertyName)) 
+                return;
+
+            foreach (var subscription in _subscriptions.Keys)
+            {
+                if (subscription is Subscription activeSubscription)
+                {
+                    try
+                    {
+                        var observer = activeSubscription.Observer;
+                        if (observer != null)
+                        {
+                            var value = _getter();
+                            observer.OnNext(value);
+                        }
+                        else
+                        {
+                            // Observer was collected, remove the subscription
+                            activeSubscription.Dispose();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        if (activeSubscription.Observer is { } observer)
+                        {
+                            observer.OnError(ex);
+                        }
+                        activeSubscription.Dispose();
+                    }
+                }
+            }
+        }
+
+        private sealed class Subscription : IDisposable
+        {
+            private readonly PropertyObserver<TSource, TProperty> _parent;
+            private readonly WeakReference<IObserver<TProperty>> _weakObserver;
+            private int _disposed;
+
+            public Subscription(PropertyObserver<TSource, TProperty> parent, IObserver<TProperty> observer)
+            {
+                _parent = parent;
+                _weakObserver = new WeakReference<IObserver<TProperty>>(observer);
+            }
+
+            public IObserver<TProperty>? Observer
+            {
+                get
+                {
+                    _weakObserver.TryGetTarget(out var observer);
+                    return observer;
+                }
             }
 
             public void Dispose()
             {
-                if (!_isDisposed)
+                if (Interlocked.Exchange(ref _disposed, 1) == 0)
                 {
-                    _cleanup();
-                    _isDisposed = true;
+                    lock (_parent._gate)
+                    {
+                        if (!_parent._isDisposed)
+                        {
+                            _parent._subscriptions.TryRemove(this, out _);
+                            if (_parent._subscriptions.IsEmpty)
+                            {
+                                _parent.Dispose();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    internal sealed class Disposable : IDisposable
+    {
+        public static readonly IDisposable Empty = new Disposable();
+        private Disposable() { }
+        public void Dispose() { }
+    }
+}";
+
+    private const string WeakEventManagerSource = @"
+using System;
+using System.Collections.Concurrent;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+
+namespace ReactiveGenerator.Internal
+{
+    internal sealed class WeakEventManager<TDelegate> where TDelegate : class, Delegate
+    {
+        private readonly ConditionalWeakTable<object, EventRegistrationList> _registrations = 
+            new ConditionalWeakTable<object, EventRegistrationList>();
+
+        public void AddEventHandler(object source, string eventName, TDelegate handler)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            if (eventName == null) throw new ArgumentNullException(nameof(eventName));
+            if (handler == null) throw new ArgumentNullException(nameof(handler));
+
+            var eventInfo = source.GetType().GetEvent(eventName);
+            if (eventInfo == null)
+            {
+                throw new ArgumentException($""Event '{eventName}' not found on type '{source.GetType()}'."");
+            }
+
+            var list = _registrations.GetOrCreateValue(source);
+            var registration = new WeakEventRegistration(eventInfo, handler);
+            list.Add(registration);
+
+            registration.Subscribe(source);
+        }
+
+        public void RemoveEventHandler(object source, string eventName, TDelegate handler)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            if (eventName == null) throw new ArgumentNullException(nameof(eventName));
+            if (handler == null) throw new ArgumentNullException(nameof(handler));
+
+            if (_registrations.TryGetValue(source, out var list))
+            {
+                list.Remove(eventName, handler);
+            }
+        }
+
+        private sealed class EventRegistrationList
+        {
+            private readonly ConcurrentDictionary<string, ConcurrentDictionary<TDelegate, WeakEventRegistration>> _registrations =
+                new ConcurrentDictionary<string, ConcurrentDictionary<TDelegate, WeakEventRegistration>>();
+
+            public void Add(WeakEventRegistration registration)
+            {
+                var eventHandlers = _registrations.GetOrAdd(
+                    registration.EventInfo.Name,
+                    _ => new ConcurrentDictionary<TDelegate, WeakEventRegistration>());
+
+                eventHandlers[registration.Handler] = registration;
+            }
+
+            public void Remove(string eventName, TDelegate handler)
+            {
+                if (_registrations.TryGetValue(eventName, out var eventHandlers))
+                {
+                    if (eventHandlers.TryRemove(handler, out var registration))
+                    {
+                        registration.Unsubscribe();
+                    }
+                }
+            }
+        }
+
+        private sealed class WeakEventRegistration
+        {
+            private readonly WeakReference<TDelegate> _weakDelegate;
+            private readonly EventInfo _eventInfo;
+            private readonly TDelegate _handler;
+
+            public WeakEventRegistration(EventInfo eventInfo, TDelegate handler)
+            {
+                _eventInfo = eventInfo;
+                _handler = handler;
+                _weakDelegate = new WeakReference<TDelegate>(handler);
+            }
+
+            public EventInfo EventInfo => _eventInfo;
+            public TDelegate Handler => _handler;
+
+            public void Subscribe(object source)
+            {
+                if (_weakDelegate.TryGetTarget(out var handler))
+                {
+                    EventInfo.AddEventHandler(source, handler);
+                }
+            }
+
+            public void Unsubscribe()
+            {
+                if (_weakDelegate.TryGetTarget(out var handler))
+                {
+                    _weakDelegate.SetTarget(null);
                 }
             }
         }
