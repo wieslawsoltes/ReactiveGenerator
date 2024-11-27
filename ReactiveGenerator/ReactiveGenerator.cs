@@ -16,7 +16,7 @@ public class ReactiveGenerator : IIncrementalGenerator
         bool HasReactiveAttribute,
         bool HasIgnoreAttribute,
         bool HasImplementation);
-    
+
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         // Register both attributes
@@ -90,7 +90,7 @@ public class ReactiveGenerator : IIncrementalGenerator
 
         return null;
     }
-    
+
     private static PropertyInfo? GetPropertyInfo(GeneratorSyntaxContext context)
     {
         if (context.Node is not PropertyDeclarationSyntax propertyDeclaration)
@@ -142,7 +142,7 @@ public class ReactiveGenerator : IIncrementalGenerator
 
         return null;
     }
-    
+
     private static bool InheritsFromReactiveObject(INamedTypeSymbol typeSymbol)
     {
         var current = typeSymbol;
@@ -200,7 +200,7 @@ public class ReactiveGenerator : IIncrementalGenerator
         // Add types from properties that should be reactive and don't have implementation
         foreach (var property in properties)
         {
-            if ((property.HasReactiveAttribute || 
+            if ((property.HasReactiveAttribute ||
                  (reactiveTypesSet.Contains(property.Property.ContainingType) && !property.HasIgnoreAttribute)) &&
                 !property.HasImplementation &&
                 property.Property.ContainingType is INamedTypeSymbol type)
@@ -253,8 +253,8 @@ public class ReactiveGenerator : IIncrementalGenerator
 
             // Filter properties that should be reactive
             var reactiveProperties = group.Value
-                .Where(p => p.HasReactiveAttribute || 
-                           (reactiveTypesSet.Contains(typeSymbol) && !p.HasIgnoreAttribute))
+                .Where(p => p.HasReactiveAttribute ||
+                            (reactiveTypesSet.Contains(typeSymbol) && !p.HasIgnoreAttribute))
                 .Select(p => p.Property)
                 .ToList();
 
@@ -421,6 +421,19 @@ public class ReactiveGenerator : IIncrementalGenerator
         var interfaces = (implementInpc && !isReactiveObject) ? " : INotifyPropertyChanged" : "";
         sb.AppendLine($"    {accessibility} partial class {classSymbol.Name}{interfaces}");
         sb.AppendLine("    {");
+
+        // Generate backing fields if in legacy mode
+        if (useLegacyMode && typeProperties.Any())
+        {
+            foreach (var property in typeProperties)
+            {
+                var propertyType = GetPropertyTypeWithNullability(property);
+                var backingFieldName = GetBackingFieldName(property.Name);
+                sb.AppendLine($"        private {propertyType} {backingFieldName};");
+            }
+
+            sb.AppendLine();
+        }
 
         if (!isReactiveObject && typeProperties.Any())
         {
