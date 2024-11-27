@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
@@ -18,7 +19,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         var classDeclarations = context.SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: (s, _) => IsCandidateClass(s),
-                transform: (ctx, _) => GetSemanticTargetForClass(ctx))
+                transform: (ctx, _) => GetClassInfo(ctx))
             .Where(c => c is not null);
 
         // Register the attribute source
@@ -40,7 +41,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         // Generate source
         context.RegisterSourceOutput(
             compilationAndClasses,
-            (spc, source) => Execute(source.Left, source.Right.Cast<INamedTypeSymbol>().ToList(), spc));
+            (spc, source) => Execute(source.Left, source.Right.Cast<(INamedTypeSymbol Symbol, Location Location)>().ToList(), spc));
     }
 
     private static bool IsCandidateClass(SyntaxNode node)
@@ -57,31 +58,60 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         return classDeclaration.Members
             .OfType<PropertyDeclarationSyntax>()
             .Any(p => p.AttributeLists.Count > 0 &&
-                     p.AttributeLists.Any(al => 
-                         al.Attributes.Any(a => 
-                             a.Name.ToString() is "Reactive" or "ReactiveAttribute")));
+                      p.AttributeLists.Any(al => 
+                          al.Attributes.Any(a => 
+                              a.Name.ToString() is "Reactive" or "ReactiveAttribute")));
     }
-
-    private static INamedTypeSymbol? GetSemanticTargetForClass(GeneratorSyntaxContext context)
+    
+    private static (INamedTypeSymbol Symbol, Location Location)? GetClassInfo(GeneratorSyntaxContext context)
     {
         var classDeclaration = (ClassDeclarationSyntax)context.Node;
         var symbol = context.SemanticModel.GetDeclaredSymbol(classDeclaration);
-        return symbol;
+        return symbol != null ? (symbol, classDeclaration.GetLocation()) : null;
     }
 
     private static void Execute(
         Compilation compilation,
-        List<INamedTypeSymbol> classes,
+        List<(INamedTypeSymbol Symbol, Location Location)> classes,
         SourceProductionContext context)
     {
         if (classes.Count == 0) return;
 
-        // Generate a separate file for each class
-        foreach (var classSymbol in classes)
+        // Group classes by type and source file
+        var classGroups = classes
+            .GroupBy(
+                c => (Type: c.Symbol, FilePath: c.Location.SourceTree?.FilePath ?? string.Empty),
+                (key, group) => new { TypeSymbol = key.Type, FilePath = key.FilePath },
+                new TypeAndPathComparer())
+            .ToList();
+
+        // Generate a separate file for each class group
+        foreach (var group in classGroups)
         {
-            var source = GenerateExtensionsForClass(classSymbol);
-            var fileName = $"{classSymbol.Name}.WhenAnyValue.g.cs";
+            var source = GenerateExtensionsForClass(group.TypeSymbol);
+            var sourceFilePath = Path.GetFileNameWithoutExtension(group.FilePath);
+            var fileName = $"{group.TypeSymbol.Name}.{sourceFilePath}.WhenAnyValue.g.cs";
             context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
+        }
+    }
+    
+    private class TypeAndPathComparer : IEqualityComparer<(INamedTypeSymbol Type, string FilePath)>
+    {
+        public bool Equals((INamedTypeSymbol Type, string FilePath) x, (INamedTypeSymbol Type, string FilePath) y)
+        {
+            return SymbolEqualityComparer.Default.Equals(x.Type, y.Type) &&
+                   string.Equals(x.FilePath, y.FilePath, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public int GetHashCode((INamedTypeSymbol Type, string FilePath) obj)
+        {
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 31 + SymbolEqualityComparer.Default.GetHashCode(obj.Type);
+                hash = hash * 31 + StringComparer.OrdinalIgnoreCase.GetHashCode(obj.FilePath);
+                return hash;
+            }
         }
     }
 
