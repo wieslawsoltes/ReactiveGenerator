@@ -45,7 +45,7 @@ public class ReactiveGenerator : IIncrementalGenerator
             compilationAndDeclarations,
             (spc, source) => Execute(
                 source.Left.Left,
-                source.Left.Right.Cast<(ISymbol Symbol, Location Location)>().ToList(),
+                source.Left.Right.Cast<(ISymbol Symbol, Location Location, bool IsClass)>().ToList(),
                 source.Right,
                 spc));
     }
@@ -73,7 +73,7 @@ public class ReactiveGenerator : IIncrementalGenerator
         return false;
     }
     
-    private static (ISymbol Symbol, Location Location)? GetSymbolInfo(GeneratorSyntaxContext context)
+    private static (ISymbol Symbol, Location Location, bool IsClass)? GetSymbolInfo(GeneratorSyntaxContext context)
     {
         var semanticModel = context.SemanticModel;
 
@@ -90,7 +90,7 @@ public class ReactiveGenerator : IIncrementalGenerator
                             var symbol = semanticModel.GetDeclaredSymbol(propertyDeclaration);
                             if (symbol != null)
                             {
-                                return (symbol, propertyDeclaration.GetLocation());
+                                return (symbol, propertyDeclaration.GetLocation(), false);
                             }
                         }
                     }
@@ -108,7 +108,7 @@ public class ReactiveGenerator : IIncrementalGenerator
                             var symbol = semanticModel.GetDeclaredSymbol(classDeclaration);
                             if (symbol != null)
                             {
-                                return (symbol, classDeclaration.GetLocation());
+                                return (symbol, classDeclaration.GetLocation(), true);
                             }
                         }
                     }
@@ -177,9 +177,9 @@ public class ReactiveGenerator : IIncrementalGenerator
         return typeSymbol;
     }
 
-    private static void Execute(
+   private static void Execute(
         Compilation compilation,
-        List<(ISymbol Symbol, Location Location)> declarations,
+        List<(ISymbol Symbol, Location Location, bool IsClass)> declarations,
         bool useLegacyMode,
         SourceProductionContext context)
     {
@@ -187,9 +187,10 @@ public class ReactiveGenerator : IIncrementalGenerator
             return;
 
         var processedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+        var reactiveClasses = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
 
-        // First, handle class-level attributes to implement INPC
-        foreach (var declaration in declarations.Where(d => d.Symbol is INamedTypeSymbol))
+        // First, identify and process class-level attributes to implement INPC
+        foreach (var declaration in declarations.Where(d => d.IsClass))
         {
             var typeSymbol = (INamedTypeSymbol)declaration.Symbol;
             
@@ -205,12 +206,13 @@ public class ReactiveGenerator : IIncrementalGenerator
                 var fileName = $"{typeSymbol.Name}.{sourceFilePath}.ReactiveProperties.g.cs";
                 context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
                 processedTypes.Add(typeSymbol);
+                reactiveClasses.Add(typeSymbol);
             }
         }
 
         // Then handle property-level attributes
         var properties = declarations
-            .Where(d => d.Symbol is IPropertySymbol)
+            .Where(d => !d.IsClass)
             .Select(d => ((IPropertySymbol)d.Symbol, d.Location))
             .ToList();
 
@@ -230,13 +232,14 @@ public class ReactiveGenerator : IIncrementalGenerator
                     new TypeAndPathComparer())
                 .ToList();
 
-            // Process INPC implementation for base types first
+            // Process INPC implementation for base types first if needed
             foreach (var group in propertyGroups)
             {
                 if (group.TypeSymbol is not INamedTypeSymbol typeSymbol) continue;
 
                 var baseType = FindFirstTypeNeedingINPC(compilation, typeSymbol);
-                if (baseType is not null && !processedTypes.Contains(baseType))
+                if (baseType is not null && !processedTypes.Contains(baseType) && 
+                    !HasReactiveAttribute(baseType) && !reactiveClasses.Contains(baseType))
                 {
                     var source = GenerateClassSource(baseType, properties.Select(p => p.Item1).ToList(), implementInpc: true, useLegacyMode);
                     if (!string.IsNullOrEmpty(source))
@@ -255,7 +258,8 @@ public class ReactiveGenerator : IIncrementalGenerator
                 if (group.TypeSymbol is not INamedTypeSymbol typeSymbol || processedTypes.Contains(typeSymbol)) 
                     continue;
 
-                var source = GenerateClassSource(typeSymbol, group.Properties, implementInpc: false, useLegacyMode);
+                var hasClassLevelReactive = HasReactiveAttribute(typeSymbol) || reactiveClasses.Contains(typeSymbol);
+                var source = GenerateClassSource(typeSymbol, group.Properties, implementInpc: !hasClassLevelReactive, useLegacyMode);
                 if (!string.IsNullOrEmpty(source))
                 {
                     var sourceFilePath = Path.GetFileNameWithoutExtension(group.FilePath);
@@ -284,7 +288,14 @@ public class ReactiveGenerator : IIncrementalGenerator
 
         return false;
     }
-  
+
+    private static bool HasReactiveAttribute(INamedTypeSymbol typeSymbol)
+    {
+        return typeSymbol.GetAttributes().Any(attr =>
+            attr.AttributeClass is not null &&
+            (attr.AttributeClass.Name is "ReactiveAttribute" or "Reactive"));
+    }
+    
     private class TypeAndPathComparer : IEqualityComparer<(INamedTypeSymbol Type, string FilePath)>
     {
         public bool Equals((INamedTypeSymbol Type, string FilePath) x, (INamedTypeSymbol Type, string FilePath) y)
