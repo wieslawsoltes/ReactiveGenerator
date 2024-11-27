@@ -10,6 +10,7 @@ A C# source generator that automatically implements property change notification
 
 ### Core Features
 - Automatic `INotifyPropertyChanged` implementation
+- Class-level and property-level reactive declarations
 - Support for ReactiveUI's `ReactiveObject` pattern
 - Automatic `WhenAnyValue` observable generation for reactive properties
 - Support for modern C# field keyword and legacy backing fields
@@ -40,7 +41,18 @@ dotnet add package ReactiveGenerator
 
 ## Basic Usage
 
-### Standard INPC Implementation
+### Class-Level Reactive Declaration
+
+```csharp
+[Reactive]
+public partial class Person
+{
+    public partial string FirstName { get; set; }
+    public partial string LastName { get; set; }
+}
+```
+
+### Property-Level Reactive Declaration
 
 ```csharp
 public partial class Person
@@ -73,6 +85,55 @@ public partial class ViewModel : ReactiveObject
 }
 ```
 
+## Generation Rules
+
+### Attribute Rules
+1. `[Reactive]` can be applied at:
+    - Class level: All partial properties in the class become reactive
+    - Property level: Individual properties become reactive
+2. Properties marked with `[Reactive]` must be declared as `partial`
+3. Classes containing reactive properties must be declared as `partial`
+
+### INPC Implementation Rules
+1. If a class is not inheriting from `ReactiveObject`:
+    - INPC interface is automatically implemented
+    - PropertyChanged event is generated
+    - OnPropertyChanged methods are generated
+2. INPC implementation is generated only once in the inheritance chain
+3. Base class INPC implementation is respected and reused
+
+### Property Generation Rules
+1. Access Modifiers:
+    - Property access level is preserved
+    - Get/set accessor modifiers are preserved
+    - Generated backing fields follow property accessibility
+
+2. Nullability:
+    - Nullable annotations are preserved
+    - Reference type nullability is correctly propagated
+    - Value type nullability is handled appropriately
+
+3. Inheritance:
+    - Virtual/override modifiers are preserved
+    - Base class properties are respected
+    - Multiple inheritance levels are handled correctly
+
+4. Field Generation:
+    - Modern mode (default): Uses C# field keyword
+    - Legacy mode: Uses explicit backing fields with underscore prefix
+    - Static PropertyChangedEventArgs instances are cached per property
+
+### Observable Generation Rules
+1. For each reactive property:
+    - Type-safe WhenAny extension method is generated
+    - Weak event handling is implemented
+    - Thread-safe subscription management is provided
+
+2. Observable Lifecycle:
+    - Automatic cleanup of unused subscriptions
+    - Memory leak prevention through weak references
+    - Proper disposal handling
+
 ## Configuration
 
 ### MSBuild Properties
@@ -94,141 +155,38 @@ The generator produces several key types:
 2. `WeakEventManager<TDelegate>`: Provides thread-safe weak event handling
 3. Extension methods for each reactive property (e.g., `WhenAnyPropertyName`)
 
-### Generated Code Structure
+### Common Issues and Solutions
 
-The generator produces two main types of code:
-
-1. Property Change Notifications:
-    - INPC implementation for classes not inheriting from ReactiveObject
-    - Efficient property setters with change detection
-    - Cached PropertyChangedEventArgs instances
-
-2. WhenAnyValue Observables:
-    - Type-safe property observation methods
-    - Weak event handling to prevent memory leaks
-    - Thread-safe subscription management
-
-### Property Implementation Modes
-
-#### Modern Mode (Default)
-Uses C# field keyword:
-
-```csharp
-public partial string Property
-{
-    get => field;
-    set
-    {
-        if (!Equals(field, value))
-        {
-            field = value;
-            OnPropertyChanged(_propertyChangedEventArgs);
-        }
-    }
-}
-```
-
-#### Legacy Mode
-Uses explicit backing fields:
-
-```csharp
-private string _property;
-public partial string Property
-{
-    get => _property;
-    set
-    {
-        if (!Equals(_property, value))
-        {
-            _property = value;
-            OnPropertyChanged(_propertyChangedEventArgs);
-        }
-    }
-}
-```
-
-## Advanced Features
-
-### Weak Event Management
-
-The generator includes a sophisticated weak event system that:
-- Prevents memory leaks in long-lived observable subscriptions
-- Automatically cleans up when observers are garbage collected
-- Maintains thread safety for event handling
-
-### Inheritance Support
-
-The generator is fully aware of inheritance hierarchies:
-- Correctly implements INPC only once in the inheritance chain
-- Properly handles virtual and override properties
-- Supports mixed INPC and ReactiveUI inheritance scenarios
-
-### Performance Optimizations
-
-1. Event Args Caching:
-```csharp
-private static readonly PropertyChangedEventArgs _propertyChangedEventArgs = 
-    new PropertyChangedEventArgs(nameof(Property));
-```
-
-2. Efficient Change Detection:
-```csharp
-if (!Equals(field, value))
-{
-    field = value;
-    OnPropertyChanged(_propertyChangedEventArgs);
-}
-```
-
-3. Weak Event References:
-```csharp
-internal sealed class WeakEventManager<TDelegate>
-{
-    private readonly ConditionalWeakTable<object, EventRegistrationList> _registrations;
-    // Implementation details...
-}
-```
-
-## Best Practices
-
-1. Always mark reactive classes and properties as `partial`
-2. Use `IDisposable` for proper subscription cleanup
-3. Consider thread safety when using observables
-4. Implement `IEquatable<T>` for complex property types
-5. Use the generated WhenAny methods instead of magic strings
-
-## Common Issues and Solutions
-
-### Missing Partial Declarations
+#### Missing Partial Declarations
 ```csharp
 // ❌ Wrong
+[Reactive]
 public class Example
 {
-    [Reactive]
     public string Property { get; set; }
 }
 
 // ✅ Correct
+[Reactive]
 public partial class Example
 {
-    [Reactive]
     public partial string Property { get; set; }
 }
 ```
 
-### ReactiveUI Base Class
+#### ReactiveUI Base Class
 ```csharp
 // ❌ Wrong: Missing ReactiveObject base
+[Reactive]
 public partial class Example
 {
-    [Reactive]
     public partial string Property { get; set; }
 }
 
 // ✅ Correct
+[Reactive]
 public partial class Example : ReactiveObject
 {
-    [Reactive]
     public partial string Property { get; set; }
 }
 ```

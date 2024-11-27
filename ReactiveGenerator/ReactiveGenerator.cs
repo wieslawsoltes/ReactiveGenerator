@@ -11,12 +11,19 @@ namespace ReactiveGenerator;
 [Generator]
 public class ReactiveGenerator : IIncrementalGenerator
 {
+    private record PropertyInfo(
+        IPropertySymbol Property,
+        bool HasReactiveAttribute,
+        bool HasIgnoreAttribute,
+        bool HasImplementation);
+    
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // Register the attribute source with updated AttributeUsage
+        // Register both attributes
         context.RegisterPostInitializationOutput(ctx =>
         {
             ctx.AddSource("ReactiveAttribute.g.cs", SourceText.From(AttributeSource, Encoding.UTF8));
+            ctx.AddSource("IgnoreReactiveAttribute.g.cs", SourceText.From(IgnoreAttributeSource, Encoding.UTF8));
         });
 
         // Get MSBuild property for enabling legacy mode
@@ -27,7 +34,7 @@ public class ReactiveGenerator : IIncrementalGenerator
                     : "false",
                 out var result) && result);
 
-        // Get both partial class declarations and partial properties
+        // Get partial class declarations
         var partialClasses = context.SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: (s, _) => s is ClassDeclarationSyntax c &&
@@ -36,13 +43,11 @@ public class ReactiveGenerator : IIncrementalGenerator
                 transform: (ctx, _) => GetClassInfo(ctx))
             .Where(m => m is not null);
 
+        // Get partial properties (both with [Reactive] and from [Reactive] classes)
         var partialProperties = context.SyntaxProvider
             .CreateSyntaxProvider(
-                // Update predicate to check for [Reactive] attribute
                 predicate: (s, _) => s is PropertyDeclarationSyntax p &&
-                                     p.Modifiers.Any(m => m.ValueText == "partial") &&
-                                     p.AttributeLists.Any(al => al.Attributes.Any(a =>
-                                         a.Name.ToString() is "Reactive" or "ReactiveAttribute")),
+                                     p.Modifiers.Any(m => m.ValueText == "partial"),
                 transform: (ctx, _) => GetPropertyInfo(ctx))
             .Where(m => m is not null);
 
@@ -57,7 +62,7 @@ public class ReactiveGenerator : IIncrementalGenerator
             (spc, source) => Execute(
                 source.Left.Left.Left,
                 source.Left.Left.Right.Cast<(INamedTypeSymbol Type, Location Location)>().ToList(),
-                source.Left.Right.Cast<(IPropertySymbol Property, Location Location)>().ToList(),
+                source.Left.Right.Cast<PropertyInfo>().ToList(),
                 source.Right,
                 spc));
     }
@@ -85,44 +90,59 @@ public class ReactiveGenerator : IIncrementalGenerator
 
         return null;
     }
-
-    private static (IPropertySymbol Property, Location Location)? GetPropertyInfo(GeneratorSyntaxContext context)
+    
+    private static PropertyInfo? GetPropertyInfo(GeneratorSyntaxContext context)
     {
-        // Check if this is a property declaration
         if (context.Node is not PropertyDeclarationSyntax propertyDeclaration)
             return null;
 
-        // Check if the property has the [Reactive] attribute
+        var symbol = context.SemanticModel.GetDeclaredSymbol(propertyDeclaration) as IPropertySymbol;
+        if (symbol == null)
+            return null;
+
         bool hasReactiveAttribute = false;
+        bool hasIgnoreAttribute = false;
+
         foreach (var attributeList in propertyDeclaration.AttributeLists)
         {
             foreach (var attribute in attributeList.Attributes)
             {
                 var name = attribute.Name.ToString();
                 if (name is "Reactive" or "ReactiveAttribute")
-                {
                     hasReactiveAttribute = true;
-                    break;
-                }
+                else if (name is "IgnoreReactive" or "IgnoreReactiveAttribute")
+                    hasIgnoreAttribute = true;
             }
-
-            if (hasReactiveAttribute) break;
         }
 
-        // If no [Reactive] attribute is found, skip this property
-        if (!hasReactiveAttribute)
-            return null;
-
-        // Get the property symbol
-        var symbol = context.SemanticModel.GetDeclaredSymbol(propertyDeclaration) as IPropertySymbol;
-        if (symbol != null)
+        // Check if containing type has [Reactive] attribute
+        var containingType = symbol.ContainingType;
+        bool classHasReactiveAttribute = false;
+        foreach (var attribute in containingType.GetAttributes())
         {
-            return (symbol, propertyDeclaration.GetLocation());
+            if (attribute.AttributeClass?.Name is "ReactiveAttribute" or "Reactive")
+            {
+                classHasReactiveAttribute = true;
+                break;
+            }
+        }
+
+        // Check if property has an implementation
+        bool hasImplementation = propertyDeclaration.AccessorList?.Accessors.Any(
+            a => a.Body != null || a.ExpressionBody != null) ?? false;
+
+        // Return property info if it either:
+        // 1. Has [Reactive] attribute directly
+        // 2. Is in a class with [Reactive] attribute and doesn't have [IgnoreReactive]
+        // 3. Has no implementation yet
+        if ((hasReactiveAttribute || (classHasReactiveAttribute && !hasIgnoreAttribute)) && !hasImplementation)
+        {
+            return new PropertyInfo(symbol, hasReactiveAttribute, hasIgnoreAttribute, hasImplementation);
         }
 
         return null;
     }
-
+    
     private static bool InheritsFromReactiveObject(INamedTypeSymbol typeSymbol)
     {
         var current = typeSymbol;
@@ -153,7 +173,7 @@ public class ReactiveGenerator : IIncrementalGenerator
     private static void Execute(
         Compilation compilation,
         List<(INamedTypeSymbol Type, Location Location)> reactiveClasses,
-        List<(IPropertySymbol Property, Location Location)> properties,
+        List<PropertyInfo> properties,
         bool useLegacyMode,
         SourceProductionContext context)
     {
@@ -177,11 +197,16 @@ public class ReactiveGenerator : IIncrementalGenerator
         foreach (var reactiveClass in reactiveClasses)
             allTypes.Add(reactiveClass.Type);
 
-        // Add types from properties with [Reactive] attribute
+        // Add types from properties that should be reactive and don't have implementation
         foreach (var property in properties)
         {
-            if (property.Property.ContainingType is INamedTypeSymbol type)
+            if ((property.HasReactiveAttribute || 
+                 (reactiveTypesSet.Contains(property.Property.ContainingType) && !property.HasIgnoreAttribute)) &&
+                !property.HasImplementation &&
+                property.Property.ContainingType is INamedTypeSymbol type)
+            {
                 allTypes.Add(type);
+            }
         }
 
         // First pass: Process base types that need INPC
@@ -206,7 +231,7 @@ public class ReactiveGenerator : IIncrementalGenerator
             // Check if type needs INPC implementation
             var needsInpc = !HasINPCImplementation(compilation, type, processedTypes) &&
                             (reactiveTypesSet.Contains(type) || // Has [Reactive] class attribute
-                             propertyGroups.ContainsKey(type)); // Has [Reactive] properties
+                             propertyGroups.ContainsKey(type)); // Has properties that should be reactive
 
             if (needsInpc)
             {
@@ -226,9 +251,19 @@ public class ReactiveGenerator : IIncrementalGenerator
             var typeSymbol = group.Key as INamedTypeSymbol;
             if (typeSymbol == null) continue;
 
+            // Filter properties that should be reactive
+            var reactiveProperties = group.Value
+                .Where(p => p.HasReactiveAttribute || 
+                           (reactiveTypesSet.Contains(typeSymbol) && !p.HasIgnoreAttribute))
+                .Select(p => p.Property)
+                .ToList();
+
+            if (!reactiveProperties.Any())
+                continue;
+
             var source = GenerateClassSource(
                 typeSymbol,
-                group.Value.Select(p => p.Property).ToList(),
+                reactiveProperties,
                 implementInpc: false, // INPC already implemented in first pass if needed
                 useLegacyMode);
 
@@ -585,5 +620,13 @@ public class ReactiveGenerator : IIncrementalGenerator
 sealed class ReactiveAttribute : Attribute
 {
     public ReactiveAttribute() { }
+}";
+
+    private const string IgnoreAttributeSource = @"using System;
+
+[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+sealed class IgnoreReactiveAttribute : Attribute
+{
+    public IgnoreReactiveAttribute() { }
 }";
 }
