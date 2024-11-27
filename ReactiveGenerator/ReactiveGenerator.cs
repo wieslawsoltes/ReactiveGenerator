@@ -40,7 +40,11 @@ public class ReactiveGenerator : IIncrementalGenerator
 
         var partialProperties = context.SyntaxProvider
             .CreateSyntaxProvider(
-                predicate: (s, _) => s is PropertyDeclarationSyntax p && p.Modifiers.Any(m => m.ValueText == "partial"),
+                // Update predicate to check for [Reactive] attribute
+                predicate: (s, _) => s is PropertyDeclarationSyntax p && 
+                                     p.Modifiers.Any(m => m.ValueText == "partial") &&
+                                     p.AttributeLists.Any(al => al.Attributes.Any(a => 
+                                         a.Name.ToString() is "Reactive" or "ReactiveAttribute")),
                 transform: (ctx, _) => GetPropertyInfo(ctx))
             .Where(m => m is not null);
 
@@ -60,29 +64,6 @@ public class ReactiveGenerator : IIncrementalGenerator
                 spc));
     }
 
-    private static bool IsCandidate(SyntaxNode node)
-    {
-        // Check for partial property with [Reactive] attribute
-        if (node is PropertyDeclarationSyntax propertyDeclaration)
-        {
-            if (!propertyDeclaration.Modifiers.Any(m => m.ValueText == "partial"))
-                return false;
-
-            return propertyDeclaration.AttributeLists.Count > 0;
-        }
-
-        // Check for partial class with [Reactive] attribute
-        if (node is ClassDeclarationSyntax classDeclaration)
-        {
-            if (!classDeclaration.Modifiers.Any(m => m.ValueText == "partial"))
-                return false;
-
-            return classDeclaration.AttributeLists.Count > 0;
-        }
-
-        return false;
-    }
-    
     private static (INamedTypeSymbol Type, Location Location)? GetClassInfo(GeneratorSyntaxContext context)
     {
         if (context.Node is not ClassDeclarationSyntax classDeclaration)
@@ -109,9 +90,31 @@ public class ReactiveGenerator : IIncrementalGenerator
     
     private static (IPropertySymbol Property, Location Location)? GetPropertyInfo(GeneratorSyntaxContext context)
     {
+        // Check if this is a property declaration
         if (context.Node is not PropertyDeclarationSyntax propertyDeclaration)
             return null;
 
+        // Check if the property has the [Reactive] attribute
+        bool hasReactiveAttribute = false;
+        foreach (var attributeList in propertyDeclaration.AttributeLists)
+        {
+            foreach (var attribute in attributeList.Attributes)
+            {
+                var name = attribute.Name.ToString();
+                if (name is "Reactive" or "ReactiveAttribute")
+                {
+                    hasReactiveAttribute = true;
+                    break;
+                }
+            }
+            if (hasReactiveAttribute) break;
+        }
+
+        // If no [Reactive] attribute is found, skip this property
+        if (!hasReactiveAttribute)
+            return null;
+
+        // Get the property symbol
         var symbol = context.SemanticModel.GetDeclaredSymbol(propertyDeclaration) as IPropertySymbol;
         if (symbol != null)
         {
@@ -195,179 +198,183 @@ public class ReactiveGenerator : IIncrementalGenerator
 
         return typeSymbol.BaseType is not null && HasReactivePropertiesInHierarchy(typeSymbol.BaseType);
     }
-
-    private static INamedTypeSymbol? FindFirstTypeNeedingINPC(Compilation compilation, INamedTypeSymbol typeSymbol)
+    
+    private static bool HasReactiveProperties(INamedTypeSymbol typeSymbol)
     {
-        var inpcType = compilation.GetTypeByMetadataName("System.ComponentModel.INotifyPropertyChanged");
-        if (inpcType is null)
-            return typeSymbol;
-
+        foreach (var member in typeSymbol.GetMembers().OfType<IPropertySymbol>())
+        {
+            if (member.GetAttributes().Any(attr =>
+                    attr.AttributeClass is not null &&
+                    (attr.AttributeClass.Name is "ReactiveAttribute" or "Reactive")))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    private static bool ShouldImplementINPC(
+        Compilation compilation, 
+        INamedTypeSymbol typeSymbol, 
+        HashSet<INamedTypeSymbol> processedTypes)
+    {
+        // If the type inherits from ReactiveObject, it doesn't need INPC
         if (InheritsFromReactiveObject(typeSymbol))
-            return null;
-
-        var current = typeSymbol;
-        while (current is not null)
-        {
-            if (current.AllInterfaces.Contains(inpcType, SymbolEqualityComparer.Default))
-            {
-                return null;
-            }
-
-            if (current.BaseType is null ||
-                !HasReactivePropertiesInHierarchy(current.BaseType))
-            {
-                return current;
-            }
-
-            current = current.BaseType;
-        }
-
-        return typeSymbol;
-    }
-
-    private static void Execute(
-        Compilation compilation,
-        List<(INamedTypeSymbol Type, Location Location)> reactiveClasses,
-        List<(IPropertySymbol Property, Location Location)> properties,
-        bool useLegacyMode,
-        SourceProductionContext context)
-    {
-        if (properties.Count == 0 && reactiveClasses.Count == 0)
-            return;
-
-        var processedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-        var reactiveTypesSet = new HashSet<INamedTypeSymbol>(
-            reactiveClasses.Select(rc => rc.Type), 
-            SymbolEqualityComparer.Default);
-
-        // First, generate INPC for reactive classes
-        foreach (var reactiveClass in reactiveClasses)
-        {
-            var typeSymbol = reactiveClass.Type;
-            
-            // Skip if type already implements INPC or inherits from ReactiveObject
-            if (!InheritsFromReactiveObject(typeSymbol) && !HasINPCImplementation(compilation, typeSymbol))
-            {
-                var inpcSource = GenerateINPCImplementation(typeSymbol);
-                if (!string.IsNullOrEmpty(inpcSource))
-                {
-                    var sourceFilePath = Path.GetFileNameWithoutExtension(reactiveClass.Location.SourceTree?.FilePath ?? string.Empty);
-                    var fileName = $"{typeSymbol.Name}.{sourceFilePath}.INPC.g.cs";
-                    context.AddSource(fileName, SourceText.From(inpcSource, Encoding.UTF8));
-                }
-            }
-
-            // Find and generate implementations for all partial properties in the reactive class
-            var classProperties = properties
-                .Where(p => SymbolEqualityComparer.Default.Equals(p.Property.ContainingType, typeSymbol))
-                .Select(p => p.Property)
-                .ToList();
-
-            if (classProperties.Any())
-            {
-                var propertySource = GenerateClassSource(typeSymbol, classProperties, implementInpc: false, useLegacyMode);
-                if (!string.IsNullOrEmpty(propertySource))
-                {
-                    var sourceFilePath = Path.GetFileNameWithoutExtension(reactiveClass.Location.SourceTree?.FilePath ?? string.Empty);
-                    var fileName = $"{typeSymbol.Name}.{sourceFilePath}.ReactiveProperties.g.cs";
-                    context.AddSource(fileName, SourceText.From(propertySource, Encoding.UTF8));
-                }
-            }
-
-            processedTypes.Add(typeSymbol);
-        }
-
-        if (properties.Any())
-        {
-            // Group properties by containing type and file path
-            var propertyGroups = properties
-                .GroupBy(
-                    p => (Type: p.Property.ContainingType, 
-                          FilePath: p.Location.SourceTree?.FilePath ?? string.Empty),
-                    (key, group) => new
-                    {
-                        TypeSymbol = key.Type,
-                        FilePath = key.FilePath,
-                        Properties = group.Select(g => g.Property).ToList()
-                    },
-                    new TypeAndPathComparer())
-                .ToList();
-
-            // Process INPC implementation for base types first if needed
-            foreach (var group in propertyGroups)
-            {
-                if (group.TypeSymbol is not INamedTypeSymbol typeSymbol) continue;
-
-                var baseType = FindFirstTypeNeedingINPC(compilation, typeSymbol);
-                if (baseType is not null && !processedTypes.Contains(baseType) && 
-                    !reactiveTypesSet.Contains(baseType))
-                {
-                    var source = GenerateClassSource(baseType, group.Properties, implementInpc: true, useLegacyMode);
-                    if (!string.IsNullOrEmpty(source))
-                    {
-                        var sourceFilePath = Path.GetFileNameWithoutExtension(group.FilePath);
-                        var fileName = $"{baseType.Name}.{sourceFilePath}.ReactiveProperties.g.cs";
-                        context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
-                        processedTypes.Add(baseType);
-                    }
-                }
-            }
-
-            // Process each group of properties
-            foreach (var group in propertyGroups)
-            {
-                if (group.TypeSymbol is not INamedTypeSymbol typeSymbol || processedTypes.Contains(typeSymbol)) 
-                    continue;
-
-                var hasClassLevelReactive = reactiveTypesSet.Contains(typeSymbol);
-                var source = GenerateClassSource(typeSymbol, group.Properties, implementInpc: !hasClassLevelReactive, useLegacyMode);
-                if (!string.IsNullOrEmpty(source))
-                {
-                    var sourceFilePath = Path.GetFileNameWithoutExtension(group.FilePath);
-                    var fileName = $"{typeSymbol.Name}.{sourceFilePath}.ReactiveProperties.g.cs";
-                    context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
-                }
-            }
-        }
-    }
-
-    private static bool HasINPCImplementation(Compilation compilation, INamedTypeSymbol typeSymbol)
-    {
-        var inpcType = compilation.GetTypeByMetadataName("System.ComponentModel.INotifyPropertyChanged");
-        if (inpcType is null)
             return false;
 
+        // If it already implements INPC or will be implementing it, no need to add it again
+        if (HasINPCImplementation(compilation, typeSymbol, processedTypes))
+            return false;
+
+        // Check if the type or any of its base types has the [Reactive] attribute
         var current = typeSymbol;
         while (current is not null)
         {
-            if (current.AllInterfaces.Contains(inpcType, SymbolEqualityComparer.Default))
+            if (current.GetAttributes().Any(attr =>
+                    attr.AttributeClass is not null &&
+                    (attr.AttributeClass.Name is "ReactiveAttribute" or "Reactive")))
             {
                 return true;
             }
             current = current.BaseType;
         }
 
-        return false;
+        // Even if no [Reactive] attribute on class, check if the type has any [Reactive] properties
+        return HasReactiveProperties(typeSymbol);
+    }
+    
+    private static int GetTypeHierarchyDepth(INamedTypeSymbol type)
+    {
+        int depth = 0;
+        var current = type.BaseType;
+        while (current != null)
+        {
+            depth++;
+            current = current.BaseType;
+        }
+        return depth;
+    }
+    
+private static void Execute(
+    Compilation compilation,
+    List<(INamedTypeSymbol Type, Location Location)> reactiveClasses,
+    List<(IPropertySymbol Property, Location Location)> properties,
+    bool useLegacyMode,
+    SourceProductionContext context)
+{
+    if (properties.Count == 0 && reactiveClasses.Count == 0)
+        return;
+
+    var processedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+    var reactiveTypesSet = new HashSet<INamedTypeSymbol>(
+        reactiveClasses.Select(rc => rc.Type), 
+        SymbolEqualityComparer.Default);
+
+    // Group properties by containing type
+    var propertyGroups = properties
+        .GroupBy(p => p.Property.ContainingType, SymbolEqualityComparer.Default)
+        .ToDictionary(g => g.Key, g => g.ToList(), SymbolEqualityComparer.Default);
+
+    // Get all types that need processing
+    var allTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+    
+    // Add types from reactive classes
+    foreach (var reactiveClass in reactiveClasses)
+        allTypes.Add(reactiveClass.Type);
+    
+    // Add types from properties with [Reactive] attribute
+    foreach (var property in properties)
+    {
+        if (property.Property.ContainingType is INamedTypeSymbol type)
+            allTypes.Add(type);
     }
 
-    private class TypeAndPathComparer : IEqualityComparer<(INamedTypeSymbol Type, string FilePath)>
+    // First pass: Process base types that need INPC
+    var typesToProcess = allTypes.ToList(); // Create a copy to avoid modification during enumeration
+    foreach (var type in typesToProcess)
     {
-        public bool Equals((INamedTypeSymbol Type, string FilePath) x, (INamedTypeSymbol Type, string FilePath) y)
+        var current = type.BaseType;
+        while (current is not null)
         {
-            return SymbolEqualityComparer.Default.Equals(x.Type, y.Type) &&
-                   string.Equals(x.FilePath, y.FilePath, StringComparison.OrdinalIgnoreCase);
+            allTypes.Add(current); // Add base type to processing queue
+            current = current.BaseType;
         }
+    }
 
-        public int GetHashCode((INamedTypeSymbol Type, string FilePath) obj)
+    // Process types in correct order (base types first)
+    foreach (var type in allTypes.OrderBy(t => GetTypeHierarchyDepth(t)))
+    {
+        // Skip if type already processed or inherits from ReactiveObject
+        if (processedTypes.Contains(type) || InheritsFromReactiveObject(type))
+            continue;
+
+        // Check if type needs INPC implementation
+        var needsInpc = !HasINPCImplementation(compilation, type, processedTypes) &&
+                       (reactiveTypesSet.Contains(type) || // Has [Reactive] class attribute
+                        propertyGroups.ContainsKey(type)); // Has [Reactive] properties
+
+        if (needsInpc)
         {
-            unchecked
+            var inpcSource = GenerateINPCImplementation(type);
+            if (!string.IsNullOrEmpty(inpcSource))
             {
-                int hash = 17;
-                hash = hash * 31 + SymbolEqualityComparer.Default.GetHashCode(obj.Type);
-                hash = hash * 31 + StringComparer.OrdinalIgnoreCase.GetHashCode(obj.FilePath);
-                return hash;
+                var fileName = $"{type.Name}.INPC.g.cs";
+                context.AddSource(fileName, SourceText.From(inpcSource, Encoding.UTF8));
+                processedTypes.Add(type);
             }
         }
+    }
+
+    // Process properties
+    foreach (var group in propertyGroups)
+    {
+        var typeSymbol = group.Key as INamedTypeSymbol;
+        if (typeSymbol == null) continue;
+
+        var source = GenerateClassSource(
+            typeSymbol,
+            group.Value.Select(p => p.Property).ToList(),
+            implementInpc: false, // INPC already implemented in first pass if needed
+            useLegacyMode);
+
+        if (!string.IsNullOrEmpty(source))
+        {
+            var fileName = $"{typeSymbol.Name}.ReactiveProperties.g.cs";
+            context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
+        }
+    }
+}
+
+    private static bool HasINPCImplementation(Compilation compilation, INamedTypeSymbol typeSymbol, HashSet<INamedTypeSymbol> processedTypes)
+    {
+        var inpcType = compilation.GetTypeByMetadataName("System.ComponentModel.INotifyPropertyChanged");
+        if (inpcType is null)
+            return false;
+
+        // First check if current type implements INPC directly
+        if (typeSymbol.AllInterfaces.Contains(inpcType, SymbolEqualityComparer.Default))
+            return true;
+
+        // Check if current type is in processedTypes (will have INPC implemented)
+        if (processedTypes.Contains(typeSymbol))
+            return true;
+
+        // Check base types recursively
+        var current = typeSymbol.BaseType;
+        while (current is not null)
+        {
+            // Check if base type implements INPC directly
+            if (current.AllInterfaces.Contains(inpcType, SymbolEqualityComparer.Default))
+                return true;
+
+            // Check if base type is in processedTypes
+            if (processedTypes.Contains(current))
+                return true;
+
+            current = current.BaseType;
+        }
+
+        return false;
     }
 
     private static string GetAccessorAccessibility(IMethodSymbol? accessor)
