@@ -10,21 +10,16 @@ A C# source generator that automatically implements property change notification
 
 ### Core Features
 - Automatic `INotifyPropertyChanged` implementation
+- Class-level and property-level reactive declarations
 - Support for ReactiveUI's `ReactiveObject` pattern
+- Property-level opt-out using `[IgnoreReactive]`
+- Support for custom property implementations
 - Automatic `WhenAnyValue` observable generation for reactive properties
 - Support for modern C# field keyword and legacy backing fields
 - Full nullable reference type support
 - Inheritance-aware property generation
 - Flexible property access modifiers
 - Cached `PropertyChangedEventArgs` for performance optimization
-
-### Performance Optimizations
-- Static caching of PropertyChangedEventArgs instances
-- Efficient property change detection using Equals
-- Minimal memory allocation during updates
-- Zero-overhead property access for unchanged values
-- Optimized WhenAnyValue observable implementation with weak event handling
-- Thread-safe event management
 
 ## Installation
 
@@ -40,7 +35,18 @@ dotnet add package ReactiveGenerator
 
 ## Basic Usage
 
-### Standard INPC Implementation
+### Class-Level Reactive Declaration
+
+```csharp
+[Reactive]
+public partial class Person
+{
+    public partial string FirstName { get; set; }
+    public partial string LastName { get; set; }
+}
+```
+
+### Property-Level Reactive Declaration
 
 ```csharp
 public partial class Person
@@ -53,6 +59,54 @@ public partial class Person
 }
 ```
 
+### Advanced Property Control
+
+#### Opting Out of Class-Level Reactivity
+
+When a class is marked with `[Reactive]`, you can selectively opt out specific properties using `[IgnoreReactive]`:
+
+```csharp
+[Reactive]
+public partial class Shape
+{
+    public partial string? Name { get; set; }         // Will be reactive
+
+    [IgnoreReactive]
+    public partial string? Tag { get; set; }          // Won't be reactive
+}
+```
+
+#### Custom Property Implementations
+
+You can provide custom implementations for properties marked with `[IgnoreReactive]`:
+
+```csharp
+[Reactive]
+public partial class Shape
+{
+    public partial string? Name { get; set; }         // Generated reactive implementation
+
+    [IgnoreReactive]
+    public partial string? Tag { get; set; }          // Custom implementation below
+}
+
+public partial class Shape
+{
+    private string? _tag;
+
+    public partial string? Tag
+    {
+        get => _tag; 
+        set => _tag = value;
+    }
+}
+```
+
+This allows you to:
+- Mix generated and custom property implementations
+- Take full control of specific properties when needed
+- Maintain the reactive pattern for most properties while customizing others
+
 ### ReactiveUI Integration
 
 ```csharp
@@ -62,7 +116,7 @@ public partial class ViewModel : ReactiveObject
     public partial string SearchText { get; set; }
 
     [Reactive]
-    public partial bool IsLoading { get; set; }
+    public partial string Status { get; set; }
 
     public ViewModel()
     {
@@ -72,6 +126,29 @@ public partial class ViewModel : ReactiveObject
     }
 }
 ```
+
+## Generation Rules
+
+### Attribute Rules
+1. `[Reactive]` can be applied at:
+    - Class level: All partial properties in the class become reactive
+    - Property level: Individual properties become reactive
+2. Properties marked with `[Reactive]` must be declared as `partial`
+3. Classes containing reactive properties must be declared as `partial`
+4. `[IgnoreReactive]` can be used to:
+    - Opt out of class-level reactivity
+    - Allow custom property implementations
+
+### Property Implementation Rules
+1. Default Generation:
+    - Properties without implementations get reactive implementations
+    - Properties with existing implementations are respected
+2. Mixed Implementations:
+    - Can mix generated and custom implementations in the same class
+    - Custom implementations take precedence over generation
+3. Implementation Override:
+    - Mark property with `[IgnoreReactive]` to provide custom implementation
+    - Custom implementation can be in any partial class declaration
 
 ## Configuration
 
@@ -94,141 +171,38 @@ The generator produces several key types:
 2. `WeakEventManager<TDelegate>`: Provides thread-safe weak event handling
 3. Extension methods for each reactive property (e.g., `WhenAnyPropertyName`)
 
-### Generated Code Structure
+### Common Issues and Solutions
 
-The generator produces two main types of code:
-
-1. Property Change Notifications:
-    - INPC implementation for classes not inheriting from ReactiveObject
-    - Efficient property setters with change detection
-    - Cached PropertyChangedEventArgs instances
-
-2. WhenAnyValue Observables:
-    - Type-safe property observation methods
-    - Weak event handling to prevent memory leaks
-    - Thread-safe subscription management
-
-### Property Implementation Modes
-
-#### Modern Mode (Default)
-Uses C# field keyword:
-
-```csharp
-public partial string Property
-{
-    get => field;
-    set
-    {
-        if (!Equals(field, value))
-        {
-            field = value;
-            OnPropertyChanged(_propertyChangedEventArgs);
-        }
-    }
-}
-```
-
-#### Legacy Mode
-Uses explicit backing fields:
-
-```csharp
-private string _property;
-public partial string Property
-{
-    get => _property;
-    set
-    {
-        if (!Equals(_property, value))
-        {
-            _property = value;
-            OnPropertyChanged(_propertyChangedEventArgs);
-        }
-    }
-}
-```
-
-## Advanced Features
-
-### Weak Event Management
-
-The generator includes a sophisticated weak event system that:
-- Prevents memory leaks in long-lived observable subscriptions
-- Automatically cleans up when observers are garbage collected
-- Maintains thread safety for event handling
-
-### Inheritance Support
-
-The generator is fully aware of inheritance hierarchies:
-- Correctly implements INPC only once in the inheritance chain
-- Properly handles virtual and override properties
-- Supports mixed INPC and ReactiveUI inheritance scenarios
-
-### Performance Optimizations
-
-1. Event Args Caching:
-```csharp
-private static readonly PropertyChangedEventArgs _propertyChangedEventArgs = 
-    new PropertyChangedEventArgs(nameof(Property));
-```
-
-2. Efficient Change Detection:
-```csharp
-if (!Equals(field, value))
-{
-    field = value;
-    OnPropertyChanged(_propertyChangedEventArgs);
-}
-```
-
-3. Weak Event References:
-```csharp
-internal sealed class WeakEventManager<TDelegate>
-{
-    private readonly ConditionalWeakTable<object, EventRegistrationList> _registrations;
-    // Implementation details...
-}
-```
-
-## Best Practices
-
-1. Always mark reactive classes and properties as `partial`
-2. Use `IDisposable` for proper subscription cleanup
-3. Consider thread safety when using observables
-4. Implement `IEquatable<T>` for complex property types
-5. Use the generated WhenAny methods instead of magic strings
-
-## Common Issues and Solutions
-
-### Missing Partial Declarations
+#### Missing Partial Declarations
 ```csharp
 // ❌ Wrong
+[Reactive]
 public class Example
 {
-    [Reactive]
     public string Property { get; set; }
 }
 
 // ✅ Correct
+[Reactive]
 public partial class Example
 {
-    [Reactive]
     public partial string Property { get; set; }
 }
 ```
 
-### ReactiveUI Base Class
+#### ReactiveUI Base Class
 ```csharp
 // ❌ Wrong: Missing ReactiveObject base
+[Reactive]
 public partial class Example
 {
-    [Reactive]
     public partial string Property { get; set; }
 }
 
 // ✅ Correct
+[Reactive]
 public partial class Example : ReactiveObject
 {
-    [Reactive]
     public partial string Property { get; set; }
 }
 ```
