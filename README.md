@@ -4,7 +4,7 @@
 [![NuGet](https://img.shields.io/nuget/v/ReactiveGenerator.svg)](https://www.nuget.org/packages/ReactiveGenerator)
 [![NuGet](https://img.shields.io/nuget/dt/ReactiveGenerator.svg)](https://www.nuget.org/packages/ReactiveGenerator)
 
-A C# source generator that automatically implements property change notifications using either standard `INotifyPropertyChanged` or ReactiveUI patterns. It generates efficient and clean code for your properties while maintaining full type safety and design-time support. Requires C# 13 and .NET 9 or later.
+A C# source generator that automatically implements property change notifications using either standard `INotifyPropertyChanged` or ReactiveUI patterns. It provides efficient code generation for properties with full type safety and design-time support.
 
 ## Features
 
@@ -12,115 +12,35 @@ A C# source generator that automatically implements property change notification
 - Automatic `INotifyPropertyChanged` implementation
 - Support for ReactiveUI's `ReactiveObject` pattern
 - Automatic `WhenAnyValue` observable generation for reactive properties
-- Modern C# 13 field keyword support for cleaner property implementation
-- Legacy mode with explicit backing fields (also C# 13)
+- Support for modern C# field keyword and legacy backing fields
 - Full nullable reference type support
 - Inheritance-aware property generation
-- Support for all property access modifiers
-- Cached `PropertyChangedEventArgs` for better performance
+- Flexible property access modifiers
+- Cached `PropertyChangedEventArgs` for performance optimization
 
 ### Performance Optimizations
 - Static caching of PropertyChangedEventArgs instances
 - Efficient property change detection using Equals
-- Minimal memory allocation during property updates
+- Minimal memory allocation during updates
 - Zero-overhead property access for unchanged values
-- Optimized WhenAnyValue observable implementation
-
-### Developer Experience
-- Clean and readable generated code
-- Full IntelliSense support
-- Design-time error detection
-- Comprehensive nullability annotations
-- Flexible configuration options
-- Seamless integration with existing codebases
+- Optimized WhenAnyValue observable implementation with weak event handling
+- Thread-safe event management
 
 ## Installation
 
-### NuGet Package
-
-Install using the .NET CLI:
 ```bash
 dotnet add package ReactiveGenerator
 ```
 
-Or using the Package Manager Console:
-```powershell
-Install-Package ReactiveGenerator
-```
-
-Or by adding directly to your .csproj:
-```xml
-<ItemGroup>
-    <PackageReference Include="ReactiveGenerator" Version="x.y.z" />
-</ItemGroup>
-```
-
 ### Prerequisites
 - .NET 9.0 or later
-- C# 13.0 or later (required for both modern and legacy modes)
+- C# 13.0 or later
 - `<LangVersion>preview</LangVersion>` in project file
 - Visual Studio 2022 or compatible IDE
 
-## Configuration
+## Basic Usage
 
-### Property Implementation Modes
-
-The generator supports two distinct modes for implementing property backing storage:
-
-#### 1. Modern Mode (Default)
-Uses C# 13's field keyword for cleaner implementation. This mode:
-- Reduces boilerplate code
-- Improves code readability
-- Maintains encapsulation
-- Requires C# 13 or later
-
-Example of generated code:
-```csharp
-public partial string Property
-{
-    get => field;
-    set => SetField(ref field, value);
-}
-```
-
-#### 2. Legacy Mode
-Uses traditional explicit backing fields. This mode:
-- Supports older C# versions
-- Provides more explicit code
-- Offers better compatibility with older tooling
-- Allows custom backing field naming conventions
-
-Example of generated code:
-```csharp
-private string _property;
-public partial string Property
-{
-    get => _property;
-    set => SetField(ref _property, value);
-}
-```
-
-### Configuration Options
-
-#### MSBuild Properties
-
-Add these to your project file (.csproj) to customize the generator's behavior:
-
-```xml
-<PropertyGroup>
-    <!-- Required for C# 13 field keyword support -->
-    <LangVersion>preview</LangVersion>
-    
-    <!-- Optional: Enable legacy mode with explicit backing fields -->
-    <UseBackingFields>true</UseBackingFields>
-</PropertyGroup>
-```
-
-## Usage
-
-### Basic INPC Implementation
-
-#### Simple Property Declaration
+### Standard INPC Implementation
 
 ```csharp
 public partial class Person
@@ -130,230 +50,159 @@ public partial class Person
 
     [Reactive]
     public partial string LastName { get; set; }
-
-    [Reactive]
-    public partial int Age { get; set; }
 }
 ```
 
-#### Generated Implementation (Modern Mode)
+### ReactiveUI Integration
 
 ```csharp
-public partial class Person : INotifyPropertyChanged
+public partial class ViewModel : ReactiveObject
 {
-    // Cached event args for performance
-    private static readonly PropertyChangedEventArgs _firstNameChangedEventArgs = new PropertyChangedEventArgs(nameof(FirstName));
-    private static readonly PropertyChangedEventArgs _lastNameChangedEventArgs = new PropertyChangedEventArgs(nameof(LastName));
-    private static readonly PropertyChangedEventArgs _ageChangedEventArgs = new PropertyChangedEventArgs(nameof(Age));
-
-    // INotifyPropertyChanged implementation
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
-
-    protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
-    {
-        PropertyChanged?.Invoke(this, args);
-    }
-
-    // Generated properties
-    public partial string FirstName 
-    {
-        get => field;
-        set 
-        {
-            if (!Equals(field, value))
-            {
-                field = value;
-                OnPropertyChanged(_firstNameChangedEventArgs);
-            }
-        }
-    }
-
-    // Additional properties similarly implemented
-}
-```
-
-### ReactiveUI Integration with WhenAnyValue Support
-
-```csharp
-public partial class UserViewModel : ReactiveObject
-{
-    [Reactive]
-    public partial string Username { get; set; }
-
-    [Reactive]
-    public partial string Email { get; set; }
-
-    [Reactive]
-    public partial bool IsValid { get; private set; }
-
-    public UserViewModel()
-    {
-        // Use generated type-safe WhenAnyValue extensions
-        this.WhenAnyUsername()
-            .Subscribe(username => Console.WriteLine($"Username changed to: {username}"));
-
-        // Combine multiple property observations
-        this.WhenAnyUsername()
-            .CombineLatest(this.WhenAnyEmail())
-            .Subscribe(tuple => 
-            {
-                var (username, email) = tuple;
-                IsValid = !string.IsNullOrEmpty(username) && email.Contains("@");
-            });
-    }
-}
-```
-
-### Advanced Scenarios
-
-#### Property Change Notifications with Validation
-
-```csharp
-public partial class AdvancedViewModel : ReactiveObject
-{
-    [Reactive]
-    public partial decimal Price { get; set; }
-
-    [Reactive]
-    public partial int Quantity { get; set; }
-
-    [Reactive]
-    public partial string? ValidationMessage { get; private set; }
-
-    public decimal Total => Price * Quantity;
-
-    public AdvancedViewModel()
-    {
-        // Validate price changes
-        this.WhenAnyPrice()
-            .Subscribe(price => 
-            {
-                ValidationMessage = price < 0 
-                    ? "Price cannot be negative" 
-                    : null;
-            });
-
-        // Update total on any relevant change
-        this.WhenAnyPrice()
-            .CombineLatest(this.WhenAnyQuantity())
-            .Select(tuple => tuple.Item1 * tuple.Item2)
-            .Subscribe(total => Console.WriteLine($"Total: {total:C}"));
-    }
-}
-```
-
-#### Working with Collections
-
-```csharp
-public partial class CollectionViewModel : ReactiveObject
-{
-    [Reactive]
-    public partial ObservableCollection<string> Items { get; set; } = new();
-
-    [Reactive]
-    public partial int SelectedIndex { get; set; }
-
-    public CollectionViewModel()
-    {
-        // Monitor collection changes
-        this.WhenAnyItems()
-            .SelectMany(items => items.ToObservable())
-            .Subscribe(_ => UpdateUI());
-
-        // Monitor selection changes
-        this.WhenAnySelectedIndex()
-            .Where(index => index >= 0 && index < Items.Count)
-            .Subscribe(index => Console.WriteLine($"Selected: {Items[index]}"));
-    }
-}
-```
-
-### Best Practices
-
-#### 1. Managing Subscriptions
-
-```csharp
-public partial class ViewModel : ReactiveObject, IDisposable
-{
-    private readonly CompositeDisposable _disposables = new();
-
     [Reactive]
     public partial string SearchText { get; set; }
 
+    [Reactive]
+    public partial bool IsLoading { get; set; }
+
     public ViewModel()
     {
+        // Use generated WhenAnyValue extensions
         this.WhenAnySearchText()
-            .Throttle(TimeSpan.FromMilliseconds(300))
-            .Subscribe(text => PerformSearch(text))
-            .DisposeWith(_disposables);
-    }
-
-    public void Dispose()
-    {
-        _disposables.Dispose();
+            .Subscribe(text => PerformSearch(text));
     }
 }
 ```
 
-#### 2. Property Change Detection
+## Configuration
+
+### MSBuild Properties
+
+```xml
+<PropertyGroup>
+    <!-- Optional: Use explicit backing fields instead of field keyword -->
+    <UseBackingFields>true</UseBackingFields>
+</PropertyGroup>
+```
+
+## Implementation Details
+
+### Generated Types
+
+The generator produces several key types:
+
+1. `PropertyObserver<TSource, TProperty>`: Handles property observation with memory-safe subscriptions
+2. `WeakEventManager<TDelegate>`: Provides thread-safe weak event handling
+3. Extension methods for each reactive property (e.g., `WhenAnyPropertyName`)
+
+### Generated Code Structure
+
+The generator produces two main types of code:
+
+1. Property Change Notifications:
+    - INPC implementation for classes not inheriting from ReactiveObject
+    - Efficient property setters with change detection
+    - Cached PropertyChangedEventArgs instances
+
+2. WhenAnyValue Observables:
+    - Type-safe property observation methods
+    - Weak event handling to prevent memory leaks
+    - Thread-safe subscription management
+
+### Property Implementation Modes
+
+#### Modern Mode (Default)
+Uses C# field keyword:
 
 ```csharp
-public partial class OrderViewModel : ReactiveObject
+public partial string Property
 {
-    [Reactive]
-    public partial decimal Price { get; set; }
-
-    // Implement IEquatable<T> for complex types
-    [Reactive]
-    public partial CustomType ComplexProperty { get; set; }
-}
-```
-
-#### 3. Thread Safety
-
-```csharp
-public partial class ThreadSafeViewModel : ReactiveObject
-{
-    [Reactive]
-    public partial string Status { get; set; }
-
-    public ThreadSafeViewModel()
+    get => field;
+    set
     {
-        this.WhenAnyStatus()
-            .ObserveOn(RxApp.MainThread)
-            .Subscribe(status => UpdateUI(status));
+        if (!Equals(field, value))
+        {
+            field = value;
+            OnPropertyChanged(_propertyChangedEventArgs);
+        }
     }
 }
 ```
 
-## Common Pitfalls and Solutions
+#### Legacy Mode
+Uses explicit backing fields:
 
-### 1. Partial Declaration Missing
+```csharp
+private string _property;
+public partial string Property
+{
+    get => _property;
+    set
+    {
+        if (!Equals(_property, value))
+        {
+            _property = value;
+            OnPropertyChanged(_propertyChangedEventArgs);
+        }
+    }
+}
+```
+
+## Advanced Features
+
+### Weak Event Management
+
+The generator includes a sophisticated weak event system that:
+- Prevents memory leaks in long-lived observable subscriptions
+- Automatically cleans up when observers are garbage collected
+- Maintains thread safety for event handling
+
+### Inheritance Support
+
+The generator is fully aware of inheritance hierarchies:
+- Correctly implements INPC only once in the inheritance chain
+- Properly handles virtual and override properties
+- Supports mixed INPC and ReactiveUI inheritance scenarios
+
+### Performance Optimizations
+
+1. Event Args Caching:
+```csharp
+private static readonly PropertyChangedEventArgs _propertyChangedEventArgs = 
+    new PropertyChangedEventArgs(nameof(Property));
+```
+
+2. Efficient Change Detection:
+```csharp
+if (!Equals(field, value))
+{
+    field = value;
+    OnPropertyChanged(_propertyChangedEventArgs);
+}
+```
+
+3. Weak Event References:
+```csharp
+internal sealed class WeakEventManager<TDelegate>
+{
+    private readonly ConditionalWeakTable<object, EventRegistrationList> _registrations;
+    // Implementation details...
+}
+```
+
+## Best Practices
+
+1. Always mark reactive classes and properties as `partial`
+2. Use `IDisposable` for proper subscription cleanup
+3. Consider thread safety when using observables
+4. Implement `IEquatable<T>` for complex property types
+5. Use the generated WhenAny methods instead of magic strings
+
+## Common Issues and Solutions
+
+### Missing Partial Declarations
 ```csharp
 // ❌ Wrong
 public class Example
-{
-    [Reactive]
-    public partial string Property { get; set; }
-}
-
-// ✅ Correct
-public partial class Example
-{
-    [Reactive]
-    public partial string Property { get; set; }
-}
-```
-
-### 2. Reactive Attribute on Non-Partial Property
-```csharp
-// ❌ Wrong
-public partial class Example
 {
     [Reactive]
     public string Property { get; set; }
@@ -367,16 +216,16 @@ public partial class Example
 }
 ```
 
-### 3. Missing ReactiveObject Base Class
+### ReactiveUI Base Class
 ```csharp
-// ❌ Wrong: Using ReactiveUI features without inheritance
+// ❌ Wrong: Missing ReactiveObject base
 public partial class Example
 {
     [Reactive]
     public partial string Property { get; set; }
 }
 
-// ✅ Correct: Inheriting from ReactiveObject
+// ✅ Correct
 public partial class Example : ReactiveObject
 {
     [Reactive]
@@ -384,120 +233,9 @@ public partial class Example : ReactiveObject
 }
 ```
 
-### 4. Improper WhenAnyValue Usage
-```csharp
-// ❌ Wrong: Not disposing subscriptions
-public partial class Example : ReactiveObject
-{
-    public Example()
-    {
-        this.WhenAnyProperty()
-            .Subscribe(value => DoSomething(value));
-    }
-}
-
-// ✅ Correct: Proper subscription management
-public partial class Example : ReactiveObject, IDisposable
-{
-    private readonly CompositeDisposable _cleanup = new();
-
-    public Example()
-    {
-        this.WhenAnyProperty()
-            .Subscribe(value => DoSomething(value))
-            .DisposeWith(_cleanup);
-    }
-
-    public void Dispose() => _cleanup.Dispose();
-}
-```
-
-## Advanced Features
-
-### 1. Custom Property Change Notifications
-
-```csharp
-public partial class AdvancedExample : ReactiveObject
-{
-    [Reactive]
-    public partial decimal Price { get; set; }
-
-    [Reactive]
-    public partial int Quantity { get; set; }
-
-    // Dependent property
-    public decimal Total => Price * Quantity;
-
-    public AdvancedExample()
-    {
-        this.WhenAnyPrice()
-            .CombineLatest(this.WhenAnyQuantity())
-            .Subscribe(_ => this.RaisePropertyChanged(nameof(Total)));
-    }
-}
-```
-
-### 2. Integration with Entity Framework Core
-
-```csharp
-public partial class DbEntity
-{
-    [Reactive]
-    public partial int Id { get; set; }
-
-    [Reactive]
-    public partial string Name { get; set; }
-
-    // EF Core navigation property
-    public virtual ICollection<RelatedEntity> RelatedEntities { get; set; }
-}
-```
-
-### 3. ASP.NET Core MVC Integration
-
-```csharp
-public partial class ViewModel
-{
-    [Reactive]
-    [Required]
-    [StringLength(100)]
-    public partial string Name { get; set; }
-
-    [Reactive]
-    [EmailAddress]
-    public partial string Email { get; set; }
-}
-```
-
-## Performance Considerations
-
-1. **Property Change Detection**
-    - Uses value equality comparison for reference types
-    - Implements IEquatable<T> for complex types
-    - Caches PropertyChangedEventArgs instances
-    - Minimal allocations during property updates
-
-2. **WhenAnyValue Optimization**
-    - Efficient subscription management
-    - Smart change detection to avoid unnecessary notifications
-    - Thread-safe event handling
-    - Memory-efficient implementation
-
-## Notes
-
-- Properties must be marked as `partial`
-- Classes containing reactive properties must be marked as `partial`
-- The `[Reactive]` attribute must be applied to each property that needs change notifications
-- For ReactiveUI integration, classes must inherit from `ReactiveObject`
-- The generator automatically determines whether to use INPC or ReactiveUI patterns based on the class hierarchy
-- Nullable reference types are fully supported and respected in the generated code
-- Compiler errors will help identify common configuration mistakes
-- Property change notifications are thread-safe when using ReactiveUI
-- WhenAnyValue extensions are automatically generated for all reactive properties
-
 ## License
 
-ReactiveGenerator is licensed under the [MIT license](LICENSE).
+ReactiveGenerator is licensed under the MIT license.
 
 ## Contributing
 
