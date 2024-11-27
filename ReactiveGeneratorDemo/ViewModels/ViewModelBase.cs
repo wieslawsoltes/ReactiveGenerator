@@ -3,11 +3,13 @@ namespace ReactiveGeneratorDemo.ViewModels;
 [Reactive]
 public partial class ViewModelBase
 {
-    [Reactive]
-    public partial bool IsInitialized { get; set; }
+    // TODO: Edge case no [Reactive] properties
+    // [Reactive]
+    // public partial bool IsInitialized { get; set; }
 }
 
-[Reactive]
+// TODO: Edge case base class with [Reactive] properties
+// [Reactive]
 public partial class MainViewModel : ViewModelBase
 {
     [Reactive]
