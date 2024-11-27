@@ -4,39 +4,50 @@
 [![NuGet](https://img.shields.io/nuget/v/ReactiveGenerator.svg)](https://www.nuget.org/packages/ReactiveGenerator)
 [![NuGet](https://img.shields.io/nuget/dt/ReactiveGenerator.svg)](https://www.nuget.org/packages/ReactiveGenerator)
 
-A C# source generator that automatically implements property change notifications using either standard `INotifyPropertyChanged` or ReactiveUI patterns. It provides efficient code generation for properties with full type safety and design-time support.
+ReactiveGenerator is a modern C# source generator that automates property change notification implementation, supporting both standard `INotifyPropertyChanged` and ReactiveUI patterns. It provides a robust, type-safe solution for generating reactive properties with comprehensive design-time support.
 
-## Features
+## Key Features
 
-### Core Features
-- Automatic `INotifyPropertyChanged` implementation
-- Class-level and property-level reactive declarations
+### Property Change Notifications
+- Automated `INotifyPropertyChanged` implementation
 - Support for ReactiveUI's `ReactiveObject` pattern
-- Property-level opt-out using `[IgnoreReactive]`
+- Efficient, cached `PropertyChangedEventArgs`
+- Thread-safe weak event handling
+
+### Flexible Declaration Options
+- Class-level reactivity with `[Reactive]` attribute
+- Property-level granular control
+- Selective opt-out using `[IgnoreReactive]`
 - Support for custom property implementations
-- Automatic `WhenAnyValue` observable generation for reactive properties
-- Support for modern C# field keyword and legacy backing fields
+
+### Developer Experience
 - Full nullable reference type support
 - Inheritance-aware property generation
-- Flexible property access modifiers
-- Cached `PropertyChangedEventArgs` for performance optimization
+- Configurable backing field generation
+- Comprehensive design-time support
+- Automatic `WhenAnyValue` observable generation
 
-## Installation
+## Quick Start
+
+### Installation
 
 ```bash
 dotnet add package ReactiveGenerator
 ```
 
 ### Prerequisites
-- .NET 9.0 or later
-- C# 13.0 or later
-- `<LangVersion>preview</LangVersion>` in project file
+
+- .NET 9.0+
+- C# 13.0+
 - Visual Studio 2022 or compatible IDE
+- Project configuration:
+  ```xml
+  <LangVersion>preview</LangVersion>
+  ```
 
-## Basic Usage
+### Basic Usage
 
-### Class-Level Reactive Declaration
-
+Class-level reactive properties:
 ```csharp
 [Reactive]
 public partial class Person
@@ -46,8 +57,7 @@ public partial class Person
 }
 ```
 
-### Property-Level Reactive Declaration
-
+Property-level reactive declarations:
 ```csharp
 public partial class Person
 {
@@ -59,53 +69,21 @@ public partial class Person
 }
 ```
 
-### Advanced Property Control
+## Advanced Usage
 
-#### Opting Out of Class-Level Reactivity
+### Selective Property Control
 
-When a class is marked with `[Reactive]`, you can selectively opt out specific properties using `[IgnoreReactive]`:
-
+Opt out of class-level reactivity:
 ```csharp
 [Reactive]
 public partial class Shape
 {
-    public partial string? Name { get; set; }         // Will be reactive
+    public partial string Name { get; set; }         // Reactive
 
     [IgnoreReactive]
-    public partial string? Tag { get; set; }          // Won't be reactive
+    public partial string Tag { get; set; }          // Non-reactive
 }
 ```
-
-#### Custom Property Implementations
-
-You can provide custom implementations for properties marked with `[IgnoreReactive]`:
-
-```csharp
-[Reactive]
-public partial class Shape
-{
-    public partial string? Name { get; set; }         // Generated reactive implementation
-
-    [IgnoreReactive]
-    public partial string? Tag { get; set; }          // Custom implementation below
-}
-
-public partial class Shape
-{
-    private string? _tag;
-
-    public partial string? Tag
-    {
-        get => _tag; 
-        set => _tag = value;
-    }
-}
-```
-
-This allows you to:
-- Mix generated and custom property implementations
-- Take full control of specific properties when needed
-- Maintain the reactive pattern for most properties while customizing others
 
 ### ReactiveUI Integration
 
@@ -115,40 +93,35 @@ public partial class ViewModel : ReactiveObject
     [Reactive]
     public partial string SearchText { get; set; }
 
-    [Reactive]
-    public partial string Status { get; set; }
-
     public ViewModel()
     {
-        // Use generated WhenAnyValue extensions
         this.WhenAnySearchText()
-            .Subscribe(text => PerformSearch(text));
+            .Subscribe(text => ProcessSearch(text));
     }
 }
 ```
 
-## Generation Rules
+### Custom Implementations
 
-### Attribute Rules
-1. `[Reactive]` can be applied at:
-    - Class level: All partial properties in the class become reactive
-    - Property level: Individual properties become reactive
-2. Properties marked with `[Reactive]` must be declared as `partial`
-3. Classes containing reactive properties must be declared as `partial`
-4. `[IgnoreReactive]` can be used to:
-    - Opt out of class-level reactivity
-    - Allow custom property implementations
+```csharp
+[Reactive]
+public partial class Component
+{
+    [IgnoreReactive]
+    public partial string Id { get; set; }
+}
 
-### Property Implementation Rules
-1. Default Generation:
-    - Properties without implementations get reactive implementations
-    - Properties with existing implementations are respected
-2. Mixed Implementations:
-    - Can mix generated and custom implementations in the same class
-    - Custom implementations take precedence over generation
-3. Implementation Override:
-    - Mark property with `[IgnoreReactive]` to provide custom implementation
-    - Custom implementation can be in any partial class declaration
+public partial class Component
+{
+    private string _id = Guid.NewGuid().ToString();
+
+    public partial string Id
+    {
+        get => _id;
+        private set => _id = value;
+    }
+}
+```
 
 ## Configuration
 
@@ -156,26 +129,40 @@ public partial class ViewModel : ReactiveObject
 
 ```xml
 <PropertyGroup>
-    <!-- Optional: Use explicit backing fields instead of field keyword -->
+    <!-- Use explicit backing fields instead of field keyword -->
     <UseBackingFields>true</UseBackingFields>
 </PropertyGroup>
 ```
 
-## Implementation Details
+## Architecture
 
-### Generated Types
+### Generated Components
 
-The generator produces several key types:
+ReactiveGenerator produces several key types:
 
-1. `PropertyObserver<TSource, TProperty>`: Handles property observation with memory-safe subscriptions
-2. `WeakEventManager<TDelegate>`: Provides thread-safe weak event handling
-3. Extension methods for each reactive property (e.g., `WhenAnyPropertyName`)
+- `PropertyObserver<TSource, TProperty>`: Handles property observation
+- `WeakEventManager<TDelegate>`: Manages thread-safe weak events
+- Property-specific extension methods (e.g., `WhenAnyPropertyName`)
 
-### Common Issues and Solutions
+### Implementation Rules
 
-#### Missing Partial Declarations
+1. Property Generation:
+    - Properties without implementations receive reactive implementations
+    - Existing implementations are preserved
+    - Custom implementations take precedence
+
+2. Declaration Requirements:
+    - Classes containing reactive properties must be `partial`
+    - Reactive properties must be declared as `partial`
+    - `[Reactive]` can be applied at class or property level
+
+## Troubleshooting
+
+### Common Issues
+
+Missing partial declarations:
 ```csharp
-// ❌ Wrong
+// ❌ Incorrect
 [Reactive]
 public class Example
 {
@@ -190,27 +177,21 @@ public partial class Example
 }
 ```
 
-#### ReactiveUI Base Class
-```csharp
-// ❌ Wrong: Missing ReactiveObject base
-[Reactive]
-public partial class Example
-{
-    public partial string Property { get; set; }
-}
+### Known Limitations
 
-// ✅ Correct
-[Reactive]
-public partial class Example : ReactiveObject
-{
-    public partial string Property { get; set; }
-}
-```
-
-## License
-
-ReactiveGenerator is licensed under the MIT license.
+- Properties must be declared as partial
+- Classes must be declared as partial
+- Custom implementations require [IgnoreReactive] attribute
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+We welcome contributions! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch
+3. Submit a Pull Request
+4. For major changes, open an issue first
+
+## License
+
+ReactiveGenerator is licensed under the MIT license. See [LICENSE](LICENSE) file for details.
