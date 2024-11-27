@@ -27,9 +27,9 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         {
             // Add the base observer types
             ctx.AddSource(
-                "PropertyObserver.g.cs", 
+                "PropertyObserver.g.cs",
                 SourceText.From(PropertyObserverSource, Encoding.UTF8));
-            
+
             ctx.AddSource(
                 "WeakEventManager.g.cs",
                 SourceText.From(WeakEventManagerSource, Encoding.UTF8));
@@ -41,7 +41,8 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         // Generate source
         context.RegisterSourceOutput(
             compilationAndClasses,
-            (spc, source) => Execute(source.Left, source.Right.Cast<(INamedTypeSymbol Symbol, Location Location)>().ToList(), spc));
+            (spc, source) => Execute(source.Left,
+                source.Right.Cast<(INamedTypeSymbol Symbol, Location Location)>().ToList(), spc));
     }
 
     private static bool IsCandidateClass(SyntaxNode node)
@@ -58,11 +59,11 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         return classDeclaration.Members
             .OfType<PropertyDeclarationSyntax>()
             .Any(p => p.AttributeLists.Count > 0 &&
-                      p.AttributeLists.Any(al => 
-                          al.Attributes.Any(a => 
+                      p.AttributeLists.Any(al =>
+                          al.Attributes.Any(a =>
                               a.Name.ToString() is "Reactive" or "ReactiveAttribute")));
     }
-    
+
     private static (INamedTypeSymbol Symbol, Location Location)? GetClassInfo(GeneratorSyntaxContext context)
     {
         var classDeclaration = (ClassDeclarationSyntax)context.Node;
@@ -94,7 +95,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
             context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
         }
     }
-    
+
     private class TypeAndPathComparer : IEqualityComparer<(INamedTypeSymbol Type, string FilePath)>
     {
         public bool Equals((INamedTypeSymbol Type, string FilePath) x, (INamedTypeSymbol Type, string FilePath) y)
@@ -137,6 +138,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         {
             sb.AppendLine("namespace Global");
         }
+
         sb.AppendLine("{");
 
         // Generate class-specific extension class
@@ -161,13 +163,13 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
     }
 
     private static void GenerateWhenAnyValueMethod(
-        StringBuilder sb, 
+        StringBuilder sb,
         INamedTypeSymbol classSymbol,
         IPropertySymbol property)
     {
         var className = classSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var propertyType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        
+
         sb.AppendLine($"        public static IObservable<{propertyType}> WhenAny{property.Name}(");
         sb.AppendLine($"            this {className} source)");
         sb.AppendLine("        {");
