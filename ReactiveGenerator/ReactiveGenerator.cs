@@ -15,7 +15,7 @@ public class ReactiveGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // Register the attribute source
+        // Register the attribute source with updated AttributeUsage
         context.RegisterPostInitializationOutput(ctx =>
         {
             ctx.AddSource("ReactiveAttribute.g.cs", SourceText.From(AttributeSource, Encoding.UTF8));
@@ -29,64 +29,96 @@ public class ReactiveGenerator : IIncrementalGenerator
                     : "false",
                 out var result) && result);
 
-        // Get property declarations
-        var propertyDeclarations = context.SyntaxProvider
+        // Get both class and property declarations
+        var declarations = context.SyntaxProvider
             .CreateSyntaxProvider(
-                predicate: (s, _) => IsCandidateProperty(s),
-                transform: (ctx, _) => GetPropertyInfo(ctx))
+                predicate: (s, _) => IsCandidate(s),
+                transform: (ctx, _) => GetSymbolInfo(ctx))
             .Where(m => m is not null);
 
-        // Combine compilation, properties, and configuration
-        var compilationAndProperties = context.CompilationProvider
-            .Combine(propertyDeclarations.Collect())
+        // Combine compilation, declarations, and configuration
+        var compilationAndDeclarations = context.CompilationProvider
+            .Combine(declarations.Collect())
             .Combine(useLegacyMode);
 
         context.RegisterSourceOutput(
-            compilationAndProperties,
+            compilationAndDeclarations,
             (spc, source) => Execute(
                 source.Left.Left,
-                source.Left.Right.Cast<(IPropertySymbol Property, Location Location)>().ToList(),
+                source.Left.Right.Cast<(ISymbol Symbol, Location Location)>().ToList(),
                 source.Right,
                 spc));
     }
 
-    private static bool IsCandidateProperty(SyntaxNode node)
+    private static bool IsCandidate(SyntaxNode node)
     {
-        if (node is not PropertyDeclarationSyntax propertyDeclaration)
-            return false;
+        // Check for partial property with [Reactive] attribute
+        if (node is PropertyDeclarationSyntax propertyDeclaration)
+        {
+            if (!propertyDeclaration.Modifiers.Any(m => m.ValueText == "partial"))
+                return false;
 
-        if (!propertyDeclaration.Modifiers.Any(m => m.ValueText == "partial"))
-            return false;
+            return propertyDeclaration.AttributeLists.Count > 0;
+        }
 
-        return propertyDeclaration.AttributeLists.Count > 0;
+        // Check for partial class with [Reactive] attribute
+        if (node is ClassDeclarationSyntax classDeclaration)
+        {
+            if (!classDeclaration.Modifiers.Any(m => m.ValueText == "partial"))
+                return false;
+
+            return classDeclaration.AttributeLists.Count > 0;
+        }
+
+        return false;
     }
     
-    private static (IPropertySymbol Property, Location Location)? GetPropertyInfo(GeneratorSyntaxContext context)
+    private static (ISymbol Symbol, Location Location)? GetSymbolInfo(GeneratorSyntaxContext context)
     {
-        if (context.Node is not PropertyDeclarationSyntax propertyDeclaration)
-            return null;
-
         var semanticModel = context.SemanticModel;
 
-        foreach (var attributeList in propertyDeclaration.AttributeLists)
+        switch (context.Node)
         {
-            foreach (var attribute in attributeList.Attributes)
-            {
-                var name = attribute.Name.ToString();
-                if (name is "Reactive" or "ReactiveAttribute")
+            case PropertyDeclarationSyntax propertyDeclaration:
+                foreach (var attributeList in propertyDeclaration.AttributeLists)
                 {
-                    var symbol = semanticModel.GetDeclaredSymbol(propertyDeclaration);
-                    if (symbol != null)
+                    foreach (var attribute in attributeList.Attributes)
                     {
-                        return (symbol, propertyDeclaration.GetLocation());
+                        var name = attribute.Name.ToString();
+                        if (name is "Reactive" or "ReactiveAttribute")
+                        {
+                            var symbol = semanticModel.GetDeclaredSymbol(propertyDeclaration);
+                            if (symbol != null)
+                            {
+                                return (symbol, propertyDeclaration.GetLocation());
+                            }
+                        }
                     }
                 }
-            }
+                break;
+
+            case ClassDeclarationSyntax classDeclaration:
+                foreach (var attributeList in classDeclaration.AttributeLists)
+                {
+                    foreach (var attribute in attributeList.Attributes)
+                    {
+                        var name = attribute.Name.ToString();
+                        if (name is "Reactive" or "ReactiveAttribute")
+                        {
+                            var symbol = semanticModel.GetDeclaredSymbol(classDeclaration);
+                            if (symbol != null)
+                            {
+                                return (symbol, classDeclaration.GetLocation());
+                            }
+                        }
+                    }
+                }
+                break;
         }
 
         return null;
     }
-
+    
     private static bool InheritsFromReactiveObject(INamedTypeSymbol typeSymbol)
     {
         var current = typeSymbol;
@@ -145,64 +177,112 @@ public class ReactiveGenerator : IIncrementalGenerator
         return typeSymbol;
     }
 
-  private static void Execute(
+    private static void Execute(
         Compilation compilation,
-        List<(IPropertySymbol Property, Location Location)> properties,
+        List<(ISymbol Symbol, Location Location)> declarations,
         bool useLegacyMode,
         SourceProductionContext context)
     {
-        if (properties.Count == 0)
+        if (declarations.Count == 0)
             return;
-
-        // Group properties by containing type and file path
-        var propertyGroups = properties
-            .GroupBy(
-                p => (Type: p.Property.ContainingType, 
-                      FilePath: p.Location.SourceTree?.FilePath ?? string.Empty),
-                (key, group) => new
-                {
-                    TypeSymbol = key.Type,
-                    FilePath = key.FilePath,
-                    Properties = group.Select(g => g.Property).ToList()
-                },
-                new TypeAndPathComparer())
-            .ToList();
 
         var processedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
 
-        // Process INPC implementation for base types first
-        foreach (var group in propertyGroups)
+        // First, handle class-level attributes to implement INPC
+        foreach (var declaration in declarations.Where(d => d.Symbol is INamedTypeSymbol))
         {
-            if (group.TypeSymbol is not INamedTypeSymbol typeSymbol) continue;
+            var typeSymbol = (INamedTypeSymbol)declaration.Symbol;
+            
+            // Skip if type already implements INPC or inherits from ReactiveObject
+            if (InheritsFromReactiveObject(typeSymbol) || 
+                HasINPCImplementation(compilation, typeSymbol))
+                continue;
 
-            var baseType = FindFirstTypeNeedingINPC(compilation, typeSymbol);
-            if (baseType is not null && !processedTypes.Contains(baseType))
+            var source = GenerateClassSource(typeSymbol, new List<IPropertySymbol>(), implementInpc: true, useLegacyMode);
+            if (!string.IsNullOrEmpty(source))
             {
-                var source = GenerateClassSource(baseType, properties.Select(p => p.Property).ToList(), implementInpc: true, useLegacyMode);
+                var sourceFilePath = Path.GetFileNameWithoutExtension(declaration.Location.SourceTree?.FilePath ?? string.Empty);
+                var fileName = $"{typeSymbol.Name}.{sourceFilePath}.ReactiveProperties.g.cs";
+                context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
+                processedTypes.Add(typeSymbol);
+            }
+        }
+
+        // Then handle property-level attributes
+        var properties = declarations
+            .Where(d => d.Symbol is IPropertySymbol)
+            .Select(d => ((IPropertySymbol)d.Symbol, d.Location))
+            .ToList();
+
+        if (properties.Any())
+        {
+            // Group properties by containing type and file path
+            var propertyGroups = properties
+                .GroupBy(
+                    p => (Type: p.Item1.ContainingType, 
+                          FilePath: p.Location.SourceTree?.FilePath ?? string.Empty),
+                    (key, group) => new
+                    {
+                        TypeSymbol = key.Type,
+                        FilePath = key.FilePath,
+                        Properties = group.Select(g => g.Item1).ToList()
+                    },
+                    new TypeAndPathComparer())
+                .ToList();
+
+            // Process INPC implementation for base types first
+            foreach (var group in propertyGroups)
+            {
+                if (group.TypeSymbol is not INamedTypeSymbol typeSymbol) continue;
+
+                var baseType = FindFirstTypeNeedingINPC(compilation, typeSymbol);
+                if (baseType is not null && !processedTypes.Contains(baseType))
+                {
+                    var source = GenerateClassSource(baseType, properties.Select(p => p.Item1).ToList(), implementInpc: true, useLegacyMode);
+                    if (!string.IsNullOrEmpty(source))
+                    {
+                        var sourceFilePath = Path.GetFileNameWithoutExtension(group.FilePath);
+                        var fileName = $"{baseType.Name}.{sourceFilePath}.ReactiveProperties.g.cs";
+                        context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
+                        processedTypes.Add(baseType);
+                    }
+                }
+            }
+
+            // Process each group of properties
+            foreach (var group in propertyGroups)
+            {
+                if (group.TypeSymbol is not INamedTypeSymbol typeSymbol || processedTypes.Contains(typeSymbol)) 
+                    continue;
+
+                var source = GenerateClassSource(typeSymbol, group.Properties, implementInpc: false, useLegacyMode);
                 if (!string.IsNullOrEmpty(source))
                 {
                     var sourceFilePath = Path.GetFileNameWithoutExtension(group.FilePath);
-                    var fileName = $"{baseType.Name}.{sourceFilePath}.ReactiveProperties.g.cs";
+                    var fileName = $"{typeSymbol.Name}.{sourceFilePath}.ReactiveProperties.g.cs";
                     context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
-                    processedTypes.Add(baseType);
                 }
             }
         }
+    }
+    
+    private static bool HasINPCImplementation(Compilation compilation, INamedTypeSymbol typeSymbol)
+    {
+        var inpcType = compilation.GetTypeByMetadataName("System.ComponentModel.INotifyPropertyChanged");
+        if (inpcType is null)
+            return false;
 
-        // Process each group of properties
-        foreach (var group in propertyGroups)
+        var current = typeSymbol;
+        while (current is not null)
         {
-            if (group.TypeSymbol is not INamedTypeSymbol typeSymbol || processedTypes.Contains(typeSymbol)) 
-                continue;
-
-            var source = GenerateClassSource(typeSymbol, group.Properties, implementInpc: false, useLegacyMode);
-            if (!string.IsNullOrEmpty(source))
+            if (current.AllInterfaces.Contains(inpcType, SymbolEqualityComparer.Default))
             {
-                var sourceFilePath = Path.GetFileNameWithoutExtension(group.FilePath);
-                var fileName = $"{typeSymbol.Name}.{sourceFilePath}.ReactiveProperties.g.cs";
-                context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
+                return true;
             }
+            current = current.BaseType;
         }
+
+        return false;
     }
   
     private class TypeAndPathComparer : IEqualityComparer<(INamedTypeSymbol Type, string FilePath)>
@@ -487,7 +567,7 @@ public class ReactiveGenerator : IIncrementalGenerator
 
     private const string AttributeSource = @"using System;
 
-[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
 sealed class ReactiveAttribute : Attribute
 {
     public ReactiveAttribute() { }
