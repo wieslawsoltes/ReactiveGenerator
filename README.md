@@ -194,4 +194,4 @@ We welcome contributions! Please follow these steps:
 
 ## License
 
-ReactiveGenerator is licensed under the MIT license. See [LICENSE](LICENSE) file for details.
+ReactiveGenerator is licensed under the MIT license. See [LICENSE](LICENSE.TXT) file for details.
