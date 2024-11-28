@@ -74,7 +74,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
 
         // Use a HashSet to track distinct types
         var processedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-    
+
         // Process each class, skipping duplicates
         foreach (var (typeSymbol, _) in classes)
         {
@@ -112,6 +112,10 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         }
 
         sb.AppendLine("{");
+        // Add class XML documentation
+        sb.AppendLine("    /// <summary>");
+        sb.AppendLine($"    /// Provides extension methods for observing changes to properties of <see cref=\"{classSymbol.Name}\"/>.");
+        sb.AppendLine("    /// </summary>");
         sb.AppendLine($"    public static class {classSymbol.Name}WhenAnyValueExtensions");
         sb.AppendLine("    {");
 
@@ -150,6 +154,12 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
             ? propertyType
             : $"{propertyType}?";
 
+        // Add XML documentation comments for the method
+        sb.AppendLine("        /// <summary>");
+        sb.AppendLine($"        /// Observes changes to the <see cref=\"{classSymbol.Name}.{property.Name}\"/> property.");
+        sb.AppendLine("        /// </summary>");
+        sb.AppendLine("        /// <param name=\"source\">The source object.</param>");
+        sb.AppendLine($"        /// <returns>An observable sequence of {nullablePropertyType} values.</returns>");
         sb.AppendLine($"        public static IObservable<{nullablePropertyType}> WhenAny{property.Name}(");
         sb.AppendLine($"            this {className} source)");
         sb.AppendLine("        {");
@@ -172,6 +182,11 @@ using System.Threading;
 
 namespace ReactiveGenerator.Internal
 {
+    /// <summary>
+    /// Observes property changes on a source object and notifies subscribers.
+    /// </summary>
+    /// <typeparam name=""TSource"">The type of the source object.</typeparam>
+    /// <typeparam name=""TProperty"">The type of the property being observed.</typeparam>
     internal sealed class PropertyObserver<TSource, TProperty> : IObservable<TProperty>, IDisposable
         where TSource : INotifyPropertyChanged
     {
@@ -184,6 +199,12 @@ namespace ReactiveGenerator.Internal
         private bool _isDisposed;
         private readonly ConcurrentDictionary<IDisposable, byte> _subscriptions;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref=""PropertyObserver{TSource, TProperty}""/> class.
+        /// </summary>
+        /// <param name=""source"">The source object.</param>
+        /// <param name=""propertyName"">The name of the property to observe.</param>
+        /// <param name=""getter"">A function to get the property value.</param>
         public PropertyObserver(TSource source, string propertyName, Func<TProperty> getter)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
@@ -198,6 +219,11 @@ namespace ReactiveGenerator.Internal
             _handler = HandlePropertyChanged;
         }
 
+        /// <summary>
+        /// Subscribes an observer to receive notifications.
+        /// </summary>
+        /// <param name=""observer"">The observer to subscribe.</param>
+        /// <returns>A disposable to unsubscribe the observer.</returns>
         public IDisposable Subscribe(IObserver<TProperty> observer)
         {
             if (observer == null) throw new ArgumentNullException(nameof(observer));
@@ -263,6 +289,9 @@ namespace ReactiveGenerator.Internal
             }
         }
 
+        /// <summary>
+        /// Disposes the observer and unsubscribes all observers.
+        /// </summary>
         public void Dispose()
         {
             lock (_gate)
@@ -292,11 +321,17 @@ namespace ReactiveGenerator.Internal
                 _weakObserver = new WeakReference<IObserver<TProperty>>(observer);
             }
 
+            /// <summary>
+            /// Gets the observer if it is still alive.
+            /// </summary>
             public IObserver<TProperty>? Observer
             {
                 get => _weakObserver.TryGetTarget(out var observer) ? observer : null;
             }
 
+            /// <summary>
+            /// Disposes the subscription and removes it from the parent observer.
+            /// </summary>
             public void Dispose()
             {
                 if (Interlocked.Exchange(ref _disposed, 1) == 0)
@@ -317,15 +352,28 @@ namespace ReactiveGenerator.Internal
         }
     }
 
+    /// <summary>
+    /// Represents a disposable resource that does nothing when disposed.
+    /// </summary>
     internal sealed class Disposable : IDisposable
     {
+        /// <summary>
+        /// Gets a disposable that does nothing when disposed.
+        /// </summary>
         public static readonly IDisposable Empty = new Disposable();
+
         private Disposable() { }
+
+        /// <summary>
+        /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
+        /// </summary>
         public void Dispose() { }
     }
 }";
 
-    private const string WeakEventManagerSource = @"
+    private const string WeakEventManagerSource = @"// <auto-generated/>
+#nullable enable
+
 using System;
 using System.Collections.Concurrent;
 using System.Reflection;
@@ -333,11 +381,21 @@ using System.Runtime.CompilerServices;
 
 namespace ReactiveGenerator.Internal
 {
+    /// <summary>
+    /// Manages weak event subscriptions to avoid memory leaks.
+    /// </summary>
+    /// <typeparam name=""TDelegate"">The type of the event handler delegate.</typeparam>
     internal sealed class WeakEventManager<TDelegate> where TDelegate : class, Delegate
     {
         private readonly ConditionalWeakTable<object, EventRegistrationList> _registrations = 
             new ConditionalWeakTable<object, EventRegistrationList>();
 
+        /// <summary>
+        /// Adds a weak event handler to the specified event on the source object.
+        /// </summary>
+        /// <param name=""source"">The source object.</param>
+        /// <param name=""eventName"">The name of the event.</param>
+        /// <param name=""handler"">The event handler.</param>
         public void AddEventHandler(object source, string eventName, TDelegate handler)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
@@ -357,6 +415,12 @@ namespace ReactiveGenerator.Internal
             registration.Subscribe(source);
         }
 
+        /// <summary>
+        /// Removes a weak event handler from the specified event on the source object.
+        /// </summary>
+        /// <param name=""source"">The source object.</param>
+        /// <param name=""eventName"">The name of the event.</param>
+        /// <param name=""handler"">The event handler.</param>
         public void RemoveEventHandler(object source, string eventName, TDelegate handler)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
@@ -408,9 +472,20 @@ namespace ReactiveGenerator.Internal
                 _weakDelegate = new WeakReference<TDelegate>(handler);
             }
 
+            /// <summary>
+            /// Gets the event information for the event being managed.
+            /// </summary>
             public EventInfo EventInfo => _eventInfo;
+
+            /// <summary>
+            /// Gets the event handler delegate.
+            /// </summary>
             public TDelegate Handler => _handler;
 
+            /// <summary>
+            /// Subscribes the handler to the event on the source object.
+            /// </summary>
+            /// <param name=""source"">The source object.</param>
             public void Subscribe(object source)
             {
                 if (_weakDelegate.TryGetTarget(out var handler))
@@ -419,6 +494,9 @@ namespace ReactiveGenerator.Internal
                 }
             }
 
+            /// <summary>
+            /// Unsubscribes the handler from the event.
+            /// </summary>
             public void Unsubscribe()
             {
                 if (_weakDelegate.TryGetTarget(out var handler))
