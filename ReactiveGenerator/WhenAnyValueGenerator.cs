@@ -206,9 +206,13 @@ namespace ReactiveGenerator.Internal
 
         public PropertyObserver(TSource source, string propertyName, Func<TProperty> getter)
         {
-            _source = source ?? throw new ArgumentNullException(nameof(source));
-            _propertyName = propertyName ?? throw new ArgumentNullException(nameof(propertyName));
-            _getter = getter ?? throw new ArgumentNullException(nameof(getter));
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            if (propertyName == null) throw new ArgumentNullException(nameof(propertyName));
+            if (getter == null) throw new ArgumentNullException(nameof(getter));
+
+            _source = source;
+            _propertyName = propertyName;
+            _getter = getter;
             _eventManager = new WeakEventManager<PropertyChangedEventHandler>();
             _subscriptions = new ConcurrentDictionary<IDisposable, byte>();
             _handler = HandlePropertyChanged;
@@ -216,7 +220,7 @@ namespace ReactiveGenerator.Internal
 
         public IDisposable Subscribe(IObserver<TProperty> observer)
         {
-            ArgumentNullException.ThrowIfNull(observer);
+            if (observer == null) throw new ArgumentNullException(nameof(observer));
 
             lock (_gate)
             {
@@ -256,7 +260,8 @@ namespace ReactiveGenerator.Internal
                 {
                     try
                     {
-                        if (activeSubscription.Observer is { } observer)
+                        var observer = activeSubscription.Observer;
+                        if (observer != null)
                         {
                             observer.OnNext(_getter());
                         }
@@ -267,7 +272,8 @@ namespace ReactiveGenerator.Internal
                     }
                     catch (Exception ex)
                     {
-                        if (activeSubscription.Observer is { } observer)
+                        var observer = activeSubscription.Observer;
+                        if (observer != null)
                         {
                             observer.OnError(ex);
                         }
