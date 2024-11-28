@@ -15,7 +15,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <VersionPrefix>0.8.3</VersionPrefix>
+    <VersionPrefix>0.8.4</VersionPrefix>
     <VersionSuffix></VersionSuffix>
     <Authors>Wiesław Šoltés</Authors>
     <Company>Wiesław Šoltés</Company>
