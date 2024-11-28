@@ -90,26 +90,6 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         }
     }
 
-    private class TypeAndPathComparer : IEqualityComparer<(INamedTypeSymbol Type, string FilePath)>
-    {
-        public bool Equals((INamedTypeSymbol Type, string FilePath) x, (INamedTypeSymbol Type, string FilePath) y)
-        {
-            return SymbolEqualityComparer.Default.Equals(x.Type, y.Type) &&
-                   string.Equals(x.FilePath, y.FilePath, StringComparison.OrdinalIgnoreCase);
-        }
-
-        public int GetHashCode((INamedTypeSymbol Type, string FilePath) obj)
-        {
-            unchecked
-            {
-                int hash = 17;
-                hash = hash * 31 + SymbolEqualityComparer.Default.GetHashCode(obj.Type);
-                hash = hash * 31 + StringComparer.OrdinalIgnoreCase.GetHashCode(obj.FilePath);
-                return hash;
-            }
-        }
-    }
-
     private static string GenerateExtensionsForClass(INamedTypeSymbol classSymbol)
     {
         var sb = new StringBuilder();
