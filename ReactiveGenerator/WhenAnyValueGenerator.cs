@@ -74,21 +74,19 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
     {
         if (classes.Count == 0) return;
 
-        // Group classes by type and source file
-        var classGroups = classes
-            .GroupBy(
-                c => (Type: c.Symbol, FilePath: c.Location.SourceTree?.FilePath ?? string.Empty),
-                (key, group) => new { TypeSymbol = key.Type, FilePath = key.FilePath },
-                new TypeAndPathComparer())
-            .ToList();
-
-        // Generate a separate file for each class group
-        foreach (var group in classGroups)
+        // Use a HashSet to track distinct types
+        var processedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+    
+        // Process each class, skipping duplicates
+        foreach (var (typeSymbol, _) in classes)
         {
-            var source = GenerateExtensionsForClass(group.TypeSymbol);
-            var sourceFilePath = Path.GetFileNameWithoutExtension(group.FilePath);
-            var fileName = $"{group.TypeSymbol.Name}.{sourceFilePath}.WhenAnyValue.g.cs";
-            context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
+            // Only process each type once
+            if (processedTypes.Add(typeSymbol))
+            {
+                var source = GenerateExtensionsForClass(typeSymbol);
+                var fileName = $"{typeSymbol.Name}.WhenAnyValue.g.cs";
+                context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
+            }
         }
     }
 
