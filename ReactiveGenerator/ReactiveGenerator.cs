@@ -521,6 +521,17 @@ public class ReactiveGenerator : IIncrementalGenerator
         // Generate properties
         if (typeProperties.Any())
         {
+            // Add helper method to format type names for XML docs
+            string FormatTypeNameForXmlDoc(ITypeSymbol type)
+            {
+                var minimalFormat = new SymbolDisplayFormat(
+                    typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+                    genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+                    miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
+
+                return type.ToDisplayString(minimalFormat).Replace("<", "{").Replace(">", "}");
+            }
+            
             var lastProperty = typeProperties.Last();
             foreach (var property in typeProperties)
             {
@@ -529,9 +540,11 @@ public class ReactiveGenerator : IIncrementalGenerator
                 // Add XML documentation comment if the property is public
                 if (property.DeclaredAccessibility == Accessibility.Public)
                 {
+                    var propertyTypeName = FormatTypeNameForXmlDoc(property.Type);
                     sb.AppendLine("        /// <summary>");
-                    sb.AppendLine($"        /// Gets or sets the {property.Name}.");
+                    sb.AppendLine($"        /// Gets or sets a value for <see cref=\"{propertyTypeName}\"/>.");
                     sb.AppendLine("        /// </summary>");
+                    sb.AppendLine($"        /// <value>The <see cref=\"{propertyTypeName}\"/> value.</value>");
                 }
 
                 if (useLegacyMode)
