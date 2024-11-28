@@ -30,7 +30,7 @@ public partial class MainWindow : Window
             Person = person,
             Car = new Car { Make = "Toyota" }
         };
-            
+
         DataContext = test;
     }
 }
