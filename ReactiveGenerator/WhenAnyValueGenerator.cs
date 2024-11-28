@@ -387,7 +387,7 @@ namespace ReactiveGenerator.Internal
     /// <typeparam name=""TDelegate"">The type of the event handler delegate.</typeparam>
     internal sealed class WeakEventManager<TDelegate> where TDelegate : class, Delegate
     {
-        private readonly ConditionalWeakTable<object, EventRegistrationList> _registrations = 
+        private readonly ConditionalWeakTable<object, EventRegistrationList> _registrations =
             new ConditionalWeakTable<object, EventRegistrationList>();
 
         /// <summary>
@@ -409,10 +409,8 @@ namespace ReactiveGenerator.Internal
             }
 
             var list = _registrations.GetOrCreateValue(source);
-            var registration = new WeakEventRegistration(eventInfo, handler);
+            var registration = new WeakEventRegistration(source, eventInfo, handler);
             list.Add(registration);
-
-            registration.Subscribe(source);
         }
 
         /// <summary>
@@ -461,15 +459,17 @@ namespace ReactiveGenerator.Internal
 
         private sealed class WeakEventRegistration
         {
-            private readonly WeakReference<TDelegate> _weakDelegate;
+            private readonly WeakReference _sourceReference;
+            private readonly WeakReference<TDelegate> _handlerReference;
             private readonly EventInfo _eventInfo;
-            private readonly TDelegate _handler;
 
-            public WeakEventRegistration(EventInfo eventInfo, TDelegate handler)
+            public WeakEventRegistration(object source, EventInfo eventInfo, TDelegate handler)
             {
+                _sourceReference = new WeakReference(source);
                 _eventInfo = eventInfo;
-                _handler = handler;
-                _weakDelegate = new WeakReference<TDelegate>(handler);
+                _handlerReference = new WeakReference<TDelegate>(handler);
+
+                Subscribe();
             }
 
             /// <summary>
@@ -480,17 +480,21 @@ namespace ReactiveGenerator.Internal
             /// <summary>
             /// Gets the event handler delegate.
             /// </summary>
-            public TDelegate Handler => _handler;
-
-            /// <summary>
-            /// Subscribes the handler to the event on the source object.
-            /// </summary>
-            /// <param name=""source"">The source object.</param>
-            public void Subscribe(object source)
+            public TDelegate Handler
             {
-                if (_weakDelegate.TryGetTarget(out var handler))
+                get
                 {
-                    EventInfo.AddEventHandler(source, handler);
+                    _handlerReference.TryGetTarget(out var handler);
+                    return handler!;
+                }
+            }
+
+            private void Subscribe()
+            {
+                if (_sourceReference.Target is object source &&
+                    _handlerReference.TryGetTarget(out var handler))
+                {
+                    _eventInfo.AddEventHandler(source, handler);
                 }
             }
 
@@ -499,9 +503,10 @@ namespace ReactiveGenerator.Internal
             /// </summary>
             public void Unsubscribe()
             {
-                if (_weakDelegate.TryGetTarget(out var handler))
+                if (_sourceReference.Target is object source &&
+                    _handlerReference.TryGetTarget(out var handler))
                 {
-                    _weakDelegate.SetTarget(null);
+                    _eventInfo.RemoveEventHandler(source, handler);
                 }
             }
         }
