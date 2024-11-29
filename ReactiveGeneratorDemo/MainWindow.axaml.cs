@@ -14,12 +14,13 @@ public partial class MainWindow : Window
         var person = new Person { FirstName = "John", LastName = "Doe", Age = 30 };
 
         person
-            .WhenAnyFirstName()
+            .When.FirstName
             .Subscribe(name => Console.WriteLine($"Name changed to: {name}"));
 
-        person.WhenAnyFirstName()
-            .CombineLatest(person.WhenAnyLastName())
-            .Subscribe(tuple => 
+        person
+            .When.FirstName
+            .CombineLatest(person.When.LastName)
+            .Subscribe(tuple =>
             {
                 var (firstName, lastName) = tuple;
                 Console.WriteLine($"{firstName} {lastName}");
