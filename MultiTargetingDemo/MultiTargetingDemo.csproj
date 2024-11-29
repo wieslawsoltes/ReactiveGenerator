@@ -3,6 +3,7 @@
     <OutputType>Library</OutputType>
     <TargetFrameworks>netstandard2.0;netstandard2.1;net471;net6.0;net8.0;net9.0</TargetFrameworks>
     <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
