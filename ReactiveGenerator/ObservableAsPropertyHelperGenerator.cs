@@ -14,7 +14,7 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
     private sealed record PropertyInfo
     {
         public IPropertySymbol Property { get; init; }
-        public INamedTypeSymbol ContainingType { get; init; }
+        public INamedTypeSymbol ContainingType { get; init; } // Ensure this is non-nullable
         public Location Location { get; init; }
 
         public PropertyInfo(IPropertySymbol property, INamedTypeSymbol containingType, Location location)
@@ -95,7 +95,7 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         if (symbol is not IPropertySymbol propertySymbol)
             return null;
 
-        var containingType = propertySymbol.ContainingType as INamedTypeSymbol;
+        var containingType = propertySymbol.ContainingType;
         if (containingType == null)
             return null;
 
@@ -109,15 +109,16 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
     {
         if (properties.Count == 0) return;
 
-        // Group properties by containing type
+        // Group properties by containing type with explicit type parameters
         var propertyGroups = properties
-            .GroupBy(p => p.ContainingType, SymbolEqualityComparer.Default)
-            .ToDictionary(g => g.Key, g => g.ToList(), SymbolEqualityComparer.Default);
+            .GroupBy<PropertyInfo, INamedTypeSymbol>(
+                p => p.ContainingType,
+                SymbolEqualityComparer.Default);
 
         foreach (var group in propertyGroups)
         {
             var typeSymbol = group.Key;
-            var source = GenerateHelperProperties((INamedTypeSymbol)typeSymbol, group.Value);
+            var source = GenerateHelperProperties(typeSymbol, group.ToList());
             var fileName = $"{typeSymbol.Name}.ObservableAsProperty.g.cs";
             context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
         }
