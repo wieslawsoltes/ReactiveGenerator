@@ -4,9 +4,9 @@ using ReactiveUI;
 
 namespace ReactiveGeneratorDemo.ViewModels;
 
-public partial class MyViewModel : ReactiveObject
+public partial class OaphViewModel : ReactiveObject
 {
-    public MyViewModel()
+    public OaphViewModel()
     {
         this.WhenAnyCounter()
             .Select(x => $"Counter: {x}")

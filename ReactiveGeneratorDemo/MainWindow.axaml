@@ -12,9 +12,9 @@
 
     <StackPanel Spacing="10">
       <TextBlock Text="Counter" />
-      <NumericUpDown Value="{Binding MyViewModel.Counter}" />
+      <NumericUpDown Value="{Binding OaphViewModel.Counter}" />
       <TextBlock Text="ComputedValue" />
-      <TextBlock Text="{Binding MyViewModel.ComputedValue}" />
+      <TextBlock Text="{Binding OaphViewModel.ComputedValue}" />
     </StackPanel>
     
     <StackPanel Spacing="10" DataContext="{Binding Person}" Margin="0,20,0,20">
