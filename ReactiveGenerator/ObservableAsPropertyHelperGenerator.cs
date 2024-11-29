@@ -38,7 +38,9 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
             {
                 var hash = 17;
                 hash = hash * 23 + (Property != null ? SymbolEqualityComparer.Default.GetHashCode(Property) : 0);
-                hash = hash * 23 + (ContainingType != null ? SymbolEqualityComparer.Default.GetHashCode(ContainingType) : 0);
+                hash = hash * 23 + (ContainingType != null
+                    ? SymbolEqualityComparer.Default.GetHashCode(ContainingType)
+                    : 0);
                 return hash;
             }
         }
@@ -150,7 +152,8 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
 
         // Add XML documentation comment if the class is public
         sb.AppendLine("    /// <summary>");
-        sb.AppendLine($"    /// A partial class implementation with observable property helpers for <see cref=\"{classSymbol.Name}\"/>.");
+        sb.AppendLine(
+            $"    /// A partial class implementation with observable property helpers for <see cref=\"{classSymbol.Name}\"/>.");
         sb.AppendLine("    /// </summary>");
         sb.AppendLine($"    {accessibility} partial class {classSymbol.Name}");
         sb.AppendLine("    {");
@@ -190,7 +193,8 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         sb.AppendLine("        /// <summary>");
         sb.AppendLine($"        /// Gets the observable as property helper for <see cref=\"{property.Name}\"/>.");
         sb.AppendLine("        /// </summary>");
-        sb.AppendLine($"        private readonly ObservableAsPropertyHelper<{nullablePropertyType}> {backingFieldName};");
+        sb.AppendLine(
+            $"        private readonly ObservableAsPropertyHelper<{nullablePropertyType}> {backingFieldName};");
         sb.AppendLine();
 
         // Add XML documentation for the property
