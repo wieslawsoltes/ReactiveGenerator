@@ -6,11 +6,18 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="ReactiveGeneratorDemo.MainWindow"
         Title="ReactiveGeneratorDemo"
-        Width="500" Height="400" WindowStartupLocation="CenterScreen"
+        Width="500" Height="500" WindowStartupLocation="CenterScreen"
         x:DataType="viewModels:Test" x:CompileBindings="True">
   <StackPanel>
 
-    <StackPanel Spacing="10" DataContext="{Binding Person}">
+    <StackPanel Spacing="10">
+      <TextBlock Text="Counter" />
+      <NumericUpDown Value="{Binding MyViewModel.Counter}" />
+      <TextBlock Text="ComputedValue" />
+      <TextBlock Text="{Binding MyViewModel.ComputedValue}" />
+    </StackPanel>
+    
+    <StackPanel Spacing="10" DataContext="{Binding Person}" Margin="0,20,0,20">
       <TextBlock Text="Person" />
       <StackPanel Spacing="10">
         <TextBox Text="{Binding FirstName}" />

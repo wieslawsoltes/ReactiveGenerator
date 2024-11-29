@@ -10,4 +10,8 @@ public partial class Test
 {
     [Reactive]
     public partial Car? Car { get; set; }
+
+    [Reactive]
+    public partial MyViewModel? MyViewModel { get; set; }
+    
 }
