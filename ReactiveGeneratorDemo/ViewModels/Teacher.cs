@@ -8,7 +8,8 @@ public partial class Teacher : Person
 {
     public Teacher()
     {
-        this.WhenAnyStudents()
+        this.When
+            .Students
             .Subscribe(new AnonymousObserver<List<Student>?>(x =>
             {
                 Console.WriteLine($"{nameof(Students)} changed");

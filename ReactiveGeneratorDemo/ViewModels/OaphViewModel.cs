@@ -8,7 +8,7 @@ public partial class OaphViewModel : ReactiveObject
 {
     public OaphViewModel()
     {
-        this.WhenAnyCounter()
+        this.When.Counter
             .Select(x => $"Counter: {x}")
             .ToProperty(this, x => x.ComputedValue, out _computedValueHelper);
     }

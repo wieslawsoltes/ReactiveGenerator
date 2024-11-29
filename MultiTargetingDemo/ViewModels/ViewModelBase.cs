@@ -19,7 +19,8 @@ public partial class LoadingViewModel
 {
     public LoadingViewModel()
     {
-        this.WhenAnyIsInitialized()
+        this.When
+            .IsInitialized
             .Subscribe(new AnonymousObserver<bool>(x =>
             {
                 Console.WriteLine($"{nameof(IsInitialized)}={x}");

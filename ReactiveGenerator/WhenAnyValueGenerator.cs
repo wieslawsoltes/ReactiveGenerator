@@ -16,7 +16,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         // No changes to Initialize method
         var classDeclarations = context.SyntaxProvider
             .CreateSyntaxProvider(
-                predicate: (s, _) => IsCandidateClass(s), 
+                predicate: (s, _) => IsCandidateClass(s),
                 transform: (ctx, _) => GetClassInfo(ctx))
             .Where(c => c is not null);
 
@@ -69,7 +69,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         var symbol = context.SemanticModel.GetDeclaredSymbol(classDeclaration);
         return symbol != null ? (symbol, classDeclaration.GetLocation()) : null;
     }
-    
+
     private static void Execute(
         Compilation compilation,
         List<(INamedTypeSymbol Symbol, Location Location)> classes,
@@ -77,37 +77,35 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
     {
         if (classes.Count == 0) return;
 
-        // Use a HashSet to track distinct types
         var processedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
         var reactiveClasses = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
 
-        // First pass: identify classes with [Reactive] attribute
+        // Identify reactive classes
         foreach (var (typeSymbol, _) in classes)
         {
-            if (typeSymbol.GetAttributes().Any(attr => 
+            if (typeSymbol.GetAttributes().Any(attr =>
                     attr.AttributeClass?.Name is "ReactiveAttribute" or "Reactive"))
             {
                 reactiveClasses.Add(typeSymbol);
             }
         }
 
-        // Process each class, skipping duplicates
+        // Process each class
         foreach (var (typeSymbol, _) in classes)
         {
-            // Only process each type once
             if (processedTypes.Add(typeSymbol))
             {
                 var properties = GetReactiveProperties(typeSymbol, reactiveClasses);
                 if (properties.Any())
                 {
-                    var source = GenerateExtensionsForClass(typeSymbol, properties);
-                    var fileName = $"{typeSymbol.Name}.WhenAnyValue.g.cs";
+                    var source = GeneratePartialClassWithWhenProperty(typeSymbol, properties);
+                    var fileName = $"{typeSymbol.Name}.When.g.cs";
                     context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
                 }
             }
         }
     }
-    
+
     private static IEnumerable<IPropertySymbol> GetReactiveProperties(
         INamedTypeSymbol typeSymbol,
         HashSet<INamedTypeSymbol> reactiveClasses)
@@ -135,8 +133,8 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
                 return hasReactiveAttribute || isReactiveClass;
             });
     }
-    
-    private static string GenerateExtensionsForClass(
+
+    private static string GeneratePartialClassWithWhenProperty(
         INamedTypeSymbol classSymbol,
         IEnumerable<IPropertySymbol> properties)
     {
@@ -155,79 +153,110 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         if (!containingNamespace.IsGlobalNamespace)
         {
             sb.AppendLine($"namespace {containingNamespace}");
-        }
-        else
-        {
-            sb.AppendLine("namespace Global");
+            sb.AppendLine("{");
         }
 
-        sb.AppendLine("{");
-        // Add class XML documentation
-        sb.AppendLine("    /// <summary>");
-        sb.AppendLine($"    /// Provides extension methods for observing changes to properties of <see cref=\"{classSymbol.Name}\"/>.");
-        sb.AppendLine("    /// </summary>");
-        sb.AppendLine($"    public static class {classSymbol.Name}WhenAnyValueExtensions");
+        // Begin partial class
+        sb.AppendLine($"    public partial class {classSymbol.Name}");
         sb.AppendLine("    {");
 
-        // Generate methods for each property
-        var propertiesList = properties.ToList();
-        var lastProperty = propertiesList.LastOrDefault();
+        // Generate the 'When' property
+        sb.AppendLine($"        private {classSymbol.Name}WhenProperties? _whenProperties;");
+        sb.AppendLine();
+        sb.AppendLine($"        /// <summary>");
+        sb.AppendLine($"        /// Provides observable properties for reactive extensions.");
+        sb.AppendLine($"        /// </summary>");
+        sb.AppendLine($"        public {classSymbol.Name}WhenProperties When");
+        sb.AppendLine("        {");
+        sb.AppendLine("            get");
+        sb.AppendLine("            {");
+        sb.AppendLine("                if (_whenProperties == null)");
+        sb.AppendLine("                {");
+        sb.AppendLine($"                    _whenProperties = new {classSymbol.Name}WhenProperties(this);");
+        sb.AppendLine("                }");
+        sb.AppendLine("                return _whenProperties;");
+        sb.AppendLine("            }");
+        sb.AppendLine("        }");
 
-        foreach (var property in propertiesList)
+        sb.AppendLine("    }"); // End of partial class
+
+        if (!containingNamespace.IsGlobalNamespace)
         {
-            GenerateWhenAnyValueMethod(sb, classSymbol, property);
-            
-            // Only add newline if not the last property
-            if (!SymbolEqualityComparer.Default.Equals(property, lastProperty))
-            {
-                sb.AppendLine();
-            }
+            sb.AppendLine("}"); // End of namespace
         }
 
-        sb.AppendLine("    }");
-        sb.AppendLine("}");
+        // Generate the helper class
+        sb.AppendLine();
+        if (!containingNamespace.IsGlobalNamespace)
+        {
+            sb.AppendLine($"namespace {containingNamespace}");
+            sb.AppendLine("{");
+        }
+
+        sb.AppendLine($"    /// <summary>");
+        sb.AppendLine($"    /// Provides observable properties for <see cref=\"{classSymbol.Name}\"/>.");
+        sb.AppendLine($"    /// </summary>");
+        sb.AppendLine($"    public sealed class {classSymbol.Name}WhenProperties");
+        sb.AppendLine("    {");
+        sb.AppendLine(
+            $"        private readonly {classSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} _source;");
+        sb.AppendLine();
+        sb.AppendLine(
+            $"        public {classSymbol.Name}WhenProperties({classSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} source)");
+        sb.AppendLine("        {");
+        sb.AppendLine("            _source = source;");
+        sb.AppendLine("        }");
+        sb.AppendLine();
+
+        // Generate properties for each reactive property
+        foreach (var property in properties)
+        {
+            GenerateWhenProperty(sb, classSymbol, property);
+        }
+
+        sb.AppendLine("    }"); // End of helper class
+
+        if (!containingNamespace.IsGlobalNamespace)
+        {
+            sb.AppendLine("}"); // End of namespace
+        }
 
         return sb.ToString();
     }
 
-    private static void GenerateWhenAnyValueMethod(
-    StringBuilder sb,
-    INamedTypeSymbol classSymbol,
-    IPropertySymbol property)
-{
-    var className = classSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-    var propertyType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-    var nullablePropertyType = property.Type.NullableAnnotation == NullableAnnotation.NotAnnotated
-        ? propertyType
-        : $"{propertyType}?";
+    private static void GenerateWhenProperty(
+        StringBuilder sb,
+        INamedTypeSymbol classSymbol,
+        IPropertySymbol property)
+    {
+        var propertyType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var nullablePropertyType = property.Type.NullableAnnotation == NullableAnnotation.NotAnnotated
+            ? propertyType
+            : $"{propertyType}?";
 
-    // For XML documentation, use minimal format without namespace
-    var minimalFormat = new SymbolDisplayFormat(
-        typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-        genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
-        miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
-
-    var xmlClassName = classSymbol.ToDisplayString(minimalFormat);
-    // Escape angle brackets for XML cref attribute
-    var xmlPropertyType = property.Type.ToDisplayString(minimalFormat).Replace("<", "{").Replace(">", "}");
-    
-    // Add XML documentation comments for the method
-    sb.AppendLine("        /// <summary>");
-    sb.AppendLine($"        /// Observes changes to the <see cref=\"{xmlClassName}.{property.Name}\"/> property.");
-    sb.AppendLine("        /// </summary>");
-    sb.AppendLine("        /// <param name=\"source\">The source object.</param>");
-    sb.AppendLine($"        /// <returns>An observable sequence of <see cref=\"{xmlPropertyType}\"/> values.</returns>");
-    sb.AppendLine($"        public static IObservable<{nullablePropertyType}> WhenAny{property.Name}(");
-    sb.AppendLine($"            this {className} source)");
-    sb.AppendLine("        {");
-    sb.AppendLine("            if (source is null) throw new ArgumentNullException(nameof(source));");
-    sb.AppendLine();
-    sb.AppendLine($"            return new PropertyObserver<{className}, {nullablePropertyType}>(");
-    sb.AppendLine("                source,");
-    sb.AppendLine($"                nameof({className}.{property.Name}),");
-    sb.AppendLine($"                () => source.{property.Name});");
-    sb.AppendLine("        }");
-}
+        // Generate the property
+        sb.AppendLine($"        private IObservable<{nullablePropertyType}>? _{property.Name};");
+        sb.AppendLine();
+        sb.AppendLine($"        /// <summary>");
+        sb.AppendLine($"        /// Observes changes to the <see cref=\"{property.Name}\"/> property.");
+        sb.AppendLine($"        /// </summary>");
+        sb.AppendLine($"        public IObservable<{nullablePropertyType}> {property.Name}");
+        sb.AppendLine("        {");
+        sb.AppendLine("            get");
+        sb.AppendLine("            {");
+        sb.AppendLine($"                if (_{property.Name} == null)");
+        sb.AppendLine("                {");
+        sb.AppendLine(
+            $"                    _{property.Name} = new PropertyObserver<{classSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {nullablePropertyType}>(");
+        sb.AppendLine("                        _source,");
+        sb.AppendLine($"                        nameof({classSymbol.Name}.{property.Name}),");
+        sb.AppendLine($"                        () => _source.{property.Name});");
+        sb.AppendLine("                }");
+        sb.AppendLine($"                return _{property.Name};");
+        sb.AppendLine("            }");
+        sb.AppendLine("        }");
+        sb.AppendLine();
+    }
 
     private const string PropertyObserverSource = @"// <auto-generated/>
 #nullable enable
