@@ -1,7 +1,7 @@
 ﻿using Avalonia;
 using System;
 
-namespace MultiTargeringDemo;
+namespace MultiTargetingDemo;
 /*
 class Program
 {

@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace MultiTargeringDemo;
+namespace MultiTargetingDemo;
 
 public partial class MainWindow : Window
 {

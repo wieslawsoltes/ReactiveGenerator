@@ -24,7 +24,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{1BE41893
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{9BCC3FB1-02CE-4C52-BF4E-B44C4143174F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MultiTargeringDemo", "MultiTargeringDemo\MultiTargeringDemo.csproj", "{E7C9468B-5FD0-46E8-8A47-7B828FE054F2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MultiTargetingDemo", "MultiTargetingDemo\MultiTargetingDemo.csproj", "{E7C9468B-5FD0-46E8-8A47-7B828FE054F2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
