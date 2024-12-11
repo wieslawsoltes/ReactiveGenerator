@@ -242,11 +242,20 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         }
 
         var className = classSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        
+        // Handle nullable value types correctly
         var propertyType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        var nullablePropertyType = property.Type.NullableAnnotation == NullableAnnotation.NotAnnotated
-            ? propertyType
-            : $"{propertyType}?";
-
+        
+        // Check if the type is already nullable (e.g., DateTime?)
+        var isAlreadyNullable = property.Type.OriginalDefinition?.SpecialType == SpecialType.System_Nullable_T;
+        
+        // Only add nullable annotation if it's not already a nullable type
+        var nullablePropertyType = isAlreadyNullable
+            ? propertyType 
+            : (property.Type.NullableAnnotation == NullableAnnotation.NotAnnotated
+                ? propertyType
+                : $"{propertyType}?");
+ 
         // For XML documentation, use minimal format without namespace
         var minimalFormat = new SymbolDisplayFormat(
             typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
