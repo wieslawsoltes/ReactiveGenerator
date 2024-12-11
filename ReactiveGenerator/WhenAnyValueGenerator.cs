@@ -16,7 +16,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         // No changes to Initialize method
         var classDeclarations = context.SyntaxProvider
             .CreateSyntaxProvider(
-                predicate: (s, _) => IsCandidateClass(s), 
+                predicate: (s, _) => IsCandidateClass(s),
                 transform: (ctx, _) => GetClassInfo(ctx))
             .Where(c => c is not null);
 
@@ -69,7 +69,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         var symbol = context.SemanticModel.GetDeclaredSymbol(classDeclaration);
         return symbol != null ? (symbol, classDeclaration.GetLocation()) : null;
     }
-    
+
     private static void Execute(
         Compilation compilation,
         List<(INamedTypeSymbol Symbol, Location Location)> classes,
@@ -84,7 +84,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         // First pass: identify classes with [Reactive] attribute
         foreach (var (typeSymbol, _) in classes)
         {
-            if (typeSymbol.GetAttributes().Any(attr => 
+            if (typeSymbol.GetAttributes().Any(attr =>
                     attr.AttributeClass?.Name is "ReactiveAttribute" or "Reactive"))
             {
                 reactiveClasses.Add(typeSymbol);
@@ -107,7 +107,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
             }
         }
     }
-    
+
     private static IEnumerable<IPropertySymbol> GetReactiveProperties(
         INamedTypeSymbol typeSymbol,
         HashSet<INamedTypeSymbol> reactiveClasses)
@@ -135,7 +135,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
                 return hasReactiveAttribute || isReactiveClass;
             });
     }
-    
+
     private static string GenerateExtensionsForClass(
         INamedTypeSymbol classSymbol,
         IEnumerable<IPropertySymbol> properties)
@@ -162,10 +162,14 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         }
 
         sb.AppendLine("{");
+
         // Add class XML documentation
         sb.AppendLine("    /// <summary>");
-        sb.AppendLine($"    /// Provides extension methods for observing changes to properties of <see cref=\"{classSymbol.Name}\"/>.");
+        sb.AppendLine(
+            $"    /// Provides extension methods for observing changes to properties of <see cref=\"{classSymbol.Name}\"/>.");
         sb.AppendLine("    /// </summary>");
+
+        // Extension class must be non-generic
         sb.AppendLine($"    public static class {classSymbol.Name}WhenAnyValueExtensions");
         sb.AppendLine("    {");
 
@@ -176,7 +180,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         foreach (var property in propertiesList)
         {
             GenerateWhenAnyValueMethod(sb, classSymbol, property);
-            
+
             // Only add newline if not the last property
             if (!SymbolEqualityComparer.Default.Equals(property, lastProperty))
             {
@@ -191,43 +195,98 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
     }
 
     private static void GenerateWhenAnyValueMethod(
-    StringBuilder sb,
-    INamedTypeSymbol classSymbol,
-    IPropertySymbol property)
-{
-    var className = classSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-    var propertyType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-    var nullablePropertyType = property.Type.NullableAnnotation == NullableAnnotation.NotAnnotated
-        ? propertyType
-        : $"{propertyType}?";
+        StringBuilder sb,
+        INamedTypeSymbol classSymbol,
+        IPropertySymbol property)
+    {
+        // For generic classes, add type parameters and constraints to the method
+        var typeParameters = "";
+        var typeConstraints = "";
+        if (classSymbol.TypeParameters.Length > 0)
+        {
+            // Add type parameters to method
+            typeParameters = "<" + string.Join(", ", classSymbol.TypeParameters.Select(tp => tp.Name)) + ">";
 
-    // For XML documentation, use minimal format without namespace
-    var minimalFormat = new SymbolDisplayFormat(
-        typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-        genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
-        miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
+            // Build type constraints
+            var constraints = new List<string>();
+            foreach (var typeParam in classSymbol.TypeParameters)
+            {
+                var typeConstraintsList = new List<string>();
 
-    var xmlClassName = classSymbol.ToDisplayString(minimalFormat);
-    // Escape angle brackets for XML cref attribute
-    var xmlPropertyType = property.Type.ToDisplayString(minimalFormat).Replace("<", "{").Replace(">", "}");
-    
-    // Add XML documentation comments for the method
-    sb.AppendLine("        /// <summary>");
-    sb.AppendLine($"        /// Observes changes to the <see cref=\"{xmlClassName}.{property.Name}\"/> property.");
-    sb.AppendLine("        /// </summary>");
-    sb.AppendLine("        /// <param name=\"source\">The source object.</param>");
-    sb.AppendLine($"        /// <returns>An observable sequence of <see cref=\"{xmlPropertyType}\"/> values.</returns>");
-    sb.AppendLine($"        public static IObservable<{nullablePropertyType}> WhenAny{property.Name}(");
-    sb.AppendLine($"            this {className} source)");
-    sb.AppendLine("        {");
-    sb.AppendLine("            if (source is null) throw new ArgumentNullException(nameof(source));");
-    sb.AppendLine();
-    sb.AppendLine($"            return new PropertyObserver<{className}, {nullablePropertyType}>(");
-    sb.AppendLine("                source,");
-    sb.AppendLine($"                nameof({className}.{property.Name}),");
-    sb.AppendLine($"                () => source.{property.Name});");
-    sb.AppendLine("        }");
-}
+                // Reference type constraint
+                if (typeParam.HasReferenceTypeConstraint)
+                    typeConstraintsList.Add("class");
+                else if (typeParam.HasValueTypeConstraint)
+                    typeConstraintsList.Add("struct");
+
+                // Interface constraints
+                foreach (var constraintType in typeParam.ConstraintTypes)
+                {
+                    typeConstraintsList.Add(constraintType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+                }
+
+                // Constructor constraint
+                if (typeParam.HasConstructorConstraint)
+                    typeConstraintsList.Add("new()");
+
+                if (typeConstraintsList.Any())
+                {
+                    constraints.Add($"where {typeParam.Name} : {string.Join(", ", typeConstraintsList)}");
+                }
+            }
+
+            if (constraints.Any())
+            {
+                typeConstraints = " " + string.Join(" ", constraints);
+            }
+        }
+
+        var className = classSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var propertyType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var nullablePropertyType = property.Type.NullableAnnotation == NullableAnnotation.NotAnnotated
+            ? propertyType
+            : $"{propertyType}?";
+
+        // For XML documentation, use minimal format without namespace
+        var minimalFormat = new SymbolDisplayFormat(
+            typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+            genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
+
+        var xmlClassName = classSymbol.ToDisplayString(minimalFormat);
+        // Escape angle brackets for XML cref attribute
+        var xmlPropertyType = property.Type.ToDisplayString(minimalFormat).Replace("<", "{").Replace(">", "}");
+
+        // Add XML documentation comments for the method
+        sb.AppendLine("        /// <summary>");
+        sb.AppendLine($"        /// Observes changes to the <see cref=\"{xmlClassName}.{property.Name}\"/> property.");
+        sb.AppendLine("        /// </summary>");
+        sb.AppendLine("        /// <param name=\"source\">The source object.</param>");
+        sb.AppendLine(
+            $"        /// <returns>An observable sequence of <see cref=\"{xmlPropertyType}\"/> values.</returns>");
+
+        // For generic classes, add type parameters to method
+        if (!string.IsNullOrEmpty(typeParameters))
+        {
+            sb.AppendLine(
+                $"        public static IObservable<{nullablePropertyType}> WhenAny{property.Name}{typeParameters}(");
+        }
+        else
+        {
+            sb.AppendLine($"        public static IObservable<{nullablePropertyType}> WhenAny{property.Name}(");
+        }
+
+        // Add type parameters to the class reference in parameter
+        sb.AppendLine($"            this {className} source){typeConstraints}");
+        sb.AppendLine("        {");
+        sb.AppendLine("            if (source is null) throw new ArgumentNullException(nameof(source));");
+        sb.AppendLine();
+        sb.AppendLine($"            return new PropertyObserver<{className}, {nullablePropertyType}>(");
+        sb.AppendLine("                source,");
+        sb.AppendLine($"                \"{property.Name}\","); // Use string literal for property name
+        sb.AppendLine($"                () => source.{property.Name});");
+        sb.AppendLine("        }");
+    }
 
     private const string PropertyObserverSource = @"// <auto-generated/>
 #nullable enable

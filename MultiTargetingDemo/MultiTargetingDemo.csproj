@@ -11,6 +11,8 @@
     <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\GeneratedFiles</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>
 
+  <Import Project="..\ReactiveGenerator\build\ReactiveGenerator.props" />
+
   <PropertyGroup>
     <AvaloniaVersion>11.1.5</AvaloniaVersion>
     <LangVersion>preview</LangVersion>

@@ -470,6 +470,13 @@ public class ReactiveGenerator : IIncrementalGenerator
         var accessibility = classSymbol.DeclaredAccessibility.ToString().ToLowerInvariant();
         var interfaces = (implementInpc && !isReactiveObject) ? " : INotifyPropertyChanged" : "";
 
+        // Add type parameters if the class is generic
+        var typeParameters = "";
+        if (classSymbol.TypeParameters.Length > 0)
+        {
+            typeParameters = "<" + string.Join(", ", classSymbol.TypeParameters.Select(tp => tp.Name)) + ">";
+        }
+
         // Add XML documentation comment if the class is public
         if (classSymbol.DeclaredAccessibility == Accessibility.Public)
         {
@@ -479,7 +486,7 @@ public class ReactiveGenerator : IIncrementalGenerator
             sb.AppendLine("    /// </summary>");
         }
 
-        sb.AppendLine($"    {accessibility} partial class {classSymbol.Name}{interfaces}");
+        sb.AppendLine($"    {accessibility} partial class {classSymbol.Name}{typeParameters}{interfaces}");
         sb.AppendLine("    {");
 
         // Generate backing fields if in legacy mode
@@ -527,7 +534,8 @@ public class ReactiveGenerator : IIncrementalGenerator
             sb.AppendLine("        /// Raises the PropertyChanged event.");
             sb.AppendLine("        /// </summary>");
             sb.AppendLine("        /// <param name=\"propertyName\">The name of the property that changed.</param>");
-            sb.AppendLine("        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)");
+            sb.AppendLine(
+                "        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)");
             sb.AppendLine("        {");
             sb.AppendLine("            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));");
             sb.AppendLine("        }");

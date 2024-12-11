@@ -150,12 +150,27 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
 
         var accessibility = classSymbol.DeclaredAccessibility.ToString().ToLowerInvariant();
 
+        // Format class name with type parameters if generic
+        var typeParameters = "";
+        if (classSymbol.TypeParameters.Length > 0)
+        {
+            typeParameters = "<" + string.Join(", ", classSymbol.TypeParameters.Select(tp => tp.Name)) + ">";
+        }
+
+        // Format XML doc class name
+        var minimalFormat = new SymbolDisplayFormat(
+            typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+            genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
+
+        var xmlClassName = classSymbol.ToDisplayString(minimalFormat).Replace("<", "{").Replace(">", "}");
+
         // Add XML documentation comment if the class is public
         sb.AppendLine("    /// <summary>");
         sb.AppendLine(
-            $"    /// A partial class implementation with observable property helpers for <see cref=\"{classSymbol.Name}\"/>.");
+            $"    /// A partial class implementation with observable property helpers for <see cref=\"{xmlClassName}\"/>.");
         sb.AppendLine("    /// </summary>");
-        sb.AppendLine($"    {accessibility} partial class {classSymbol.Name}");
+        sb.AppendLine($"    {accessibility} partial class {classSymbol.Name}{typeParameters}");
         sb.AppendLine("    {");
 
         // Generate backing fields and properties
