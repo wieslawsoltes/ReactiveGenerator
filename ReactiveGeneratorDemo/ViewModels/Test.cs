@@ -12,6 +12,6 @@ public partial class Test
     public partial Car? Car { get; set; }
 
     [Reactive]
-    public partial OaphViewModel? OaphViewModel { get; set; }
+    public partial OaphViewModel<string>? OaphViewModel { get; set; }
     
 }

@@ -29,7 +29,7 @@ public partial class MainWindow : Window
         {
             Person = person,
             Car = new Car { Make = "Toyota" },
-            OaphViewModel = new OaphViewModel()
+            OaphViewModel = new OaphViewModel<string>()
         };
 
         DataContext = test;

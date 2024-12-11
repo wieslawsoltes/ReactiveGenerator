@@ -4,7 +4,7 @@ using ReactiveUI;
 
 namespace ReactiveGeneratorDemo.ViewModels;
 
-public partial class OaphViewModel : ReactiveObject
+public partial class OaphViewModel<T> : ReactiveObject
 {
     public OaphViewModel()
     {
