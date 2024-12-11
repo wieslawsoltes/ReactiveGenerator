@@ -16,7 +16,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         // No changes to Initialize method
         var classDeclarations = context.SyntaxProvider
             .CreateSyntaxProvider(
-                predicate: (s, _) => IsCandidateClass(s), 
+                predicate: (s, _) => IsCandidateClass(s),
                 transform: (ctx, _) => GetClassInfo(ctx))
             .Where(c => c is not null);
 
@@ -69,7 +69,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         var symbol = context.SemanticModel.GetDeclaredSymbol(classDeclaration);
         return symbol != null ? (symbol, classDeclaration.GetLocation()) : null;
     }
-    
+
     private static void Execute(
         Compilation compilation,
         List<(INamedTypeSymbol Symbol, Location Location)> classes,
@@ -84,7 +84,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         // First pass: identify classes with [Reactive] attribute
         foreach (var (typeSymbol, _) in classes)
         {
-            if (typeSymbol.GetAttributes().Any(attr => 
+            if (typeSymbol.GetAttributes().Any(attr =>
                     attr.AttributeClass?.Name is "ReactiveAttribute" or "Reactive"))
             {
                 reactiveClasses.Add(typeSymbol);
@@ -107,7 +107,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
             }
         }
     }
-    
+
     private static IEnumerable<IPropertySymbol> GetReactiveProperties(
         INamedTypeSymbol typeSymbol,
         HashSet<INamedTypeSymbol> reactiveClasses)
@@ -135,7 +135,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
                 return hasReactiveAttribute || isReactiveClass;
             });
     }
-    
+
     private static string GenerateExtensionsForClass(
         INamedTypeSymbol classSymbol,
         IEnumerable<IPropertySymbol> properties)
