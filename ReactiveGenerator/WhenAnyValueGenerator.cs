@@ -242,16 +242,19 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         }
 
         var className = classSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-        // Directly use the property type as displayed. It will include '?' if nullable.
         var propertyType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var nullablePropertyType = property.Type.NullableAnnotation == NullableAnnotation.NotAnnotated
+            ? propertyType
+            : $"{propertyType}?";
 
-        // For XML documentation, use minimal format without namespace, escaping XML generics
+        // For XML documentation, use minimal format without namespace
         var minimalFormat = new SymbolDisplayFormat(
             typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
             genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
             miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
+
         var xmlClassName = classSymbol.ToDisplayString(minimalFormat);
+        // Escape angle brackets for XML cref attribute
         var xmlPropertyType = property.Type.ToDisplayString(minimalFormat).Replace("<", "{").Replace(">", "}");
 
         // Add XML documentation comments for the method
@@ -262,22 +265,25 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         sb.AppendLine(
             $"        /// <returns>An observable sequence of <see cref=\"{xmlPropertyType}\"/> values.</returns>");
 
+        // For generic classes, add type parameters to method
         if (!string.IsNullOrEmpty(typeParameters))
         {
-            sb.AppendLine($"        public static IObservable<{propertyType}> WhenAny{property.Name}{typeParameters}(");
+            sb.AppendLine(
+                $"        public static IObservable<{nullablePropertyType}> WhenAny{property.Name}{typeParameters}(");
         }
         else
         {
-            sb.AppendLine($"        public static IObservable<{propertyType}> WhenAny{property.Name}(");
+            sb.AppendLine($"        public static IObservable<{nullablePropertyType}> WhenAny{property.Name}(");
         }
 
+        // Add type parameters to the class reference in parameter
         sb.AppendLine($"            this {className} source){typeConstraints}");
         sb.AppendLine("        {");
         sb.AppendLine("            if (source is null) throw new ArgumentNullException(nameof(source));");
         sb.AppendLine();
-        sb.AppendLine($"            return new PropertyObserver<{className}, {propertyType}>(");
+        sb.AppendLine($"            return new PropertyObserver<{className}, {nullablePropertyType}>(");
         sb.AppendLine("                source,");
-        sb.AppendLine($"                \"{property.Name}\",");
+        sb.AppendLine($"                \"{property.Name}\","); // Use string literal for property name
         sb.AppendLine($"                () => source.{property.Name});");
         sb.AppendLine("        }");
     }
