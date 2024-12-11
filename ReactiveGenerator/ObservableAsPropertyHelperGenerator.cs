@@ -204,12 +204,6 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         var accessibility = property.DeclaredAccessibility.ToString().ToLowerInvariant();
         var backingFieldName = $"_{char.ToLowerInvariant(property.Name[0])}{property.Name.Substring(1)}Helper";
 
-        // For XML documentation, use minimal format without namespace
-        var minimalFormat = new SymbolDisplayFormat(
-            typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-            genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
-            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
-
         // Add XML documentation for the backing field
         sb.AppendLine("        /// <summary>");
         sb.AppendLine($"        /// Gets the observable as property helper for <see cref=\"{property.Name}\"/>.");
