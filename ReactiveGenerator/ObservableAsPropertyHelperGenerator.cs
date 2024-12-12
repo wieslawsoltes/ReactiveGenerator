@@ -121,7 +121,13 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         {
             var typeSymbol = group.Key;
             var source = GenerateHelperProperties(typeSymbol, group.ToList());
-            var fileName = $"{typeSymbol.Name}.ObservableAsProperty.g.cs";
+    
+            var fullTypeName = typeSymbol.ToDisplayString(new SymbolDisplayFormat(
+                typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+                genericsOptions: SymbolDisplayGenericsOptions.None,
+                miscellaneousOptions: SymbolDisplayMiscellaneousOptions.None));
+        
+            var fileName = $"{fullTypeName}.ObservableAsProperty.g.cs";
             context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
         }
     }

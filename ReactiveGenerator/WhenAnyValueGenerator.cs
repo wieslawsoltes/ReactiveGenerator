@@ -101,7 +101,12 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
                 if (properties.Any())
                 {
                     var source = GenerateExtensionsForClass(typeSymbol, properties);
-                    var fileName = $"{typeSymbol.Name}.WhenAnyValue.g.cs";
+                    var fullTypeName = typeSymbol.ToDisplayString(new SymbolDisplayFormat(
+                        typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+                        genericsOptions: SymbolDisplayGenericsOptions.None,
+                        miscellaneousOptions: SymbolDisplayMiscellaneousOptions.None));
+        
+                    var fileName = $"{fullTypeName}.WhenAnyValue.g.cs";
                     context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
                 }
             }

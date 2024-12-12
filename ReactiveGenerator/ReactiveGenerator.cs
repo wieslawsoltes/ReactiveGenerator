@@ -238,7 +238,13 @@ public class ReactiveGenerator : IIncrementalGenerator
                 var inpcSource = GenerateINPCImplementation(type);
                 if (!string.IsNullOrEmpty(inpcSource))
                 {
-                    var fileName = $"{type.Name}.INPC.g.cs";
+                    // Create a unique filename using the full type name (including namespace)
+                    var fullTypeName = type.ToDisplayString(new SymbolDisplayFormat(
+                        typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+                        genericsOptions: SymbolDisplayGenericsOptions.None,
+                        miscellaneousOptions: SymbolDisplayMiscellaneousOptions.None));
+            
+                    var fileName = $"{fullTypeName}.INPC.g.cs";
                     context.AddSource(fileName, SourceText.From(inpcSource, Encoding.UTF8));
                     processedTypes.Add(type);
                 }
@@ -269,7 +275,12 @@ public class ReactiveGenerator : IIncrementalGenerator
 
             if (!string.IsNullOrEmpty(source))
             {
-                var fileName = $"{typeSymbol.Name}.ReactiveProperties.g.cs";
+                var fullTypeName = typeSymbol.ToDisplayString(new SymbolDisplayFormat(
+                    typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+                    genericsOptions: SymbolDisplayGenericsOptions.None,
+                    miscellaneousOptions: SymbolDisplayMiscellaneousOptions.None));
+        
+                var fileName = $"{fullTypeName}.ReactiveProperties.g.cs";
                 context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
             }
         }
