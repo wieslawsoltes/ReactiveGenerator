@@ -1,0 +1,55 @@
+﻿{
+  Sources: [
+    {
+      FileName: IgnoreReactiveAttribute.g.cs,
+      Source:
+using System;
+
+[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+sealed class IgnoreReactiveAttribute : Attribute
+{
+    public IgnoreReactiveAttribute() { }
+}
+    },
+    {
+      FileName: ReactiveAttribute.g.cs,
+      Source:
+using System;
+
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+sealed class ReactiveAttribute : Attribute
+{
+    public ReactiveAttribute() { }
+}
+    }
+  ],
+  Diagnostics: [
+    {
+      Message:
+Generator 'ReactiveGenerator' failed to generate source. It will not contribute to the output and compilation errors may occur as a result. Exception was of type 'ArgumentException' with message 'The hintName 'TestClass.INPC.g.cs' of the added source file must be unique within a generator. (Parameter 'hintName')'.
+System.ArgumentException: The hintName 'TestClass.INPC.g.cs' of the added source file must be unique within a generator. (Parameter 'hintName')
+   at Microsoft.CodeAnalysis.AdditionalSourcesCollection.Add(String hintName, SourceText source)
+   at Microsoft.CodeAnalysis.SourceProductionContext.AddSource(String hintName, SourceText sourceText)
+   at ReactiveGenerator.ReactiveGenerator.Execute(Compilation compilation, List`1 reactiveClasses, List`1 properties, Boolean useLegacyMode, SourceProductionContext context) in {SolutionDirectory}ReactiveGenerator/ReactiveGenerator.cs:line 242
+   at ReactiveGenerator.ReactiveGenerator.<>c.<Initialize>b__1_8(SourceProductionContext spc, ValueTuple`2 source) in {SolutionDirectory}ReactiveGenerator/ReactiveGenerator.cs:line 62
+   at Microsoft.CodeAnalysis.UserFunctionExtensions.<>c__DisplayClass3_0`2.<WrapUserAction>b__0(TInput1 input1, TInput2 input2, CancellationToken token)
+-----
+,
+      Severity: Warning,
+      WarningLevel: 1,
+      Descriptor: {
+        Id: CS8785,
+        Title: Generator failed to generate source.,
+        MessageFormat:
+Generator '{0}' failed to generate source. It will not contribute to the output and compilation errors may occur as a result. Exception was of type '{1}' with message '{2}'.
+{3},
+        Category: Compiler,
+        DefaultSeverity: Warning,
+        IsEnabledByDefault: true,
+        CustomTags: [
+          AnalyzerException
+        ]
+      }
+    }
+  ]
+}
