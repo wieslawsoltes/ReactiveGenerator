@@ -482,6 +482,200 @@ public class ReactiveGeneratorTests
         return TestAndVerify(source);
     }
     
+    [Fact]
+    public Task PropertyLevelReactiveWithMixedProperties()
+    {
+        var source = @"
+            public partial class TestClass
+            {
+                [Reactive]
+                public partial string ReactiveProp { get; set; }
+                
+                public partial string NonReactiveProp { get; set; }
+                
+                [Reactive]
+                private partial int PrivateReactiveProp { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task PropertyLevelReactiveWithInheritance()
+    {
+        var source = @"
+            public partial class BaseClass
+            {
+                [Reactive]
+                public partial string BaseProp { get; set; }
+            }
+
+            public partial class DerivedClass : BaseClass
+            {
+                [Reactive]
+                public partial string DerivedProp { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task PropertyLevelReactiveWithGenericType()
+    {
+        var source = @"
+            public partial class TestClass<T>
+            {
+                [Reactive]
+                public partial T TypedProp { get; set; }
+
+                [Reactive]
+                public partial List<T> TypedListProp { get; set; }
+
+                [Reactive]
+                public partial Dictionary<string, T> TypedDictProp { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task PropertyLevelReactiveWithCustomAccessors()
+    {
+        var source = @"
+            public partial class TestClass
+            {
+                [Reactive]
+                public partial string PropWithPrivateSet { get; private set; }
+
+                [Reactive]
+                protected partial string PropWithProtectedGet { private get; set; }
+
+                [Reactive]
+                internal partial string PropWithInternalAccessors { internal get; internal set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task ReactiveObjectDerivedWithObservableProperties()
+    {
+        var source = @"
+            using ReactiveUI;
+            
+            public partial class TestViewModel : ReactiveObject
+            {
+                [Reactive]
+                public partial string Name { get; set; }
+
+                [Reactive]
+                public partial int Age { get; set; }
+
+                [ObservableAsProperty]
+                public partial string FullName { get; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task ReactiveObjectDerivedWithComplexProperties()
+    {
+        var source = @"
+            using ReactiveUI;
+            using System.Collections.ObjectModel;
+            
+            public partial class TestViewModel : ReactiveObject
+            {
+                [Reactive]
+                public partial ObservableCollection<string> Items { get; set; }
+
+                [Reactive]
+                public partial Dictionary<string, List<int>> ComplexData { get; set; }
+
+                [Reactive]
+                public partial (string Name, int Count) TupleData { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task ReactiveObjectDerivedWithInheritance()
+    {
+        var source = @"
+            using ReactiveUI;
+            
+            public partial class BaseViewModel : ReactiveObject
+            {
+                [Reactive]
+                public partial string BaseProp { get; set; }
+            }
+
+            public partial class DerivedViewModel : BaseViewModel
+            {
+                [Reactive]
+                public partial string DerivedProp { get; set; }
+            }
+
+            public partial class GrandChildViewModel : DerivedViewModel
+            {
+                [Reactive]
+                public partial string GrandChildProp { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task ReactiveObjectDerivedWithInitProperties()
+    {
+        var source = @"
+            using ReactiveUI;
+            
+            public partial class TestViewModel : ReactiveObject
+            {
+                [Reactive]
+                public partial string ReadWriteProp { get; set; }
+
+                [Reactive]
+                public partial string InitOnlyProp { get; init; }
+
+                [Reactive]
+                public partial string GetOnlyProp { get; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task ReactiveObjectDerivedWithCustomImplementations()
+    {
+        var source = @"
+            using ReactiveUI;
+            
+            public partial class TestViewModel : ReactiveObject
+            {
+                private string _customProp;
+                
+                [Reactive]
+                public partial string CustomProp 
+                { 
+                    get => _customProp;
+                    set
+                    {
+                        _customProp = value?.ToUpper() ?? string.Empty;
+                        this.RaisePropertyChanged(nameof(CustomProp));
+                    }
+                }
+
+                [Reactive]
+                public partial string RegularProp { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+ 
     private static Task TestAndVerify(
         string source,
         Dictionary<string, string>? analyzerConfigOptions = null,
