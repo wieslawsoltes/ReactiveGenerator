@@ -31,7 +31,7 @@ public static class SourceGeneratorTestHelper
         driver = driver.RunGenerators(compilation);
 
         // Use our verify helper
-        return TestHelpers.Verify(driver);
+        return Verify(driver);
     }
 
     private static Compilation CreateCompilation(string source)
@@ -53,6 +53,33 @@ public static class SourceGeneratorTestHelper
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
         return compilation;
+    }
+
+    private static Task Verify(GeneratorDriver driver)
+    {
+        var runResults = driver.GetRunResult();
+
+        // Get the generated sources from the compilation
+        var generatedSources = runResults.GeneratedTrees
+            .Select(tree => new
+            {
+                FileName = Path.GetFileName(tree.FilePath),
+                Source = tree.ToString()
+            })
+            .OrderBy(f => f.FileName)
+            .ToList();
+
+        if (!generatedSources.Any())
+        {
+            throw new Exception("No source was generated!");
+        }
+
+        // Return results in a verifiable format
+        return Verifier.Verify(new
+        {
+            Sources = generatedSources,
+            Diagnostics = runResults.Diagnostics
+        });
     }
 }
 
