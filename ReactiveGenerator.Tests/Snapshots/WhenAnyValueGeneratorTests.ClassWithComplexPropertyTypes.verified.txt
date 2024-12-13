@@ -213,60 +213,57 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
-namespace Global
+/// <summary>
+/// Provides extension methods for observing changes to properties of TestClass.
+/// </summary>
+public static class TestClassExtensions
 {
     /// <summary>
-    /// Provides extension methods for observing changes to properties of <see cref="TestClass"/>.
+    /// Observes changes to the <see cref="TestClass.StringList"/> property.
     /// </summary>
-    public static class TestClassWhenAnyValueExtensions
+    /// <param name="source">The source object.</param>
+    /// <returns>An observable sequence of <see cref="System.Collections.Generic.List{string}"/> values.</returns>
+    public static IObservable<global::System.Collections.Generic.List<string>?> WhenAnyStringList(
+        this global::TestClass source)
     {
-        /// <summary>
-        /// Observes changes to the <see cref="TestClass.StringList"/> property.
-        /// </summary>
-        /// <param name="source">The source object.</param>
-        /// <returns>An observable sequence of <see cref="System.Collections.Generic.List{string}"/> values.</returns>
-        public static IObservable<global::System.Collections.Generic.List<string>?> WhenAnyStringList(
-            this global::TestClass source)
-        {
-            if (source is null) throw new ArgumentNullException(nameof(source));
+        if (source is null) throw new ArgumentNullException(nameof(source));
 
-            return new PropertyObserver<global::TestClass, global::System.Collections.Generic.List<string>?>(
-                source,
-                "StringList",
-                () => source.StringList);
-        }
+        return new PropertyObserver<global::TestClass, global::System.Collections.Generic.List<string>?>(
+            source,
+            "StringList",
+            () => source.StringList);
+    }
 
-        /// <summary>
-        /// Observes changes to the <see cref="TestClass.IntStringMap"/> property.
-        /// </summary>
-        /// <param name="source">The source object.</param>
-        /// <returns>An observable sequence of <see cref="System.Collections.Generic.Dictionary{int, string}"/> values.</returns>
-        public static IObservable<global::System.Collections.Generic.Dictionary<int, string>?> WhenAnyIntStringMap(
-            this global::TestClass source)
-        {
-            if (source is null) throw new ArgumentNullException(nameof(source));
+    /// <summary>
+    /// Observes changes to the <see cref="TestClass.IntStringMap"/> property.
+    /// </summary>
+    /// <param name="source">The source object.</param>
+    /// <returns>An observable sequence of <see cref="System.Collections.Generic.Dictionary{int, string}"/> values.</returns>
+    public static IObservable<global::System.Collections.Generic.Dictionary<int, string>?> WhenAnyIntStringMap(
+        this global::TestClass source)
+    {
+        if (source is null) throw new ArgumentNullException(nameof(source));
 
-            return new PropertyObserver<global::TestClass, global::System.Collections.Generic.Dictionary<int, string>?>(
-                source,
-                "IntStringMap",
-                () => source.IntStringMap);
-        }
+        return new PropertyObserver<global::TestClass, global::System.Collections.Generic.Dictionary<int, string>?>(
+            source,
+            "IntStringMap",
+            () => source.IntStringMap);
+    }
 
-        /// <summary>
-        /// Observes changes to the <see cref="TestClass.PersonInfo"/> property.
-        /// </summary>
-        /// <param name="source">The source object.</param>
-        /// <returns>An observable sequence of <see cref="(string Name, int Age)"/> values.</returns>
-        public static IObservable<(string Name, int Age)> WhenAnyPersonInfo(
-            this global::TestClass source)
-        {
-            if (source is null) throw new ArgumentNullException(nameof(source));
+    /// <summary>
+    /// Observes changes to the <see cref="TestClass.PersonInfo"/> property.
+    /// </summary>
+    /// <param name="source">The source object.</param>
+    /// <returns>An observable sequence of <see cref="(string Name, int Age)"/> values.</returns>
+    public static IObservable<(string Name, int Age)> WhenAnyPersonInfo(
+        this global::TestClass source)
+    {
+        if (source is null) throw new ArgumentNullException(nameof(source));
 
-            return new PropertyObserver<global::TestClass, (string Name, int Age)>(
-                source,
-                "PersonInfo",
-                () => source.PersonInfo);
-        }
+        return new PropertyObserver<global::TestClass, (string Name, int Age)>(
+            source,
+            "PersonInfo",
+            () => source.PersonInfo);
     }
 }
 

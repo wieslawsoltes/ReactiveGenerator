@@ -11,28 +11,25 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
-namespace Global
+/// <summary>
+/// Provides extension methods for observing changes to properties of BaseClass.
+/// </summary>
+public static class BaseClassExtensions
 {
     /// <summary>
-    /// Provides extension methods for observing changes to properties of <see cref="BaseClass"/>.
+    /// Observes changes to the <see cref="BaseClass.BaseProp"/> property.
     /// </summary>
-    public static class BaseClassWhenAnyValueExtensions
+    /// <param name="source">The source object.</param>
+    /// <returns>An observable sequence of <see cref="string"/> values.</returns>
+    public static IObservable<string?> WhenAnyBaseProp(
+        this global::BaseClass source)
     {
-        /// <summary>
-        /// Observes changes to the <see cref="BaseClass.BaseProp"/> property.
-        /// </summary>
-        /// <param name="source">The source object.</param>
-        /// <returns>An observable sequence of <see cref="string"/> values.</returns>
-        public static IObservable<string?> WhenAnyBaseProp(
-            this global::BaseClass source)
-        {
-            if (source is null) throw new ArgumentNullException(nameof(source));
+        if (source is null) throw new ArgumentNullException(nameof(source));
 
-            return new PropertyObserver<global::BaseClass, string?>(
-                source,
-                "BaseProp",
-                () => source.BaseProp);
-        }
+        return new PropertyObserver<global::BaseClass, string?>(
+            source,
+            "BaseProp",
+            () => source.BaseProp);
     }
 }
 
@@ -48,28 +45,25 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
-namespace Global
+/// <summary>
+/// Provides extension methods for observing changes to properties of DerivedClass.
+/// </summary>
+public static class DerivedClassExtensions
 {
     /// <summary>
-    /// Provides extension methods for observing changes to properties of <see cref="DerivedClass"/>.
+    /// Observes changes to the <see cref="DerivedClass.DerivedProp"/> property.
     /// </summary>
-    public static class DerivedClassWhenAnyValueExtensions
+    /// <param name="source">The source object.</param>
+    /// <returns>An observable sequence of <see cref="string"/> values.</returns>
+    public static IObservable<string?> WhenAnyDerivedProp(
+        this global::DerivedClass source)
     {
-        /// <summary>
-        /// Observes changes to the <see cref="DerivedClass.DerivedProp"/> property.
-        /// </summary>
-        /// <param name="source">The source object.</param>
-        /// <returns>An observable sequence of <see cref="string"/> values.</returns>
-        public static IObservable<string?> WhenAnyDerivedProp(
-            this global::DerivedClass source)
-        {
-            if (source is null) throw new ArgumentNullException(nameof(source));
+        if (source is null) throw new ArgumentNullException(nameof(source));
 
-            return new PropertyObserver<global::DerivedClass, string?>(
-                source,
-                "DerivedProp",
-                () => source.DerivedProp);
-        }
+        return new PropertyObserver<global::DerivedClass, string?>(
+            source,
+            "DerivedProp",
+            () => source.DerivedProp);
     }
 }
 

@@ -213,44 +213,41 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
-namespace Global
+/// <summary>
+/// Provides extension methods for observing changes to properties of TestClass.
+/// </summary>
+public static class TestClassExtensions
 {
     /// <summary>
-    /// Provides extension methods for observing changes to properties of <see cref="TestClass"/>.
+    /// Observes changes to the <see cref="TestClass.Name"/> property.
     /// </summary>
-    public static class TestClassWhenAnyValueExtensions
+    /// <param name="source">The source object.</param>
+    /// <returns>An observable sequence of <see cref="string"/> values.</returns>
+    public static IObservable<string?> WhenAnyName(
+        this global::TestClass source)
     {
-        /// <summary>
-        /// Observes changes to the <see cref="TestClass.Name"/> property.
-        /// </summary>
-        /// <param name="source">The source object.</param>
-        /// <returns>An observable sequence of <see cref="string"/> values.</returns>
-        public static IObservable<string?> WhenAnyName(
-            this global::TestClass source)
-        {
-            if (source is null) throw new ArgumentNullException(nameof(source));
+        if (source is null) throw new ArgumentNullException(nameof(source));
 
-            return new PropertyObserver<global::TestClass, string?>(
-                source,
-                "Name",
-                () => source.Name);
-        }
+        return new PropertyObserver<global::TestClass, string?>(
+            source,
+            "Name",
+            () => source.Name);
+    }
 
-        /// <summary>
-        /// Observes changes to the <see cref="TestClass.ExplicitReactive"/> property.
-        /// </summary>
-        /// <param name="source">The source object.</param>
-        /// <returns>An observable sequence of <see cref="DateTime"/> values.</returns>
-        public static IObservable<DateTime?> WhenAnyExplicitReactive(
-            this global::TestClass source)
-        {
-            if (source is null) throw new ArgumentNullException(nameof(source));
+    /// <summary>
+    /// Observes changes to the <see cref="TestClass.ExplicitReactive"/> property.
+    /// </summary>
+    /// <param name="source">The source object.</param>
+    /// <returns>An observable sequence of <see cref="DateTime"/> values.</returns>
+    public static IObservable<DateTime?> WhenAnyExplicitReactive(
+        this global::TestClass source)
+    {
+        if (source is null) throw new ArgumentNullException(nameof(source));
 
-            return new PropertyObserver<global::TestClass, DateTime?>(
-                source,
-                "ExplicitReactive",
-                () => source.ExplicitReactive);
-        }
+        return new PropertyObserver<global::TestClass, DateTime?>(
+            source,
+            "ExplicitReactive",
+            () => source.ExplicitReactive);
     }
 }
 

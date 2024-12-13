@@ -213,44 +213,41 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
-namespace Global
+/// <summary>
+/// Provides extension methods for observing changes to properties of TestClass.
+/// </summary>
+public static class TestClassExtensions
 {
     /// <summary>
-    /// Provides extension methods for observing changes to properties of <see cref="TestClass"/>.
+    /// Observes changes to the <see cref="TestClass<T>.ComplexProp"/> property.
     /// </summary>
-    public static class TestClassWhenAnyValueExtensions
+    /// <param name="source">The source object.</param>
+    /// <returns>An observable sequence of <see cref="List{Dictionary{string, T}}"/> values.</returns>
+    public static IObservable<List<Dictionary<string, T>>?> WhenAnyComplexProp<T>(
+        this global::TestClass<T> source) where T : class
     {
-        /// <summary>
-        /// Observes changes to the <see cref="TestClass<T>.ComplexProp"/> property.
-        /// </summary>
-        /// <param name="source">The source object.</param>
-        /// <returns>An observable sequence of <see cref="List{Dictionary{string, T}}"/> values.</returns>
-        public static IObservable<List<Dictionary<string, T>>?> WhenAnyComplexProp<T>(
-            this global::TestClass<T> source) where T : class
-        {
-            if (source is null) throw new ArgumentNullException(nameof(source));
+        if (source is null) throw new ArgumentNullException(nameof(source));
 
-            return new PropertyObserver<global::TestClass<T>, List<Dictionary<string, T>>?>(
-                source,
-                "ComplexProp",
-                () => source.ComplexProp);
-        }
+        return new PropertyObserver<global::TestClass<T>, List<Dictionary<string, T>>?>(
+            source,
+            "ComplexProp",
+            () => source.ComplexProp);
+    }
 
-        /// <summary>
-        /// Observes changes to the <see cref="TestClass<T>.NestedProp"/> property.
-        /// </summary>
-        /// <param name="source">The source object.</param>
-        /// <returns>An observable sequence of <see cref="Dictionary{int, List{T}}"/> values.</returns>
-        public static IObservable<Dictionary<int, List<T>>?> WhenAnyNestedProp<T>(
-            this global::TestClass<T> source) where T : class
-        {
-            if (source is null) throw new ArgumentNullException(nameof(source));
+    /// <summary>
+    /// Observes changes to the <see cref="TestClass<T>.NestedProp"/> property.
+    /// </summary>
+    /// <param name="source">The source object.</param>
+    /// <returns>An observable sequence of <see cref="Dictionary{int, List{T}}"/> values.</returns>
+    public static IObservable<Dictionary<int, List<T>>?> WhenAnyNestedProp<T>(
+        this global::TestClass<T> source) where T : class
+    {
+        if (source is null) throw new ArgumentNullException(nameof(source));
 
-            return new PropertyObserver<global::TestClass<T>, Dictionary<int, List<T>>?>(
-                source,
-                "NestedProp",
-                () => source.NestedProp);
-        }
+        return new PropertyObserver<global::TestClass<T>, Dictionary<int, List<T>>?>(
+            source,
+            "NestedProp",
+            () => source.NestedProp);
     }
 }
 
