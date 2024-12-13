@@ -940,4 +940,133 @@ public class ReactiveGeneratorTests
 
         return TestAndVerify(source);
     }
+
+    [Fact]
+    public Task GenericPropertyImplementation()
+    {
+        var source = @"
+            [Reactive]
+            internal partial class GenericViewModel<T>
+            {
+                public partial T Value { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task GenericPropertyWithNullableType()
+    {
+        var source = @"
+            [Reactive]
+            internal partial class GenericViewModel<T>
+                where T : class
+            {
+                public partial T? Value { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task GenericPropertyWithConstraints()
+    {
+        var source = @"
+            [Reactive]
+            internal partial class GenericViewModel<T>
+                where T : class, new()
+            {
+                public partial T Value { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task GenericPropertyWithMultipleTypeParameters()
+    {
+        var source = @"
+            [Reactive]
+            internal partial class GenericViewModel<T, U>
+                where T : class
+                where U : struct
+            {
+                public partial T? RefValue { get; set; }
+                public partial U ValueType { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task GenericPropertyWithNestedTypes()
+    {
+        var source = @"
+            [Reactive]
+            internal partial class GenericViewModel<T>
+            {
+                public partial List<T> ListValue { get; set; }
+                public partial Dictionary<string, T> DictValue { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task GenericPropertyWithReactiveObjectBase()
+    {
+        var source = @"
+            using ReactiveUI;
+
+            [Reactive]
+            internal partial class GenericViewModel<T> : ReactiveObject
+                where T : class
+            {
+                public partial T? Value { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task GenericPropertyWithCustomAccessibility()
+    {
+        var source = @"
+            [Reactive]
+            internal partial class GenericViewModel<T>
+            {
+                public partial T Value { get; private set; }
+                protected partial T ProtectedValue { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task GenericPropertyWithReadOnlyAccess()
+    {
+        var source = @"
+            [Reactive]
+            internal partial class GenericViewModel<T>
+            {
+                public partial T Value { get; }
+                public partial T ReadWriteValue { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task GenericPropertyWithInitSetter()
+    {
+        var source = @"
+            [Reactive]
+            internal partial class GenericViewModel<T>
+            {
+                public partial T InitValue { get; init; }
+                public partial T RegularValue { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
 }
