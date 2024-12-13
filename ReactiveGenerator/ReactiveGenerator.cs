@@ -694,16 +694,6 @@ public class ReactiveGenerator : IIncrementalGenerator
             {
                 var propertyAccessibility = property.DeclaredAccessibility.ToString().ToLowerInvariant();
 
-                // Add XML documentation comment if the property is public
-                if (property.DeclaredAccessibility == Accessibility.Public)
-                {
-                    var propertyTypeName = FormatTypeNameForXmlDoc(property.Type);
-                    sb.AppendLine($"{indent}/// <summary>");
-                    sb.AppendLine($"{indent}/// Gets or sets a value for <see cref=\"{propertyTypeName}\"/>.");
-                    sb.AppendLine($"{indent}/// </summary>");
-                    sb.AppendLine($"{indent}/// <value>The <see cref=\"{propertyTypeName}\"/> value.</value>");
-                }
-
                 if (useLegacyMode)
                 {
                     var backingFieldName = GetBackingFieldName(property.Name);
