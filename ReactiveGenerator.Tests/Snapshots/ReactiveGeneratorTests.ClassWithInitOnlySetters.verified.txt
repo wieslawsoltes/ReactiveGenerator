@@ -72,7 +72,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// A partial class implementation for <see cref="TestClass"/>.
+/// A partial class implementation for TestClass.
 /// </summary>
 public partial class TestClass
 {
@@ -80,9 +80,9 @@ public partial class TestClass
     private static readonly PropertyChangedEventArgs _regularPropChangedEventArgs = new PropertyChangedEventArgs(nameof(RegularProp));
 
     /// <summary>
-    /// Gets or sets a value for <see cref="string"/>.
+    /// Gets or sets a value of type string.
     /// </summary>
-    /// <value>The <see cref="string"/> value.</value>
+    /// <value>The value of type string.</value>
     public partial string InitOnlyProp
     {
         get => field;
@@ -97,9 +97,9 @@ public partial class TestClass
     }
 
     /// <summary>
-    /// Gets or sets a value for <see cref="string"/>.
+    /// Gets or sets a value of type string.
     /// </summary>
-    /// <value>The <see cref="string"/> value.</value>
+    /// <value>The value of type string.</value>
     public partial string RegularProp
     {
         get => field;

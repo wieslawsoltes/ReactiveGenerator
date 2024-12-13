@@ -72,7 +72,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// A partial class implementation for <see cref="TestClass{T, U}"/>.
+/// A partial class implementation for TestClass{T, U}.
 /// </summary>
 public partial class TestClass<T, U> where T : class, IDisposable where U : struct, IComparable<U>
 {
@@ -80,9 +80,9 @@ public partial class TestClass<T, U> where T : class, IDisposable where U : stru
     private static readonly PropertyChangedEventArgs _nullableStructChangedEventArgs = new PropertyChangedEventArgs(nameof(NullableStruct));
 
     /// <summary>
-    /// Gets or sets a value for <see cref="T"/>.
+    /// Gets or sets a value of type T.
     /// </summary>
-    /// <value>The <see cref="T"/> value.</value>
+    /// <value>The value of type T.</value>
     public partial T? NullableRef
     {
         get => field;
@@ -97,9 +97,9 @@ public partial class TestClass<T, U> where T : class, IDisposable where U : stru
     }
 
     /// <summary>
-    /// Gets or sets a value for <see cref="U?"/>.
+    /// Gets or sets a value of type U?.
     /// </summary>
-    /// <value>The <see cref="U?"/> value.</value>
+    /// <value>The value of type U?.</value>
     public partial U? NullableStruct
     {
         get => field;

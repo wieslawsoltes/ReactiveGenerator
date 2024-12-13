@@ -72,7 +72,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// A partial class implementation for <see cref="TestViewModel"/>.
+/// A partial class implementation for TestViewModel.
 /// </summary>
 public partial class TestViewModel
 {
@@ -81,9 +81,9 @@ public partial class TestViewModel
     private static readonly PropertyChangedEventArgs _getOnlyPropChangedEventArgs = new PropertyChangedEventArgs(nameof(GetOnlyProp));
 
     /// <summary>
-    /// Gets or sets a value for <see cref="string"/>.
+    /// Gets or sets a value of type string.
     /// </summary>
-    /// <value>The <see cref="string"/> value.</value>
+    /// <value>The value of type string.</value>
     public partial string ReadWriteProp
     {
         get => field;
@@ -98,9 +98,9 @@ public partial class TestViewModel
     }
 
     /// <summary>
-    /// Gets or sets a value for <see cref="string"/>.
+    /// Gets or sets a value of type string.
     /// </summary>
-    /// <value>The <see cref="string"/> value.</value>
+    /// <value>The value of type string.</value>
     public partial string InitOnlyProp
     {
         get => field;
@@ -115,9 +115,9 @@ public partial class TestViewModel
     }
 
     /// <summary>
-    /// Gets or sets a value for <see cref="string"/>.
+    /// Gets or sets a value of type string.
     /// </summary>
-    /// <value>The <see cref="string"/> value.</value>
+    /// <value>The value of type string.</value>
     public partial string GetOnlyProp
     {
         get => field;

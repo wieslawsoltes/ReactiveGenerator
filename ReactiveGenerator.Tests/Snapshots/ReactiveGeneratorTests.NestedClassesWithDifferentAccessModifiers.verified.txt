@@ -92,9 +92,9 @@ public partial class Container
         private static readonly PropertyChangedEventArgs _internalPropChangedEventArgs = new PropertyChangedEventArgs(nameof(InternalProp));
 
         /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
+        /// Gets or sets a value of type string.
         /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
+        /// <value>The value of type string.</value>
         public partial string InternalProp
         {
             get => field;
@@ -163,9 +163,9 @@ public partial class Container
         private static readonly PropertyChangedEventArgs _privatePropChangedEventArgs = new PropertyChangedEventArgs(nameof(PrivateProp));
 
         /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
+        /// Gets or sets a value of type string.
         /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
+        /// <value>The value of type string.</value>
         public partial string PrivateProp
         {
             get => field;
@@ -234,9 +234,9 @@ public partial class Container
         private static readonly PropertyChangedEventArgs _protectedPropChangedEventArgs = new PropertyChangedEventArgs(nameof(ProtectedProp));
 
         /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
+        /// Gets or sets a value of type string.
         /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
+        /// <value>The value of type string.</value>
         public partial string ProtectedProp
         {
             get => field;
@@ -308,16 +308,16 @@ using System.Runtime.CompilerServices;
 public partial class Container
 {
     /// <summary>
-    /// A partial class implementation for <see cref="Container.Public"/>.
+    /// A partial class implementation for Container.Public.
     /// </summary>
     public partial class Public
     {
         private static readonly PropertyChangedEventArgs _publicPropChangedEventArgs = new PropertyChangedEventArgs(nameof(PublicProp));
 
         /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
+        /// Gets or sets a value of type string.
         /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
+        /// <value>The value of type string.</value>
         public partial string PublicProp
         {
             get => field;
@@ -344,16 +344,16 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// A partial class implementation for <see cref="Container"/>.
+/// A partial class implementation for Container.
 /// </summary>
 public partial class Container
 {
     private static readonly PropertyChangedEventArgs _containerPropChangedEventArgs = new PropertyChangedEventArgs(nameof(ContainerProp));
 
     /// <summary>
-    /// Gets or sets a value for <see cref="string"/>.
+    /// Gets or sets a value of type string.
     /// </summary>
-    /// <value>The <see cref="string"/> value.</value>
+    /// <value>The value of type string.</value>
     public partial string ContainerProp
     {
         get => field;

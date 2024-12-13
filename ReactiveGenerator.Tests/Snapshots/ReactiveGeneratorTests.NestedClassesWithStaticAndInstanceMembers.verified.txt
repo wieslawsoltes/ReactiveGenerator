@@ -55,7 +55,7 @@ using System.Runtime.CompilerServices;
 public partial class Container
 {
     /// <summary>
-    /// A partial class implementation for <see cref="Container.Nested"/>.
+    /// A partial class implementation for Container.Nested.
     /// </summary>
     public partial class Nested
     {
@@ -63,9 +63,9 @@ public partial class Container
         private static readonly PropertyChangedEventArgs _instancePropChangedEventArgs = new PropertyChangedEventArgs(nameof(InstanceProp));
 
         /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
+        /// Gets or sets a value of type string.
         /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
+        /// <value>The value of type string.</value>
         public partial string StaticProp
         {
             get => field;
@@ -80,9 +80,9 @@ public partial class Container
         }
 
         /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
+        /// Gets or sets a value of type string.
         /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
+        /// <value>The value of type string.</value>
         public partial string InstanceProp
         {
             get => field;
@@ -156,9 +156,9 @@ public partial class Container
             private static readonly PropertyChangedEventArgs _staticNestedPropChangedEventArgs = new PropertyChangedEventArgs(nameof(StaticNestedProp));
 
             /// <summary>
-            /// Gets or sets a value for <see cref="string"/>.
+            /// Gets or sets a value of type string.
             /// </summary>
-            /// <value>The <see cref="string"/> value.</value>
+            /// <value>The value of type string.</value>
             public partial string StaticNestedProp
             {
                 get => field;

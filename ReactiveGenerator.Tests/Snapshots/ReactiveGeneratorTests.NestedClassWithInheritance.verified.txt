@@ -66,16 +66,16 @@ using System.Runtime.CompilerServices;
 public partial class OuterClass
 {
     /// <summary>
-    /// A partial class implementation for <see cref="OuterClass.InnerBase"/>.
+    /// A partial class implementation for OuterClass.InnerBase.
     /// </summary>
     public partial class InnerBase
     {
         private static readonly PropertyChangedEventArgs _basePropChangedEventArgs = new PropertyChangedEventArgs(nameof(BaseProp));
 
         /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
+        /// Gets or sets a value of type string.
         /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
+        /// <value>The value of type string.</value>
         public partial string BaseProp
         {
             get => field;
@@ -104,16 +104,16 @@ using System.Runtime.CompilerServices;
 public partial class OuterClass
 {
     /// <summary>
-    /// A partial class implementation for <see cref="OuterClass.InnerDerived"/>.
+    /// A partial class implementation for OuterClass.InnerDerived.
     /// </summary>
     public partial class InnerDerived
     {
         private static readonly PropertyChangedEventArgs _derivedPropChangedEventArgs = new PropertyChangedEventArgs(nameof(DerivedProp));
 
         /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
+        /// Gets or sets a value of type string.
         /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
+        /// <value>The value of type string.</value>
         public partial string DerivedProp
         {
             get => field;

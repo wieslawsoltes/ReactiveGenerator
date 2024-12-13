@@ -20,7 +20,7 @@ public static class BaseClassExtensions
     /// Observes changes to the <see cref="BaseClass.BaseProp"/> property.
     /// </summary>
     /// <param name="source">The source object.</param>
-    /// <returns>An observable sequence of <see cref="string"/> values.</returns>
+    /// <returns>An observable sequence of type string.</returns>
     public static IObservable<string?> WhenAnyBaseProp(
         this global::BaseClass source)
     {
@@ -54,7 +54,7 @@ public static class DerivedClassExtensions
     /// Observes changes to the <see cref="DerivedClass.DerivedProp"/> property.
     /// </summary>
     /// <param name="source">The source object.</param>
-    /// <returns>An observable sequence of <see cref="string"/> values.</returns>
+    /// <returns>An observable sequence of type string.</returns>
     public static IObservable<string?> WhenAnyDerivedProp(
         this global::DerivedClass source)
     {

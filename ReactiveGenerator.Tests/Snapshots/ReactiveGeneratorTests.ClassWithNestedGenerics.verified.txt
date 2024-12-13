@@ -72,7 +72,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// A partial class implementation for <see cref="TestClass{T}"/>.
+/// A partial class implementation for TestClass{T}.
 /// </summary>
 public partial class TestClass<T> where T : class
 {
@@ -80,9 +80,9 @@ public partial class TestClass<T> where T : class
     private static readonly PropertyChangedEventArgs _nestedPropChangedEventArgs = new PropertyChangedEventArgs(nameof(NestedProp));
 
     /// <summary>
-    /// Gets or sets a value for <see cref="List{Dictionary{string, T}}"/>.
+    /// Gets or sets a value of type List{Dictionary{string, T}}.
     /// </summary>
-    /// <value>The <see cref="List{Dictionary{string, T}}"/> value.</value>
+    /// <value>The value of type List{Dictionary{string, T}}.</value>
     public partial List<Dictionary<string, T>> ComplexProp
     {
         get => field;
@@ -97,9 +97,9 @@ public partial class TestClass<T> where T : class
     }
 
     /// <summary>
-    /// Gets or sets a value for <see cref="Dictionary{int, List{T}}"/>.
+    /// Gets or sets a value of type Dictionary{int, List{T}}.
     /// </summary>
-    /// <value>The <see cref="Dictionary{int, List{T}}"/> value.</value>
+    /// <value>The value of type Dictionary{int, List{T}}.</value>
     public partial Dictionary<int, List<T>> NestedProp
     {
         get => field;

@@ -222,7 +222,7 @@ public static class TestClassExtensions
     /// Observes changes to the <see cref="TestClass.PublicProp"/> property.
     /// </summary>
     /// <param name="source">The source object.</param>
-    /// <returns>An observable sequence of <see cref="string"/> values.</returns>
+    /// <returns>An observable sequence of type string.</returns>
     public static IObservable<string?> WhenAnyPublicProp(
         this global::TestClass source)
     {
@@ -238,7 +238,7 @@ public static class TestClassExtensions
     /// Observes changes to the <see cref="TestClass.ProtectedProp"/> property.
     /// </summary>
     /// <param name="source">The source object.</param>
-    /// <returns>An observable sequence of <see cref="string"/> values.</returns>
+    /// <returns>An observable sequence of type string.</returns>
     public static IObservable<string?> WhenAnyProtectedProp(
         this global::TestClass source)
     {
@@ -254,7 +254,7 @@ public static class TestClassExtensions
     /// Observes changes to the <see cref="TestClass.InternalProp"/> property.
     /// </summary>
     /// <param name="source">The source object.</param>
-    /// <returns>An observable sequence of <see cref="string"/> values.</returns>
+    /// <returns>An observable sequence of type string.</returns>
     public static IObservable<string?> WhenAnyInternalProp(
         this global::TestClass source)
     {
@@ -270,7 +270,7 @@ public static class TestClassExtensions
     /// Observes changes to the <see cref="TestClass.PrivateProp"/> property.
     /// </summary>
     /// <param name="source">The source object.</param>
-    /// <returns>An observable sequence of <see cref="string"/> values.</returns>
+    /// <returns>An observable sequence of type string.</returns>
     public static IObservable<string?> WhenAnyPrivateProp(
         this global::TestClass source)
     {

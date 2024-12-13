@@ -55,16 +55,16 @@ using System.Runtime.CompilerServices;
 public partial class Container
 {
     /// <summary>
-    /// A partial class implementation for <see cref="Container.Nested"/>.
+    /// A partial class implementation for Container.Nested.
     /// </summary>
     public partial class Nested
     {
         private static readonly PropertyChangedEventArgs _regularPropChangedEventArgs = new PropertyChangedEventArgs(nameof(RegularProp));
 
         /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
+        /// Gets or sets a value of type string.
         /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
+        /// <value>The value of type string.</value>
         public partial string RegularProp
         {
             get => field;

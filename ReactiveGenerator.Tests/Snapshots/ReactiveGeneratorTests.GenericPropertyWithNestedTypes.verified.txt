@@ -48,9 +48,9 @@ internal partial class GenericViewModel<T>
     private static readonly PropertyChangedEventArgs _dictValueChangedEventArgs = new PropertyChangedEventArgs(nameof(DictValue));
 
     /// <summary>
-    /// Gets or sets a value for <see cref="List{T}"/>.
+    /// Gets or sets a value of type List{T}.
     /// </summary>
-    /// <value>The <see cref="List{T}"/> value.</value>
+    /// <value>The value of type List{T}.</value>
     public partial List<T> ListValue
     {
         get => field;
@@ -65,9 +65,9 @@ internal partial class GenericViewModel<T>
     }
 
     /// <summary>
-    /// Gets or sets a value for <see cref="Dictionary{string, T}"/>.
+    /// Gets or sets a value of type Dictionary{string, T}.
     /// </summary>
-    /// <value>The <see cref="Dictionary{string, T}"/> value.</value>
+    /// <value>The value of type Dictionary{string, T}.</value>
     public partial Dictionary<string, T> DictValue
     {
         get => field;

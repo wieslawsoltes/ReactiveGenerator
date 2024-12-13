@@ -222,7 +222,7 @@ public static class TestClassExtensions
     /// Observes changes to the <see cref="TestClass.Name"/> property.
     /// </summary>
     /// <param name="source">The source object.</param>
-    /// <returns>An observable sequence of <see cref="string"/> values.</returns>
+    /// <returns>An observable sequence of type string.</returns>
     public static IObservable<string?> WhenAnyName(
         this global::TestClass source)
     {
@@ -238,7 +238,7 @@ public static class TestClassExtensions
     /// Observes changes to the <see cref="TestClass.ExplicitReactive"/> property.
     /// </summary>
     /// <param name="source">The source object.</param>
-    /// <returns>An observable sequence of <see cref="DateTime"/> values.</returns>
+    /// <returns>An observable sequence of type DateTime.</returns>
     public static IObservable<DateTime?> WhenAnyExplicitReactive(
         this global::TestClass source)
     {

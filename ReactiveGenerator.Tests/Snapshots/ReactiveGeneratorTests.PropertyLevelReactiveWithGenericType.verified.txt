@@ -72,7 +72,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// A partial class implementation for <see cref="TestClass{T}"/>.
+/// A partial class implementation for TestClass{T}.
 /// </summary>
 public partial class TestClass<T>
 {
@@ -81,9 +81,9 @@ public partial class TestClass<T>
     private static readonly PropertyChangedEventArgs _typedDictPropChangedEventArgs = new PropertyChangedEventArgs(nameof(TypedDictProp));
 
     /// <summary>
-    /// Gets or sets a value for <see cref="T"/>.
+    /// Gets or sets a value of type T.
     /// </summary>
-    /// <value>The <see cref="T"/> value.</value>
+    /// <value>The value of type T.</value>
     public partial T TypedProp
     {
         get => field;
@@ -98,9 +98,9 @@ public partial class TestClass<T>
     }
 
     /// <summary>
-    /// Gets or sets a value for <see cref="List{T}"/>.
+    /// Gets or sets a value of type List{T}.
     /// </summary>
-    /// <value>The <see cref="List{T}"/> value.</value>
+    /// <value>The value of type List{T}.</value>
     public partial List<T> TypedListProp
     {
         get => field;
@@ -115,9 +115,9 @@ public partial class TestClass<T>
     }
 
     /// <summary>
-    /// Gets or sets a value for <see cref="Dictionary{string, T}"/>.
+    /// Gets or sets a value of type Dictionary{string, T}.
     /// </summary>
-    /// <value>The <see cref="Dictionary{string, T}"/> value.</value>
+    /// <value>The value of type Dictionary{string, T}.</value>
     public partial Dictionary<string, T> TypedDictProp
     {
         get => field;
