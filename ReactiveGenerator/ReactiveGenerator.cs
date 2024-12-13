@@ -335,6 +335,16 @@ public class ReactiveGenerator : IIncrementalGenerator
         };
     }
 
+    private static string FormatTypeNameForXmlDoc(ITypeSymbol type)
+    {
+        var format = new SymbolDisplayFormat(
+            typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+            genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
+
+        return type.ToDisplayString(format).Replace("<", "{").Replace(">", "}");
+    }
+
     private static string GenerateINPCImplementation(INamedTypeSymbol classSymbol)
     {
         // Helper method to format type names for XML docs
@@ -517,17 +527,6 @@ public class ReactiveGenerator : IIncrementalGenerator
             return types;
         }
 
-        // Helper method to format type names for XML docs
-        string FormatTypeNameForXmlDoc(ITypeSymbol type)
-        {
-            var minimalFormat = new SymbolDisplayFormat(
-                typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-                genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
-                miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
-
-            return type.ToDisplayString(minimalFormat).Replace("<", "{").Replace(">", "}");
-        }
-
         var typeProperties = properties
             .Where(p => SymbolEqualityComparer.Default.Equals(p.ContainingType, classSymbol))
             .ToList();
@@ -614,7 +613,7 @@ public class ReactiveGenerator : IIncrementalGenerator
         {
             var xmlClassName = FormatTypeNameForXmlDoc(classSymbol);
             sb.AppendLine($"{indent}/// <summary>");
-            sb.AppendLine($"{indent}/// A partial class implementation for <see cref=\"{xmlClassName}\"/>.");
+            sb.AppendLine($"{indent}/// A partial class implementation for {xmlClassName}.");
             sb.AppendLine($"{indent}/// </summary>");
         }
 
@@ -748,9 +747,7 @@ public class ReactiveGenerator : IIncrementalGenerator
         var nullableAnnotation = property.NullableAnnotation;
         var baseType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
-        // If the type is a reference type and it's nullable, add the ? annotation
-        if (nullableAnnotation == NullableAnnotation.Annotated &&
-            !property.Type.IsValueType)
+        if (nullableAnnotation == NullableAnnotation.Annotated && !property.Type.IsValueType)
         {
             return baseType + "?";
         }
@@ -770,6 +767,15 @@ public class ReactiveGenerator : IIncrementalGenerator
         var propertyType = GetPropertyTypeWithNullability(property);
         var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
         var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
+
+        if (property.DeclaredAccessibility == Accessibility.Public)
+        {
+            var xmlPropertyType = FormatTypeNameForXmlDoc(property.Type);
+            sb.AppendLine($"{indent}/// <summary>");
+            sb.AppendLine($"{indent}/// Gets or sets a value of type {xmlPropertyType}.");
+            sb.AppendLine($"{indent}/// </summary>");
+            sb.AppendLine($"{indent}/// <value>The value of type {xmlPropertyType}.</value>");
+        }
 
         sb.AppendLine($"{indent}{propertyAccessibility} partial {propertyType} {propertyName}");
         sb.AppendLine($"{indent}{{");
@@ -821,6 +827,15 @@ public class ReactiveGenerator : IIncrementalGenerator
         var propertyType = GetPropertyTypeWithNullability(property);
         var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
         var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
+
+        if (property.DeclaredAccessibility == Accessibility.Public)
+        {
+            var xmlPropertyType = FormatTypeNameForXmlDoc(property.Type);
+            sb.AppendLine($"{indent}/// <summary>");
+            sb.AppendLine($"{indent}/// Gets or sets a value of type {xmlPropertyType}.");
+            sb.AppendLine($"{indent}/// </summary>");
+            sb.AppendLine($"{indent}/// <value>The value of type {xmlPropertyType}.</value>");
+        }
 
         sb.AppendLine($"{indent}{propertyAccessibility} partial {propertyType} {propertyName}");
         sb.AppendLine($"{indent}{{");
