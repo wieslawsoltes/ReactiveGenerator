@@ -20,6 +20,8 @@ sealed class IgnoreReactiveAttribute : Attribute
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
+public partial class OuterClass
+{
     /// <summary>
     /// A partial class implementation of <see cref="INotifyPropertyChanged"/> for <see cref="OuterClass.InnerBase"/>.
     /// </summary>
@@ -49,6 +51,7 @@ using System.Runtime.CompilerServices;
             PropertyChanged?.Invoke(this, args);
         }
     }
+}
 
     },
     {
@@ -60,6 +63,8 @@ using System.Runtime.CompilerServices;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
+public partial class OuterClass
+{
     /// <summary>
     /// A partial class implementation for <see cref="OuterClass.InnerBase"/>.
     /// </summary>
@@ -84,6 +89,7 @@ using System.Runtime.CompilerServices;
             }
         }
     }
+}
 
     },
     {
@@ -95,6 +101,8 @@ using System.Runtime.CompilerServices;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
+public partial class OuterClass
+{
     /// <summary>
     /// A partial class implementation for <see cref="OuterClass.InnerDerived"/>.
     /// </summary>
@@ -119,6 +127,7 @@ using System.Runtime.CompilerServices;
             }
         }
     }
+}
 
     },
     {

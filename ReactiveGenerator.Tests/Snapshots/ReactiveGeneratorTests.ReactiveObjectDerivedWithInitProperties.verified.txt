@@ -31,35 +31,35 @@ sealed class ReactiveAttribute : Attribute
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
+/// <summary>
+/// A partial class implementation of <see cref="INotifyPropertyChanged"/> for <see cref="TestViewModel"/>.
+/// </summary>
+public partial class TestViewModel : INotifyPropertyChanged
+{
     /// <summary>
-    /// A partial class implementation of <see cref="INotifyPropertyChanged"/> for <see cref="TestViewModel"/>.
+    /// Occurs when a property value changes.
     /// </summary>
-    public partial class TestViewModel : INotifyPropertyChanged
+    /// <seealso cref="INotifyPropertyChanged"/>
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>
+    /// Raises the <see cref="PropertyChanged"/> event.
+    /// </summary>
+    /// <param name="propertyName">The name of the property that changed.</param>
+    protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
-        /// <summary>
-        /// Occurs when a property value changes.
-        /// </summary>
-        /// <seealso cref="INotifyPropertyChanged"/>
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        /// <summary>
-        /// Raises the <see cref="PropertyChanged"/> event.
-        /// </summary>
-        /// <param name="propertyName">The name of the property that changed.</param>
-        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        /// <summary>
-        /// Raises the <see cref="PropertyChanged"/> event.
-        /// </summary>
-        /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
-        protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
-        {
-            PropertyChanged?.Invoke(this, args);
-        }
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
+
+    /// <summary>
+    /// Raises the <see cref="PropertyChanged"/> event.
+    /// </summary>
+    /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
+    protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
+    {
+        PropertyChanged?.Invoke(this, args);
+    }
+}
 
     },
     {
@@ -71,58 +71,58 @@ using System.Runtime.CompilerServices;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
+/// <summary>
+/// A partial class implementation for <see cref="TestViewModel"/>.
+/// </summary>
+public partial class TestViewModel
+{
+    private static readonly PropertyChangedEventArgs _readWritePropChangedEventArgs = new PropertyChangedEventArgs(nameof(ReadWriteProp));
+    private static readonly PropertyChangedEventArgs _initOnlyPropChangedEventArgs = new PropertyChangedEventArgs(nameof(InitOnlyProp));
+    private static readonly PropertyChangedEventArgs _getOnlyPropChangedEventArgs = new PropertyChangedEventArgs(nameof(GetOnlyProp));
+
     /// <summary>
-    /// A partial class implementation for <see cref="TestViewModel"/>.
+    /// Gets or sets a value for <see cref="string"/>.
     /// </summary>
-    public partial class TestViewModel
+    /// <value>The <see cref="string"/> value.</value>
+    public partial string ReadWriteProp
     {
-        private static readonly PropertyChangedEventArgs _readWritePropChangedEventArgs = new PropertyChangedEventArgs(nameof(ReadWriteProp));
-        private static readonly PropertyChangedEventArgs _initOnlyPropChangedEventArgs = new PropertyChangedEventArgs(nameof(InitOnlyProp));
-        private static readonly PropertyChangedEventArgs _getOnlyPropChangedEventArgs = new PropertyChangedEventArgs(nameof(GetOnlyProp));
-
-        /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
-        /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
-        public partial string ReadWriteProp
+        get => field;
+        set
         {
-            get => field;
-            set
+            if (!Equals(field, value))
             {
-                if (!Equals(field, value))
-                {
-                    field = value;
-                    OnPropertyChanged(_readWritePropChangedEventArgs);
-                }
+                field = value;
+                OnPropertyChanged(_readWritePropChangedEventArgs);
             }
-        }
-
-        /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
-        /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
-        public partial string InitOnlyProp
-        {
-            get => field;
-            set
-            {
-                if (!Equals(field, value))
-                {
-                    field = value;
-                    OnPropertyChanged(_initOnlyPropChangedEventArgs);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
-        /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
-        public partial string GetOnlyProp
-        {
-            get => field;
         }
     }
+
+    /// <summary>
+    /// Gets or sets a value for <see cref="string"/>.
+    /// </summary>
+    /// <value>The <see cref="string"/> value.</value>
+    public partial string InitOnlyProp
+    {
+        get => field;
+        set
+        {
+            if (!Equals(field, value))
+            {
+                field = value;
+                OnPropertyChanged(_initOnlyPropChangedEventArgs);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets a value for <see cref="string"/>.
+    /// </summary>
+    /// <value>The <see cref="string"/> value.</value>
+    public partial string GetOnlyProp
+    {
+        get => field;
+    }
+}
 
     }
   ],

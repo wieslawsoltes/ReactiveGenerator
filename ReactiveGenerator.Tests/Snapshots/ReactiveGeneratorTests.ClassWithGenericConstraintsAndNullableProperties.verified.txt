@@ -31,35 +31,35 @@ sealed class ReactiveAttribute : Attribute
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
+/// <summary>
+/// A partial class implementation of <see cref="INotifyPropertyChanged"/> for <see cref="TestClass{T, U}"/>.
+/// </summary>
+public partial class TestClass<T, U> : INotifyPropertyChanged where T : class, IDisposable where U : struct, IComparable<U>
+{
     /// <summary>
-    /// A partial class implementation of <see cref="INotifyPropertyChanged"/> for <see cref="TestClass{T, U}"/>.
+    /// Occurs when a property value changes.
     /// </summary>
-    public partial class TestClass<T, U> : INotifyPropertyChanged where T : class, IDisposable where U : struct, IComparable<U>
+    /// <seealso cref="INotifyPropertyChanged"/>
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>
+    /// Raises the <see cref="PropertyChanged"/> event.
+    /// </summary>
+    /// <param name="propertyName">The name of the property that changed.</param>
+    protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
-        /// <summary>
-        /// Occurs when a property value changes.
-        /// </summary>
-        /// <seealso cref="INotifyPropertyChanged"/>
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        /// <summary>
-        /// Raises the <see cref="PropertyChanged"/> event.
-        /// </summary>
-        /// <param name="propertyName">The name of the property that changed.</param>
-        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        /// <summary>
-        /// Raises the <see cref="PropertyChanged"/> event.
-        /// </summary>
-        /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
-        protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
-        {
-            PropertyChanged?.Invoke(this, args);
-        }
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
+
+    /// <summary>
+    /// Raises the <see cref="PropertyChanged"/> event.
+    /// </summary>
+    /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
+    protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
+    {
+        PropertyChanged?.Invoke(this, args);
+    }
+}
 
     },
     {
@@ -71,48 +71,48 @@ using System.Runtime.CompilerServices;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
+/// <summary>
+/// A partial class implementation for <see cref="TestClass{T, U}"/>.
+/// </summary>
+public partial class TestClass<T, U> where T : class, IDisposable where U : struct, IComparable<U>
+{
+    private static readonly PropertyChangedEventArgs _nullableRefChangedEventArgs = new PropertyChangedEventArgs(nameof(NullableRef));
+    private static readonly PropertyChangedEventArgs _nullableStructChangedEventArgs = new PropertyChangedEventArgs(nameof(NullableStruct));
+
     /// <summary>
-    /// A partial class implementation for <see cref="TestClass{T, U}"/>.
+    /// Gets or sets a value for <see cref="T"/>.
     /// </summary>
-    public partial class TestClass<T, U>
+    /// <value>The <see cref="T"/> value.</value>
+    public partial T? NullableRef
     {
-        private static readonly PropertyChangedEventArgs _nullableRefChangedEventArgs = new PropertyChangedEventArgs(nameof(NullableRef));
-        private static readonly PropertyChangedEventArgs _nullableStructChangedEventArgs = new PropertyChangedEventArgs(nameof(NullableStruct));
-
-        /// <summary>
-        /// Gets or sets a value for <see cref="T"/>.
-        /// </summary>
-        /// <value>The <see cref="T"/> value.</value>
-        public partial T? NullableRef
+        get => field;
+        set
         {
-            get => field;
-            set
+            if (!Equals(field, value))
             {
-                if (!Equals(field, value))
-                {
-                    field = value;
-                    OnPropertyChanged(_nullableRefChangedEventArgs);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets a value for <see cref="U?"/>.
-        /// </summary>
-        /// <value>The <see cref="U?"/> value.</value>
-        public partial U? NullableStruct
-        {
-            get => field;
-            set
-            {
-                if (!Equals(field, value))
-                {
-                    field = value;
-                    OnPropertyChanged(_nullableStructChangedEventArgs);
-                }
+                field = value;
+                OnPropertyChanged(_nullableRefChangedEventArgs);
             }
         }
     }
+
+    /// <summary>
+    /// Gets or sets a value for <see cref="U?"/>.
+    /// </summary>
+    /// <value>The <see cref="U?"/> value.</value>
+    public partial U? NullableStruct
+    {
+        get => field;
+        set
+        {
+            if (!Equals(field, value))
+            {
+                field = value;
+                OnPropertyChanged(_nullableStructChangedEventArgs);
+            }
+        }
+    }
+}
 
     }
   ],

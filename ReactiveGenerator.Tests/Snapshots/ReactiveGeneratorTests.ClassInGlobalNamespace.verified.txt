@@ -9,35 +9,35 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
+/// <summary>
+/// A partial class implementation of <see cref="INotifyPropertyChanged"/> for <see cref="GlobalClass"/>.
+/// </summary>
+public partial class GlobalClass : INotifyPropertyChanged
+{
     /// <summary>
-    /// A partial class implementation of <see cref="INotifyPropertyChanged"/> for <see cref="GlobalClass"/>.
+    /// Occurs when a property value changes.
     /// </summary>
-    public partial class GlobalClass : INotifyPropertyChanged
+    /// <seealso cref="INotifyPropertyChanged"/>
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>
+    /// Raises the <see cref="PropertyChanged"/> event.
+    /// </summary>
+    /// <param name="propertyName">The name of the property that changed.</param>
+    protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
-        /// <summary>
-        /// Occurs when a property value changes.
-        /// </summary>
-        /// <seealso cref="INotifyPropertyChanged"/>
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        /// <summary>
-        /// Raises the <see cref="PropertyChanged"/> event.
-        /// </summary>
-        /// <param name="propertyName">The name of the property that changed.</param>
-        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        /// <summary>
-        /// Raises the <see cref="PropertyChanged"/> event.
-        /// </summary>
-        /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
-        protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
-        {
-            PropertyChanged?.Invoke(this, args);
-        }
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
+
+    /// <summary>
+    /// Raises the <see cref="PropertyChanged"/> event.
+    /// </summary>
+    /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
+    protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
+    {
+        PropertyChanged?.Invoke(this, args);
+    }
+}
 
     },
     {
@@ -49,30 +49,30 @@ using System.Runtime.CompilerServices;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-    /// <summary>
-    /// A partial class implementation for <see cref="GlobalClass"/>.
-    /// </summary>
-    public partial class GlobalClass
-    {
-        private static readonly PropertyChangedEventArgs _nameChangedEventArgs = new PropertyChangedEventArgs(nameof(Name));
+/// <summary>
+/// A partial class implementation for <see cref="GlobalClass"/>.
+/// </summary>
+public partial class GlobalClass
+{
+    private static readonly PropertyChangedEventArgs _nameChangedEventArgs = new PropertyChangedEventArgs(nameof(Name));
 
-        /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
-        /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
-        public partial string Name
+    /// <summary>
+    /// Gets or sets a value for <see cref="string"/>.
+    /// </summary>
+    /// <value>The <see cref="string"/> value.</value>
+    public partial string Name
+    {
+        get => field;
+        set
         {
-            get => field;
-            set
+            if (!Equals(field, value))
             {
-                if (!Equals(field, value))
-                {
-                    field = value;
-                    OnPropertyChanged(_nameChangedEventArgs);
-                }
+                field = value;
+                OnPropertyChanged(_nameChangedEventArgs);
             }
         }
     }
+}
 
     },
     {

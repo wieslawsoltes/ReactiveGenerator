@@ -243,7 +243,7 @@ public class ReactiveGenerator : IIncrementalGenerator
                         typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
                         genericsOptions: SymbolDisplayGenericsOptions.None,
                         miscellaneousOptions: SymbolDisplayMiscellaneousOptions.None));
-            
+
                     var fileName = $"{fullTypeName}.INPC.g.cs";
                     context.AddSource(fileName, SourceText.From(inpcSource, Encoding.UTF8));
                     processedTypes.Add(type);
@@ -279,7 +279,7 @@ public class ReactiveGenerator : IIncrementalGenerator
                     typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
                     genericsOptions: SymbolDisplayGenericsOptions.None,
                     miscellaneousOptions: SymbolDisplayMiscellaneousOptions.None));
-        
+
                 var fileName = $"{fullTypeName}.ReactiveProperties.g.cs";
                 context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
             }
@@ -348,9 +348,26 @@ public class ReactiveGenerator : IIncrementalGenerator
             return type.ToDisplayString(minimalFormat).Replace("<", "{").Replace(">", "}");
         }
 
+        // Helper method to get containing types chain
+        IEnumerable<INamedTypeSymbol> GetContainingTypesChain(INamedTypeSymbol symbol)
+        {
+            var types = new List<INamedTypeSymbol>();
+            var current = symbol.ContainingType;
+            while (current != null)
+            {
+                types.Insert(0, current);
+                current = current.ContainingType;
+            }
+
+            return types;
+        }
+
+        // Get namespace and containing types
         var namespaceName = classSymbol.ContainingNamespace.IsGlobalNamespace
             ? null
             : classSymbol.ContainingNamespace.ToDisplayString();
+
+        var containingTypes = GetContainingTypesChain(classSymbol).ToList();
 
         // Add type parameters if the class is generic
         var typeParameters = "";
@@ -393,10 +410,21 @@ public class ReactiveGenerator : IIncrementalGenerator
         sb.AppendLine("using System.Runtime.CompilerServices;");
         sb.AppendLine();
 
+        // Add namespace
         if (namespaceName != null)
         {
             sb.AppendLine($"namespace {namespaceName}");
             sb.AppendLine("{");
+        }
+
+        // Start containing type declarations
+        var indent = namespaceName != null ? "    " : "";
+        foreach (var containingType in containingTypes)
+        {
+            var containingTypeAccessibility = containingType.DeclaredAccessibility.ToString().ToLowerInvariant();
+            sb.AppendLine($"{indent}{containingTypeAccessibility} partial class {containingType.Name}");
+            sb.AppendLine($"{indent}{{");
+            indent += "    ";
         }
 
         var accessibility = classSymbol.DeclaredAccessibility.ToString().ToLowerInvariant();
@@ -405,51 +433,59 @@ public class ReactiveGenerator : IIncrementalGenerator
         if (classSymbol.DeclaredAccessibility == Accessibility.Public)
         {
             var xmlClassName = FormatTypeNameForXmlDoc(classSymbol);
-            sb.AppendLine("    /// <summary>");
+            sb.AppendLine($"{indent}/// <summary>");
             sb.AppendLine(
-                $"    /// A partial class implementation of <see cref=\"INotifyPropertyChanged\"/> for <see cref=\"{xmlClassName}\"/>.");
-            sb.AppendLine("    /// </summary>");
+                $"{indent}/// A partial class implementation of <see cref=\"INotifyPropertyChanged\"/> for <see cref=\"{xmlClassName}\"/>.");
+            sb.AppendLine($"{indent}/// </summary>");
         }
 
         sb.AppendLine(
-            $"    {accessibility} partial class {classSymbol.Name}{typeParameters} : INotifyPropertyChanged{typeConstraints}");
-        sb.AppendLine("    {");
+            $"{indent}{accessibility} partial class {classSymbol.Name}{typeParameters} : INotifyPropertyChanged{typeConstraints}");
+        sb.AppendLine($"{indent}{{");
 
         // Add XML documentation comment for the event if it's public
         if (classSymbol.DeclaredAccessibility == Accessibility.Public)
         {
-            sb.AppendLine("        /// <summary>");
-            sb.AppendLine("        /// Occurs when a property value changes.");
-            sb.AppendLine("        /// </summary>");
-            sb.AppendLine("        /// <seealso cref=\"INotifyPropertyChanged\"/>");
+            sb.AppendLine($"{indent}    /// <summary>");
+            sb.AppendLine($"{indent}    /// Occurs when a property value changes.");
+            sb.AppendLine($"{indent}    /// </summary>");
+            sb.AppendLine($"{indent}    /// <seealso cref=\"INotifyPropertyChanged\"/>");
         }
 
-        sb.AppendLine("        public event PropertyChangedEventHandler? PropertyChanged;");
+        sb.AppendLine($"{indent}    public event PropertyChangedEventHandler? PropertyChanged;");
         sb.AppendLine();
 
         // Add XML documentation comment for OnPropertyChanged method
-        sb.AppendLine("        /// <summary>");
-        sb.AppendLine("        /// Raises the <see cref=\"PropertyChanged\"/> event.");
-        sb.AppendLine("        /// </summary>");
-        sb.AppendLine("        /// <param name=\"propertyName\">The name of the property that changed.</param>");
+        sb.AppendLine($"{indent}    /// <summary>");
+        sb.AppendLine($"{indent}    /// Raises the <see cref=\"PropertyChanged\"/> event.");
+        sb.AppendLine($"{indent}    /// </summary>");
+        sb.AppendLine($"{indent}    /// <param name=\"propertyName\">The name of the property that changed.</param>");
         sb.AppendLine(
-            "        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)");
-        sb.AppendLine("        {");
-        sb.AppendLine("            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));");
-        sb.AppendLine("        }");
+            $"{indent}    protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)");
+        sb.AppendLine($"{indent}    {{");
+        sb.AppendLine($"{indent}        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));");
+        sb.AppendLine($"{indent}    }}");
         sb.AppendLine();
 
-        sb.AppendLine("        /// <summary>");
-        sb.AppendLine("        /// Raises the <see cref=\"PropertyChanged\"/> event.");
-        sb.AppendLine("        /// </summary>");
+        sb.AppendLine($"{indent}    /// <summary>");
+        sb.AppendLine($"{indent}    /// Raises the <see cref=\"PropertyChanged\"/> event.");
+        sb.AppendLine($"{indent}    /// </summary>");
         sb.AppendLine(
-            "        /// <param name=\"args\">The <see cref=\"PropertyChangedEventArgs\"/> instance containing the event data.</param>");
-        sb.AppendLine("        protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)");
-        sb.AppendLine("        {");
-        sb.AppendLine("            PropertyChanged?.Invoke(this, args);");
-        sb.AppendLine("        }");
-        sb.AppendLine("    }");
+            $"{indent}    /// <param name=\"args\">The <see cref=\"PropertyChangedEventArgs\"/> instance containing the event data.</param>");
+        sb.AppendLine($"{indent}    protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)");
+        sb.AppendLine($"{indent}    {{");
+        sb.AppendLine($"{indent}        PropertyChanged?.Invoke(this, args);");
+        sb.AppendLine($"{indent}    }}");
+        sb.AppendLine($"{indent}}}");
 
+        // Close all containing type declarations
+        for (int i = 0; i < containingTypes.Count; i++)
+        {
+            indent = indent.Substring(0, indent.Length - 4);
+            sb.AppendLine($"{indent}}}");
+        }
+
+        // Close namespace
         if (namespaceName != null)
         {
             sb.AppendLine("}");
@@ -467,14 +503,19 @@ public class ReactiveGenerator : IIncrementalGenerator
         if (!properties.Any() && !implementInpc)
             return string.Empty;
 
-        var typeProperties = properties
-            .Where(p => SymbolEqualityComparer.Default.Equals(p.ContainingType, classSymbol))
-            .ToList();
+        // Helper method to get containing types chain
+        IEnumerable<INamedTypeSymbol> GetContainingTypesChain(INamedTypeSymbol symbol)
+        {
+            var types = new List<INamedTypeSymbol>();
+            var current = symbol.ContainingType;
+            while (current != null)
+            {
+                types.Insert(0, current);
+                current = current.ContainingType;
+            }
 
-        var isReactiveObject = InheritsFromReactiveObject(classSymbol);
-        var namespaceName = classSymbol.ContainingNamespace.IsGlobalNamespace
-            ? null
-            : classSymbol.ContainingNamespace.ToDisplayString();
+            return types;
+        }
 
         // Helper method to format type names for XML docs
         string FormatTypeNameForXmlDoc(ITypeSymbol type)
@@ -487,8 +528,51 @@ public class ReactiveGenerator : IIncrementalGenerator
             return type.ToDisplayString(minimalFormat).Replace("<", "{").Replace(">", "}");
         }
 
-        var sb = new StringBuilder();
+        var typeProperties = properties
+            .Where(p => SymbolEqualityComparer.Default.Equals(p.ContainingType, classSymbol))
+            .ToList();
 
+        var isReactiveObject = InheritsFromReactiveObject(classSymbol);
+        var namespaceName = classSymbol.ContainingNamespace.IsGlobalNamespace
+            ? null
+            : classSymbol.ContainingNamespace.ToDisplayString();
+
+        var containingTypes = GetContainingTypesChain(classSymbol).ToList();
+
+        // Add type parameters if the class is generic
+        var typeParameters = "";
+        var typeConstraints = "";
+        if (classSymbol.TypeParameters.Length > 0)
+        {
+            typeParameters = "<" + string.Join(", ", classSymbol.TypeParameters.Select(tp => tp.Name)) + ">";
+
+            // Add constraints for each type parameter
+            var constraints = new List<string>();
+            foreach (var typeParam in classSymbol.TypeParameters)
+            {
+                var paramConstraints = new List<string>();
+
+                if (typeParam.HasReferenceTypeConstraint)
+                    paramConstraints.Add("class");
+                if (typeParam.HasValueTypeConstraint)
+                    paramConstraints.Add("struct");
+                if (typeParam.HasConstructorConstraint)
+                    paramConstraints.Add("new()");
+
+                var typeConstraint = string.Join(", ", typeParam.ConstraintTypes.Select(t =>
+                    t.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)));
+                if (!string.IsNullOrEmpty(typeConstraint))
+                    paramConstraints.Add(typeConstraint);
+
+                if (paramConstraints.Count > 0)
+                    constraints.Add($"where {typeParam.Name} : {string.Join(", ", paramConstraints)}");
+            }
+
+            if (constraints.Count > 0)
+                typeConstraints = " " + string.Join(" ", constraints);
+        }
+
+        var sb = new StringBuilder();
         sb.AppendLine("// <auto-generated/>");
         sb.AppendLine("#nullable enable");
         sb.AppendLine();
@@ -505,33 +589,39 @@ public class ReactiveGenerator : IIncrementalGenerator
 
         sb.AppendLine();
 
+        // Add namespace
         if (namespaceName != null)
         {
             sb.AppendLine($"namespace {namespaceName}");
             sb.AppendLine("{");
         }
 
+        // Start containing type declarations
+        var indent = namespaceName != null ? "    " : "";
+        foreach (var containingType in containingTypes)
+        {
+            var containingTypeAccessibility = containingType.DeclaredAccessibility.ToString().ToLowerInvariant();
+            sb.AppendLine($"{indent}{containingTypeAccessibility} partial class {containingType.Name}");
+            sb.AppendLine($"{indent}{{");
+            indent += "    ";
+        }
+
         var accessibility = classSymbol.DeclaredAccessibility.ToString().ToLowerInvariant();
         var interfaces = (implementInpc && !isReactiveObject) ? " : INotifyPropertyChanged" : "";
-
-        // Add type parameters if the class is generic
-        var typeParameters = "";
-        if (classSymbol.TypeParameters.Length > 0)
-        {
-            typeParameters = "<" + string.Join(", ", classSymbol.TypeParameters.Select(tp => tp.Name)) + ">";
-        }
 
         // Add XML documentation comment if the class is public
         if (classSymbol.DeclaredAccessibility == Accessibility.Public)
         {
             var xmlClassName = FormatTypeNameForXmlDoc(classSymbol);
-            sb.AppendLine("    /// <summary>");
-            sb.AppendLine($"    /// A partial class implementation for <see cref=\"{xmlClassName}\"/>.");
-            sb.AppendLine("    /// </summary>");
+            sb.AppendLine($"{indent}/// <summary>");
+            sb.AppendLine($"{indent}/// A partial class implementation for <see cref=\"{xmlClassName}\"/>.");
+            sb.AppendLine($"{indent}/// </summary>");
         }
 
-        sb.AppendLine($"    {accessibility} partial class {classSymbol.Name}{typeParameters}{interfaces}");
-        sb.AppendLine("    {");
+        sb.AppendLine(
+            $"{indent}{accessibility} partial class {classSymbol.Name}{typeParameters}{interfaces}{typeConstraints}");
+        sb.AppendLine($"{indent}{{");
+        indent += "    ";
 
         // Generate backing fields if in legacy mode
         if (useLegacyMode && typeProperties.Any())
@@ -540,7 +630,7 @@ public class ReactiveGenerator : IIncrementalGenerator
             {
                 var propertyType = GetPropertyTypeWithNullability(property);
                 var backingFieldName = GetBackingFieldName(property.Name);
-                sb.AppendLine($"        private {propertyType} {backingFieldName};");
+                sb.AppendLine($"{indent}private {propertyType} {backingFieldName};");
             }
 
             sb.AppendLine();
@@ -553,7 +643,7 @@ public class ReactiveGenerator : IIncrementalGenerator
                 var propertyName = property.Name;
                 var fieldName = GetEventArgsFieldName(propertyName);
                 sb.AppendLine(
-                    $"        private static readonly PropertyChangedEventArgs {fieldName} = new PropertyChangedEventArgs(nameof({propertyName}));");
+                    $"{indent}private static readonly PropertyChangedEventArgs {fieldName} = new PropertyChangedEventArgs(nameof({propertyName}));");
             }
 
             if (typeProperties.Any())
@@ -565,34 +655,35 @@ public class ReactiveGenerator : IIncrementalGenerator
             // Add XML documentation comment for the event if it's public
             if (classSymbol.DeclaredAccessibility == Accessibility.Public)
             {
-                sb.AppendLine("        /// <summary>");
-                sb.AppendLine("        /// Occurs when a property value changes.");
-                sb.AppendLine("        /// </summary>");
+                sb.AppendLine($"{indent}/// <summary>");
+                sb.AppendLine($"{indent}/// Occurs when a property value changes.");
+                sb.AppendLine($"{indent}/// </summary>");
+                sb.AppendLine($"{indent}/// <seealso cref=\"INotifyPropertyChanged\"/>");
             }
 
-            sb.AppendLine("        public event PropertyChangedEventHandler? PropertyChanged;");
+            sb.AppendLine($"{indent}public event PropertyChangedEventHandler? PropertyChanged;");
             sb.AppendLine();
 
             // Add XML documentation comment for OnPropertyChanged method
-            sb.AppendLine("        /// <summary>");
-            sb.AppendLine("        /// Raises the PropertyChanged event.");
-            sb.AppendLine("        /// </summary>");
-            sb.AppendLine("        /// <param name=\"propertyName\">The name of the property that changed.</param>");
+            sb.AppendLine($"{indent}/// <summary>");
+            sb.AppendLine($"{indent}/// Raises the PropertyChanged event.");
+            sb.AppendLine($"{indent}/// </summary>");
+            sb.AppendLine($"{indent}/// <param name=\"propertyName\">The name of the property that changed.</param>");
             sb.AppendLine(
-                "        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)");
-            sb.AppendLine("        {");
-            sb.AppendLine("            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));");
-            sb.AppendLine("        }");
+                $"{indent}protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)");
+            sb.AppendLine($"{indent}{{");
+            sb.AppendLine($"{indent}    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));");
+            sb.AppendLine($"{indent}}}");
             sb.AppendLine();
 
-            sb.AppendLine("        /// <summary>");
-            sb.AppendLine("        /// Raises the PropertyChanged event.");
-            sb.AppendLine("        /// </summary>");
-            sb.AppendLine("        /// <param name=\"args\">The PropertyChangedEventArgs.</param>");
-            sb.AppendLine("        protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)");
-            sb.AppendLine("        {");
-            sb.AppendLine("            PropertyChanged?.Invoke(this, args);");
-            sb.AppendLine("        }");
+            sb.AppendLine($"{indent}/// <summary>");
+            sb.AppendLine($"{indent}/// Raises the PropertyChanged event.");
+            sb.AppendLine($"{indent}/// </summary>");
+            sb.AppendLine($"{indent}/// <param name=\"args\">The PropertyChangedEventArgs.</param>");
+            sb.AppendLine($"{indent}protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)");
+            sb.AppendLine($"{indent}{{");
+            sb.AppendLine($"{indent}    PropertyChanged?.Invoke(this, args);");
+            sb.AppendLine($"{indent}}}");
             sb.AppendLine();
         }
 
@@ -608,20 +699,21 @@ public class ReactiveGenerator : IIncrementalGenerator
                 if (property.DeclaredAccessibility == Accessibility.Public)
                 {
                     var propertyTypeName = FormatTypeNameForXmlDoc(property.Type);
-                    sb.AppendLine("        /// <summary>");
-                    sb.AppendLine($"        /// Gets or sets a value for <see cref=\"{propertyTypeName}\"/>.");
-                    sb.AppendLine("        /// </summary>");
-                    sb.AppendLine($"        /// <value>The <see cref=\"{propertyTypeName}\"/> value.</value>");
+                    sb.AppendLine($"{indent}/// <summary>");
+                    sb.AppendLine($"{indent}/// Gets or sets a value for <see cref=\"{propertyTypeName}\"/>.");
+                    sb.AppendLine($"{indent}/// </summary>");
+                    sb.AppendLine($"{indent}/// <value>The <see cref=\"{propertyTypeName}\"/> value.</value>");
                 }
 
                 if (useLegacyMode)
                 {
                     var backingFieldName = GetBackingFieldName(property.Name);
-                    GenerateLegacyProperty(sb, property, propertyAccessibility, backingFieldName, isReactiveObject);
+                    GenerateLegacyProperty(sb, property, propertyAccessibility, backingFieldName, isReactiveObject,
+                        indent);
                 }
                 else
                 {
-                    GenerateFieldKeywordProperty(sb, property, propertyAccessibility, isReactiveObject);
+                    GenerateFieldKeywordProperty(sb, property, propertyAccessibility, isReactiveObject, indent);
                 }
 
                 if (!SymbolEqualityComparer.Default.Equals(property, lastProperty))
@@ -631,8 +723,18 @@ public class ReactiveGenerator : IIncrementalGenerator
             }
         }
 
-        sb.AppendLine("    }");
+        // Close class declaration
+        indent = indent.Substring(4);
+        sb.AppendLine($"{indent}}}");
 
+        // Close containing type declarations
+        for (int i = 0; i < containingTypes.Count; i++)
+        {
+            indent = indent.Substring(4);
+            sb.AppendLine($"{indent}}}");
+        }
+
+        // Close namespace
         if (namespaceName != null)
         {
             sb.AppendLine("}");
@@ -661,26 +763,27 @@ public class ReactiveGenerator : IIncrementalGenerator
         IPropertySymbol property,
         string propertyAccessibility,
         string backingFieldName,
-        bool isReactiveObject)
+        bool isReactiveObject,
+        string indent)
     {
         var propertyName = property.Name;
         var propertyType = GetPropertyTypeWithNullability(property);
         var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
         var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
 
-        sb.AppendLine($"        {propertyAccessibility} partial {propertyType} {propertyName}");
-        sb.AppendLine("        {");
+        sb.AppendLine($"{indent}{propertyAccessibility} partial {propertyType} {propertyName}");
+        sb.AppendLine($"{indent}{{");
 
         if (isReactiveObject)
         {
             var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
             var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
 
-            sb.AppendLine($"            {getterModifier}get => {backingFieldName};");
+            sb.AppendLine($"{indent}    {getterModifier}get => {backingFieldName};");
             if (property.SetMethod != null)
             {
                 sb.AppendLine(
-                    $"            {setterModifier}set => this.RaiseAndSetIfChanged(ref {backingFieldName}, value);");
+                    $"{indent}    {setterModifier}set => this.RaiseAndSetIfChanged(ref {backingFieldName}, value);");
             }
         }
         else
@@ -688,48 +791,49 @@ public class ReactiveGenerator : IIncrementalGenerator
             var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
             var eventArgsFieldName = GetEventArgsFieldName(propertyName);
 
-            sb.AppendLine($"            {getterModifier}get => {backingFieldName};");
+            sb.AppendLine($"{indent}    {getterModifier}get => {backingFieldName};");
 
             if (property.SetMethod != null)
             {
                 var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
-                sb.AppendLine($"            {setterModifier}set");
-                sb.AppendLine("            {");
-                sb.AppendLine($"                if (!Equals({backingFieldName}, value))");
-                sb.AppendLine("                {");
-                sb.AppendLine($"                    {backingFieldName} = value;");
-                sb.AppendLine($"                    OnPropertyChanged({eventArgsFieldName});");
-                sb.AppendLine("                }");
-                sb.AppendLine("            }");
+                sb.AppendLine($"{indent}    {setterModifier}set");
+                sb.AppendLine($"{indent}    {{");
+                sb.AppendLine($"{indent}        if (!Equals({backingFieldName}, value))");
+                sb.AppendLine($"{indent}        {{");
+                sb.AppendLine($"{indent}            {backingFieldName} = value;");
+                sb.AppendLine($"{indent}            OnPropertyChanged({eventArgsFieldName});");
+                sb.AppendLine($"{indent}        }}");
+                sb.AppendLine($"{indent}    }}");
             }
         }
 
-        sb.AppendLine("        }");
+        sb.AppendLine($"{indent}}}");
     }
 
     private static void GenerateFieldKeywordProperty(
         StringBuilder sb,
         IPropertySymbol property,
         string propertyAccessibility,
-        bool isReactiveObject)
+        bool isReactiveObject,
+        string indent)
     {
         var propertyName = property.Name;
         var propertyType = GetPropertyTypeWithNullability(property);
         var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
         var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
 
-        sb.AppendLine($"        {propertyAccessibility} partial {propertyType} {propertyName}");
-        sb.AppendLine("        {");
+        sb.AppendLine($"{indent}{propertyAccessibility} partial {propertyType} {propertyName}");
+        sb.AppendLine($"{indent}{{");
 
         if (isReactiveObject)
         {
             var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
             var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
 
-            sb.AppendLine($"            {getterModifier}get => field;");
+            sb.AppendLine($"{indent}    {getterModifier}get => field;");
             if (property.SetMethod != null)
             {
-                sb.AppendLine($"            {setterModifier}set => this.RaiseAndSetIfChanged(ref field, value);");
+                sb.AppendLine($"{indent}    {setterModifier}set => this.RaiseAndSetIfChanged(ref field, value);");
             }
         }
         else
@@ -737,23 +841,23 @@ public class ReactiveGenerator : IIncrementalGenerator
             var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
             var eventArgsFieldName = GetEventArgsFieldName(propertyName);
 
-            sb.AppendLine($"            {getterModifier}get => field;");
+            sb.AppendLine($"{indent}    {getterModifier}get => field;");
 
             if (property.SetMethod != null)
             {
                 var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
-                sb.AppendLine($"            {setterModifier}set");
-                sb.AppendLine("            {");
-                sb.AppendLine("                if (!Equals(field, value))");
-                sb.AppendLine("                {");
-                sb.AppendLine("                    field = value;");
-                sb.AppendLine($"                    OnPropertyChanged({eventArgsFieldName});");
-                sb.AppendLine("                }");
-                sb.AppendLine("            }");
+                sb.AppendLine($"{indent}    {setterModifier}set");
+                sb.AppendLine($"{indent}    {{");
+                sb.AppendLine($"{indent}        if (!Equals(field, value))");
+                sb.AppendLine($"{indent}        {{");
+                sb.AppendLine($"{indent}            field = value;");
+                sb.AppendLine($"{indent}            OnPropertyChanged({eventArgsFieldName});");
+                sb.AppendLine($"{indent}        }}");
+                sb.AppendLine($"{indent}    }}");
             }
         }
 
-        sb.AppendLine("        }");
+        sb.AppendLine($"{indent}}}");
     }
 
     private static string GetBackingFieldName(string propertyName)
