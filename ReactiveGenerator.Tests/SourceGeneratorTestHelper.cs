@@ -11,17 +11,20 @@ public static class SourceGeneratorTestHelper
     public static Task TestAndVerify(
         string source,
         Dictionary<string, string>? analyzerConfigOptions = null,
-        [CallerMemberName] string? testName = null)
+        [CallerMemberName] string? testName = null,
+        params IIncrementalGenerator[] generators)
     {
+        if (generators == null || generators.Length == 0)
+        {
+            throw new ArgumentException("At least one generator must be provided", nameof(generators));
+        }
+
         // Create compilation
         var compilation = CreateCompilation(source);
         
-        // Create generator instance
-        var generator = new ReactiveGenerator();
-        
-        // Create the driver with generator and options
+        // Create the driver with generators and options
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
-            new[] { generator.AsSourceGenerator() },
+            generators.Select(g => g.AsSourceGenerator()),
             parseOptions: (CSharpParseOptions)compilation.SyntaxTrees.First().Options,
             optionsProvider: analyzerConfigOptions != null 
                 ? new DictionaryAnalyzerConfigOptionsProvider(analyzerConfigOptions) 
