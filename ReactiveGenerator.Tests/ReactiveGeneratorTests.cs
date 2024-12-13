@@ -2,6 +2,14 @@ namespace ReactiveGenerator.Tests;
 
 public class ReactiveGeneratorTests
 {
+    private Task TestAndVerify(string source, Dictionary<string, string>? analyzerConfigOptions = null)
+    {
+        return SourceGeneratorTestHelper.TestAndVerify(
+            source, 
+            analyzerConfigOptions, 
+            generators: new ReactiveGenerator());
+    }
+
     [Fact]
     public Task SimpleClassWithReactiveAttribute()
     {
@@ -12,7 +20,7 @@ public class ReactiveGeneratorTests
                 public partial string Name { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -27,7 +35,7 @@ public class ReactiveGeneratorTests
                 public partial string Name { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -42,7 +50,7 @@ public class ReactiveGeneratorTests
                 public partial string Included { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -58,7 +66,7 @@ public class ReactiveGeneratorTests
                 private partial string PrivateProp { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -74,7 +82,7 @@ public class ReactiveGeneratorTests
                 public partial U Value { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -88,7 +96,7 @@ public class ReactiveGeneratorTests
                 public partial string ReadWrite { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -102,7 +110,7 @@ public class ReactiveGeneratorTests
                 public partial int? NullableValue { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -116,7 +124,7 @@ public class ReactiveGeneratorTests
                 protected partial string Id { private get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -130,7 +138,7 @@ public class ReactiveGeneratorTests
                 public partial string NotImplemented { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -146,7 +154,7 @@ public class ReactiveGeneratorTests
                 }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -165,7 +173,7 @@ public class ReactiveGeneratorTests
                 public partial string DerivedProp { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -183,7 +191,7 @@ public class ReactiveGeneratorTests
             ["build_property.UseBackingFields"] = "true"
         };
 
-        return SourceGeneratorTestHelper.TestAndVerify(source, analyzerConfigOptions);
+        return TestAndVerify(source, analyzerConfigOptions);
     }
 
     [Fact]
@@ -196,7 +204,7 @@ public class ReactiveGeneratorTests
                 public partial string Name { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
     
     [Fact]
@@ -210,7 +218,7 @@ public class ReactiveGeneratorTests
                 public partial string DoubleDeclared { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -229,7 +237,7 @@ public class ReactiveGeneratorTests
                 }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -248,7 +256,7 @@ public class ReactiveGeneratorTests
                 public partial string PublicName { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -270,7 +278,7 @@ public class ReactiveGeneratorTests
                 }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -286,7 +294,7 @@ public class ReactiveGeneratorTests
                 public partial U? NullableStruct { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -300,7 +308,7 @@ public class ReactiveGeneratorTests
                 public partial string ConcreteProp { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -316,7 +324,7 @@ public class ReactiveGeneratorTests
                 public partial string PropWithProtectedInternalSet { get; protected internal set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -330,7 +338,7 @@ public class ReactiveGeneratorTests
                 public partial string NonVirtualProp { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -344,7 +352,7 @@ public class ReactiveGeneratorTests
                 public partial string InstanceProp { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -365,7 +373,7 @@ public class ReactiveGeneratorTests
                 public partial string RegularProp { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -380,7 +388,7 @@ public class ReactiveGeneratorTests
                 public partial Dictionary<int, List<T?>> NestedProp { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -405,7 +413,7 @@ public class ReactiveGeneratorTests
                 public override string GrandParentProp { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -430,7 +438,7 @@ public class ReactiveGeneratorTests
                 }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -445,7 +453,7 @@ public class ReactiveGeneratorTests
                 public partial string EditableName { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -459,7 +467,7 @@ public class ReactiveGeneratorTests
                 public partial (int X, int Y, string Label) Point { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -473,7 +481,7 @@ public class ReactiveGeneratorTests
                 public partial string RegularProp { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
     
     [Fact]
@@ -491,7 +499,7 @@ public class ReactiveGeneratorTests
                 private partial int PrivateReactiveProp { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -510,7 +518,7 @@ public class ReactiveGeneratorTests
                 public partial string DerivedProp { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -529,7 +537,7 @@ public class ReactiveGeneratorTests
                 public partial Dictionary<string, T> TypedDictProp { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -548,7 +556,7 @@ public class ReactiveGeneratorTests
                 internal partial string PropWithInternalAccessors { internal get; internal set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -569,7 +577,7 @@ public class ReactiveGeneratorTests
                 public partial string FullName { get; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -591,7 +599,7 @@ public class ReactiveGeneratorTests
                 public partial (string Name, int Count) TupleData { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -618,7 +626,7 @@ public class ReactiveGeneratorTests
                 public partial string GrandChildProp { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -639,7 +647,7 @@ public class ReactiveGeneratorTests
                 public partial string GetOnlyProp { get; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 
     [Fact]
@@ -667,6 +675,6 @@ public class ReactiveGeneratorTests
                 public partial string RegularProp { get; set; }
             }";
 
-        return SourceGeneratorTestHelper.TestAndVerify(source);
+        return TestAndVerify(source);
     }
 }
