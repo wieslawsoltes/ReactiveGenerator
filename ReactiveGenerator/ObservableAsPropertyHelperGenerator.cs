@@ -14,7 +14,7 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
     private sealed record PropertyInfo
     {
         public IPropertySymbol Property { get; init; }
-        public INamedTypeSymbol ContainingType { get; init; } // Ensure this is non-nullable
+        public INamedTypeSymbol ContainingType { get; init; }
         public Location Location { get; init; }
 
         public PropertyInfo(IPropertySymbol property, INamedTypeSymbol containingType, Location location)
@@ -132,6 +132,14 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         }
     }
 
+    private static string GetPropertyTypeWithNullability(IPropertySymbol property)
+    {
+        var propertyType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        return property.NullableAnnotation == NullableAnnotation.NotAnnotated
+            ? propertyType
+            : $"{propertyType}?";
+    }
+
     private static string FormatTypeNameForXmlDoc(ITypeSymbol type)
     {
         var format = new SymbolDisplayFormat(
@@ -142,12 +150,16 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         return type.ToDisplayString(format).Replace("<", "{").Replace(">", "}");
     }
 
-    private static string GetPropertyTypeWithNullability(IPropertySymbol property)
+    private static IEnumerable<INamedTypeSymbol> GetContainingTypesChain(INamedTypeSymbol symbol)
     {
-        var propertyType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        return property.Type.NullableAnnotation == NullableAnnotation.NotAnnotated
-            ? propertyType
-            : $"{propertyType}?";
+        var types = new List<INamedTypeSymbol>();
+        var current = symbol.ContainingType;
+        while (current != null)
+        {
+            types.Insert(0, current);
+            current = current.ContainingType;
+        }
+        return types;
     }
 
     private static string GenerateHelperProperties(
@@ -166,6 +178,9 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
             ? null
             : classSymbol.ContainingNamespace.ToDisplayString();
 
+        // Get containing types chain for nested classes
+        var containingTypes = GetContainingTypesChain(classSymbol).ToList();
+
         if (namespaceName != null)
         {
             sb.AppendLine($"namespace {namespaceName}");
@@ -173,6 +188,16 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         }
 
         var indent = namespaceName != null ? "    " : "";
+
+        // Generate containing type declarations
+        foreach (var containingType in containingTypes)
+        {
+            var containingTypeAccessibility = containingType.DeclaredAccessibility.ToString().ToLowerInvariant();
+            sb.AppendLine($"{indent}{containingTypeAccessibility} partial class {containingType.Name}");
+            sb.AppendLine($"{indent}{{");
+            indent += "    ";
+        }
+
         var accessibility = classSymbol.DeclaredAccessibility.ToString().ToLowerInvariant();
 
         // Format class name with type parameters if generic
@@ -218,8 +243,7 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         if (classSymbol.DeclaredAccessibility == Accessibility.Public)
         {
             sb.AppendLine($"{indent}/// <summary>");
-            sb.AppendLine(
-                $"{indent}/// A partial class implementation with observable property helpers for {xmlClassName}.");
+            sb.AppendLine($"{indent}/// A partial class implementation with observable property helpers for {xmlClassName}.");
             sb.AppendLine($"{indent}/// </summary>");
         }
 
@@ -239,6 +263,13 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         }
 
         sb.AppendLine($"{indent}}}");
+
+        // Close containing type declarations
+        for (int i = 0; i < containingTypes.Count; i++)
+        {
+            indent = indent.Substring(0, indent.Length - 4);
+            sb.AppendLine($"{indent}}}");
+        }
 
         if (namespaceName != null)
         {
@@ -263,16 +294,14 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
             sb.AppendLine($"{indent}/// </summary>");
         }
 
-        sb.AppendLine(
-            $"{indent}private readonly ObservableAsPropertyHelper<{nullablePropertyType}> {backingFieldName};");
+        sb.AppendLine($"{indent}private readonly ObservableAsPropertyHelper<{nullablePropertyType}> {backingFieldName};");
         sb.AppendLine();
 
         // Add XML documentation for the property
         if (property.DeclaredAccessibility == Accessibility.Public)
         {
             sb.AppendLine($"{indent}/// <summary>");
-            sb.AppendLine(
-                $"{indent}/// Gets the current value of type {xmlPropertyType} from the observable sequence.");
+            sb.AppendLine($"{indent}/// Gets the current value of type {xmlPropertyType} from the observable sequence.");
             sb.AppendLine($"{indent}/// </summary>");
             sb.AppendLine($"{indent}/// <value>The current value from the observable sequence.</value>");
         }
