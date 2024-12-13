@@ -11,44 +11,41 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
-namespace Global
+/// <summary>
+/// Provides extension methods for observing changes to properties of InnerClass.
+/// </summary>
+public static class OuterClass_InnerClassExtensions
 {
     /// <summary>
-    /// Provides extension methods for observing changes to properties of <see cref="InnerClass"/>.
+    /// Observes changes to the <see cref="OuterClass.InnerClass.Name"/> property.
     /// </summary>
-    public static class InnerClassWhenAnyValueExtensions
+    /// <param name="source">The source object.</param>
+    /// <returns>An observable sequence of <see cref="string"/> values.</returns>
+    public static IObservable<string?> WhenAnyName(
+        this global::OuterClass.InnerClass source)
     {
-        /// <summary>
-        /// Observes changes to the <see cref="OuterClass.InnerClass.Name"/> property.
-        /// </summary>
-        /// <param name="source">The source object.</param>
-        /// <returns>An observable sequence of <see cref="string"/> values.</returns>
-        public static IObservable<string?> WhenAnyName(
-            this global::OuterClass.InnerClass source)
-        {
-            if (source is null) throw new ArgumentNullException(nameof(source));
+        if (source is null) throw new ArgumentNullException(nameof(source));
 
-            return new PropertyObserver<global::OuterClass.InnerClass, string?>(
-                source,
-                "Name",
-                () => source.Name);
-        }
+        return new PropertyObserver<global::OuterClass.InnerClass, string?>(
+            source,
+            "Name",
+            () => source.Name);
+    }
 
-        /// <summary>
-        /// Observes changes to the <see cref="OuterClass.InnerClass.Value"/> property.
-        /// </summary>
-        /// <param name="source">The source object.</param>
-        /// <returns>An observable sequence of <see cref="int"/> values.</returns>
-        public static IObservable<int> WhenAnyValue(
-            this global::OuterClass.InnerClass source)
-        {
-            if (source is null) throw new ArgumentNullException(nameof(source));
+    /// <summary>
+    /// Observes changes to the <see cref="OuterClass.InnerClass.Value"/> property.
+    /// </summary>
+    /// <param name="source">The source object.</param>
+    /// <returns>An observable sequence of <see cref="int"/> values.</returns>
+    public static IObservable<int> WhenAnyValue(
+        this global::OuterClass.InnerClass source)
+    {
+        if (source is null) throw new ArgumentNullException(nameof(source));
 
-            return new PropertyObserver<global::OuterClass.InnerClass, int>(
-                source,
-                "Value",
-                () => source.Value);
-        }
+        return new PropertyObserver<global::OuterClass.InnerClass, int>(
+            source,
+            "Value",
+            () => source.Value);
     }
 }
 

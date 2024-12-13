@@ -213,76 +213,73 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
-namespace Global
+/// <summary>
+/// Provides extension methods for observing changes to properties of TestClass.
+/// </summary>
+public static class TestClassExtensions
 {
     /// <summary>
-    /// Provides extension methods for observing changes to properties of <see cref="TestClass"/>.
+    /// Observes changes to the <see cref="TestClass.PublicProp"/> property.
     /// </summary>
-    public static class TestClassWhenAnyValueExtensions
+    /// <param name="source">The source object.</param>
+    /// <returns>An observable sequence of <see cref="string"/> values.</returns>
+    public static IObservable<string?> WhenAnyPublicProp(
+        this global::TestClass source)
     {
-        /// <summary>
-        /// Observes changes to the <see cref="TestClass.PublicProp"/> property.
-        /// </summary>
-        /// <param name="source">The source object.</param>
-        /// <returns>An observable sequence of <see cref="string"/> values.</returns>
-        public static IObservable<string?> WhenAnyPublicProp(
-            this global::TestClass source)
-        {
-            if (source is null) throw new ArgumentNullException(nameof(source));
+        if (source is null) throw new ArgumentNullException(nameof(source));
 
-            return new PropertyObserver<global::TestClass, string?>(
-                source,
-                "PublicProp",
-                () => source.PublicProp);
-        }
+        return new PropertyObserver<global::TestClass, string?>(
+            source,
+            "PublicProp",
+            () => source.PublicProp);
+    }
 
-        /// <summary>
-        /// Observes changes to the <see cref="TestClass.ProtectedProp"/> property.
-        /// </summary>
-        /// <param name="source">The source object.</param>
-        /// <returns>An observable sequence of <see cref="string"/> values.</returns>
-        public static IObservable<string?> WhenAnyProtectedProp(
-            this global::TestClass source)
-        {
-            if (source is null) throw new ArgumentNullException(nameof(source));
+    /// <summary>
+    /// Observes changes to the <see cref="TestClass.ProtectedProp"/> property.
+    /// </summary>
+    /// <param name="source">The source object.</param>
+    /// <returns>An observable sequence of <see cref="string"/> values.</returns>
+    public static IObservable<string?> WhenAnyProtectedProp(
+        this global::TestClass source)
+    {
+        if (source is null) throw new ArgumentNullException(nameof(source));
 
-            return new PropertyObserver<global::TestClass, string?>(
-                source,
-                "ProtectedProp",
-                () => source.ProtectedProp);
-        }
+        return new PropertyObserver<global::TestClass, string?>(
+            source,
+            "ProtectedProp",
+            () => source.ProtectedProp);
+    }
 
-        /// <summary>
-        /// Observes changes to the <see cref="TestClass.InternalProp"/> property.
-        /// </summary>
-        /// <param name="source">The source object.</param>
-        /// <returns>An observable sequence of <see cref="string"/> values.</returns>
-        public static IObservable<string?> WhenAnyInternalProp(
-            this global::TestClass source)
-        {
-            if (source is null) throw new ArgumentNullException(nameof(source));
+    /// <summary>
+    /// Observes changes to the <see cref="TestClass.InternalProp"/> property.
+    /// </summary>
+    /// <param name="source">The source object.</param>
+    /// <returns>An observable sequence of <see cref="string"/> values.</returns>
+    public static IObservable<string?> WhenAnyInternalProp(
+        this global::TestClass source)
+    {
+        if (source is null) throw new ArgumentNullException(nameof(source));
 
-            return new PropertyObserver<global::TestClass, string?>(
-                source,
-                "InternalProp",
-                () => source.InternalProp);
-        }
+        return new PropertyObserver<global::TestClass, string?>(
+            source,
+            "InternalProp",
+            () => source.InternalProp);
+    }
 
-        /// <summary>
-        /// Observes changes to the <see cref="TestClass.PrivateProp"/> property.
-        /// </summary>
-        /// <param name="source">The source object.</param>
-        /// <returns>An observable sequence of <see cref="string"/> values.</returns>
-        public static IObservable<string?> WhenAnyPrivateProp(
-            this global::TestClass source)
-        {
-            if (source is null) throw new ArgumentNullException(nameof(source));
+    /// <summary>
+    /// Observes changes to the <see cref="TestClass.PrivateProp"/> property.
+    /// </summary>
+    /// <param name="source">The source object.</param>
+    /// <returns>An observable sequence of <see cref="string"/> values.</returns>
+    public static IObservable<string?> WhenAnyPrivateProp(
+        this global::TestClass source)
+    {
+        if (source is null) throw new ArgumentNullException(nameof(source));
 
-            return new PropertyObserver<global::TestClass, string?>(
-                source,
-                "PrivateProp",
-                () => source.PrivateProp);
-        }
+        return new PropertyObserver<global::TestClass, string?>(
+            source,
+            "PrivateProp",
+            () => source.PrivateProp);
     }
 }
 

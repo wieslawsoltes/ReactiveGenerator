@@ -14,9 +14,9 @@ using ReactiveGenerator.Internal;
 namespace First
 {
     /// <summary>
-    /// Provides extension methods for observing changes to properties of <see cref="TestClass"/>.
+    /// Provides extension methods for observing changes to properties of TestClass.
     /// </summary>
-    public static class TestClassWhenAnyValueExtensions
+    public static class First_TestClassExtensions
     {
         /// <summary>
         /// Observes changes to the <see cref="First.TestClass.Name"/> property.
@@ -253,9 +253,9 @@ using ReactiveGenerator.Internal;
 namespace Second
 {
     /// <summary>
-    /// Provides extension methods for observing changes to properties of <see cref="TestClass"/>.
+    /// Provides extension methods for observing changes to properties of TestClass.
     /// </summary>
-    public static class TestClassWhenAnyValueExtensions
+    public static class Second_TestClassExtensions
     {
         /// <summary>
         /// Observes changes to the <see cref="Second.TestClass.Name"/> property.
