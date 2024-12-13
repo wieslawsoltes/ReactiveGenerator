@@ -9,35 +9,35 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
+/// <summary>
+/// A partial class implementation of <see cref="INotifyPropertyChanged"/> for <see cref="BaseViewModel"/>.
+/// </summary>
+public partial class BaseViewModel : INotifyPropertyChanged
+{
     /// <summary>
-    /// A partial class implementation of <see cref="INotifyPropertyChanged"/> for <see cref="BaseViewModel"/>.
+    /// Occurs when a property value changes.
     /// </summary>
-    public partial class BaseViewModel : INotifyPropertyChanged
+    /// <seealso cref="INotifyPropertyChanged"/>
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>
+    /// Raises the <see cref="PropertyChanged"/> event.
+    /// </summary>
+    /// <param name="propertyName">The name of the property that changed.</param>
+    protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
-        /// <summary>
-        /// Occurs when a property value changes.
-        /// </summary>
-        /// <seealso cref="INotifyPropertyChanged"/>
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        /// <summary>
-        /// Raises the <see cref="PropertyChanged"/> event.
-        /// </summary>
-        /// <param name="propertyName">The name of the property that changed.</param>
-        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        /// <summary>
-        /// Raises the <see cref="PropertyChanged"/> event.
-        /// </summary>
-        /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
-        protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
-        {
-            PropertyChanged?.Invoke(this, args);
-        }
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
+
+    /// <summary>
+    /// Raises the <see cref="PropertyChanged"/> event.
+    /// </summary>
+    /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
+    protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
+    {
+        PropertyChanged?.Invoke(this, args);
+    }
+}
 
     },
     {
@@ -49,30 +49,30 @@ using System.Runtime.CompilerServices;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-    /// <summary>
-    /// A partial class implementation for <see cref="BaseViewModel"/>.
-    /// </summary>
-    public partial class BaseViewModel
-    {
-        private static readonly PropertyChangedEventArgs _basePropChangedEventArgs = new PropertyChangedEventArgs(nameof(BaseProp));
+/// <summary>
+/// A partial class implementation for <see cref="BaseViewModel"/>.
+/// </summary>
+public partial class BaseViewModel
+{
+    private static readonly PropertyChangedEventArgs _basePropChangedEventArgs = new PropertyChangedEventArgs(nameof(BaseProp));
 
-        /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
-        /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
-        public partial string BaseProp
+    /// <summary>
+    /// Gets or sets a value for <see cref="string"/>.
+    /// </summary>
+    /// <value>The <see cref="string"/> value.</value>
+    public partial string BaseProp
+    {
+        get => field;
+        set
         {
-            get => field;
-            set
+            if (!Equals(field, value))
             {
-                if (!Equals(field, value))
-                {
-                    field = value;
-                    OnPropertyChanged(_basePropChangedEventArgs);
-                }
+                field = value;
+                OnPropertyChanged(_basePropChangedEventArgs);
             }
         }
     }
+}
 
     },
     {
@@ -84,30 +84,30 @@ using System.Runtime.CompilerServices;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-    /// <summary>
-    /// A partial class implementation for <see cref="DerivedViewModel"/>.
-    /// </summary>
-    public partial class DerivedViewModel
-    {
-        private static readonly PropertyChangedEventArgs _derivedPropChangedEventArgs = new PropertyChangedEventArgs(nameof(DerivedProp));
+/// <summary>
+/// A partial class implementation for <see cref="DerivedViewModel"/>.
+/// </summary>
+public partial class DerivedViewModel
+{
+    private static readonly PropertyChangedEventArgs _derivedPropChangedEventArgs = new PropertyChangedEventArgs(nameof(DerivedProp));
 
-        /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
-        /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
-        public partial string DerivedProp
+    /// <summary>
+    /// Gets or sets a value for <see cref="string"/>.
+    /// </summary>
+    /// <value>The <see cref="string"/> value.</value>
+    public partial string DerivedProp
+    {
+        get => field;
+        set
         {
-            get => field;
-            set
+            if (!Equals(field, value))
             {
-                if (!Equals(field, value))
-                {
-                    field = value;
-                    OnPropertyChanged(_derivedPropChangedEventArgs);
-                }
+                field = value;
+                OnPropertyChanged(_derivedPropChangedEventArgs);
             }
         }
     }
+}
 
     },
     {
@@ -119,30 +119,30 @@ using System.Runtime.CompilerServices;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-    /// <summary>
-    /// A partial class implementation for <see cref="GrandChildViewModel"/>.
-    /// </summary>
-    public partial class GrandChildViewModel
-    {
-        private static readonly PropertyChangedEventArgs _grandChildPropChangedEventArgs = new PropertyChangedEventArgs(nameof(GrandChildProp));
+/// <summary>
+/// A partial class implementation for <see cref="GrandChildViewModel"/>.
+/// </summary>
+public partial class GrandChildViewModel
+{
+    private static readonly PropertyChangedEventArgs _grandChildPropChangedEventArgs = new PropertyChangedEventArgs(nameof(GrandChildProp));
 
-        /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
-        /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
-        public partial string GrandChildProp
+    /// <summary>
+    /// Gets or sets a value for <see cref="string"/>.
+    /// </summary>
+    /// <value>The <see cref="string"/> value.</value>
+    public partial string GrandChildProp
+    {
+        get => field;
+        set
         {
-            get => field;
-            set
+            if (!Equals(field, value))
             {
-                if (!Equals(field, value))
-                {
-                    field = value;
-                    OnPropertyChanged(_grandChildPropChangedEventArgs);
-                }
+                field = value;
+                OnPropertyChanged(_grandChildPropChangedEventArgs);
             }
         }
     }
+}
 
     },
     {

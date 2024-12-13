@@ -31,35 +31,35 @@ sealed class ReactiveAttribute : Attribute
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
+/// <summary>
+/// A partial class implementation of <see cref="INotifyPropertyChanged"/> for <see cref="TestClass{T}"/>.
+/// </summary>
+public partial class TestClass<T> : INotifyPropertyChanged
+{
     /// <summary>
-    /// A partial class implementation of <see cref="INotifyPropertyChanged"/> for <see cref="TestClass{T}"/>.
+    /// Occurs when a property value changes.
     /// </summary>
-    public partial class TestClass<T> : INotifyPropertyChanged
+    /// <seealso cref="INotifyPropertyChanged"/>
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>
+    /// Raises the <see cref="PropertyChanged"/> event.
+    /// </summary>
+    /// <param name="propertyName">The name of the property that changed.</param>
+    protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
-        /// <summary>
-        /// Occurs when a property value changes.
-        /// </summary>
-        /// <seealso cref="INotifyPropertyChanged"/>
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        /// <summary>
-        /// Raises the <see cref="PropertyChanged"/> event.
-        /// </summary>
-        /// <param name="propertyName">The name of the property that changed.</param>
-        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        /// <summary>
-        /// Raises the <see cref="PropertyChanged"/> event.
-        /// </summary>
-        /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
-        protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
-        {
-            PropertyChanged?.Invoke(this, args);
-        }
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
+
+    /// <summary>
+    /// Raises the <see cref="PropertyChanged"/> event.
+    /// </summary>
+    /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
+    protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
+    {
+        PropertyChanged?.Invoke(this, args);
+    }
+}
 
     },
     {
@@ -71,66 +71,66 @@ using System.Runtime.CompilerServices;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
+/// <summary>
+/// A partial class implementation for <see cref="TestClass{T}"/>.
+/// </summary>
+public partial class TestClass<T>
+{
+    private static readonly PropertyChangedEventArgs _typedPropChangedEventArgs = new PropertyChangedEventArgs(nameof(TypedProp));
+    private static readonly PropertyChangedEventArgs _typedListPropChangedEventArgs = new PropertyChangedEventArgs(nameof(TypedListProp));
+    private static readonly PropertyChangedEventArgs _typedDictPropChangedEventArgs = new PropertyChangedEventArgs(nameof(TypedDictProp));
+
     /// <summary>
-    /// A partial class implementation for <see cref="TestClass{T}"/>.
+    /// Gets or sets a value for <see cref="T"/>.
     /// </summary>
-    public partial class TestClass<T>
+    /// <value>The <see cref="T"/> value.</value>
+    public partial T TypedProp
     {
-        private static readonly PropertyChangedEventArgs _typedPropChangedEventArgs = new PropertyChangedEventArgs(nameof(TypedProp));
-        private static readonly PropertyChangedEventArgs _typedListPropChangedEventArgs = new PropertyChangedEventArgs(nameof(TypedListProp));
-        private static readonly PropertyChangedEventArgs _typedDictPropChangedEventArgs = new PropertyChangedEventArgs(nameof(TypedDictProp));
-
-        /// <summary>
-        /// Gets or sets a value for <see cref="T"/>.
-        /// </summary>
-        /// <value>The <see cref="T"/> value.</value>
-        public partial T TypedProp
+        get => field;
+        set
         {
-            get => field;
-            set
+            if (!Equals(field, value))
             {
-                if (!Equals(field, value))
-                {
-                    field = value;
-                    OnPropertyChanged(_typedPropChangedEventArgs);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets a value for <see cref="List{T}"/>.
-        /// </summary>
-        /// <value>The <see cref="List{T}"/> value.</value>
-        public partial List<T> TypedListProp
-        {
-            get => field;
-            set
-            {
-                if (!Equals(field, value))
-                {
-                    field = value;
-                    OnPropertyChanged(_typedListPropChangedEventArgs);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets a value for <see cref="Dictionary{string, T}"/>.
-        /// </summary>
-        /// <value>The <see cref="Dictionary{string, T}"/> value.</value>
-        public partial Dictionary<string, T> TypedDictProp
-        {
-            get => field;
-            set
-            {
-                if (!Equals(field, value))
-                {
-                    field = value;
-                    OnPropertyChanged(_typedDictPropChangedEventArgs);
-                }
+                field = value;
+                OnPropertyChanged(_typedPropChangedEventArgs);
             }
         }
     }
+
+    /// <summary>
+    /// Gets or sets a value for <see cref="List{T}"/>.
+    /// </summary>
+    /// <value>The <see cref="List{T}"/> value.</value>
+    public partial List<T> TypedListProp
+    {
+        get => field;
+        set
+        {
+            if (!Equals(field, value))
+            {
+                field = value;
+                OnPropertyChanged(_typedListPropChangedEventArgs);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets a value for <see cref="Dictionary{string, T}"/>.
+    /// </summary>
+    /// <value>The <see cref="Dictionary{string, T}"/> value.</value>
+    public partial Dictionary<string, T> TypedDictProp
+    {
+        get => field;
+        set
+        {
+            if (!Equals(field, value))
+            {
+                field = value;
+                OnPropertyChanged(_typedDictPropChangedEventArgs);
+            }
+        }
+    }
+}
 
     }
   ],

@@ -31,35 +31,35 @@ sealed class ReactiveAttribute : Attribute
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
+/// <summary>
+/// A partial class implementation of <see cref="INotifyPropertyChanged"/> for <see cref="TestClass"/>.
+/// </summary>
+public partial class TestClass : INotifyPropertyChanged
+{
     /// <summary>
-    /// A partial class implementation of <see cref="INotifyPropertyChanged"/> for <see cref="TestClass"/>.
+    /// Occurs when a property value changes.
     /// </summary>
-    public partial class TestClass : INotifyPropertyChanged
+    /// <seealso cref="INotifyPropertyChanged"/>
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>
+    /// Raises the <see cref="PropertyChanged"/> event.
+    /// </summary>
+    /// <param name="propertyName">The name of the property that changed.</param>
+    protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
-        /// <summary>
-        /// Occurs when a property value changes.
-        /// </summary>
-        /// <seealso cref="INotifyPropertyChanged"/>
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        /// <summary>
-        /// Raises the <see cref="PropertyChanged"/> event.
-        /// </summary>
-        /// <param name="propertyName">The name of the property that changed.</param>
-        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        /// <summary>
-        /// Raises the <see cref="PropertyChanged"/> event.
-        /// </summary>
-        /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
-        protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
-        {
-            PropertyChanged?.Invoke(this, args);
-        }
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
+
+    /// <summary>
+    /// Raises the <see cref="PropertyChanged"/> event.
+    /// </summary>
+    /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
+    protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
+    {
+        PropertyChanged?.Invoke(this, args);
+    }
+}
 
     },
     {
@@ -71,76 +71,76 @@ using System.Runtime.CompilerServices;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
+/// <summary>
+/// A partial class implementation for <see cref="TestClass"/>.
+/// </summary>
+public partial class TestClass
+{
+    private static readonly PropertyChangedEventArgs _propWithPrivateSetChangedEventArgs = new PropertyChangedEventArgs(nameof(PropWithPrivateSet));
+    private static readonly PropertyChangedEventArgs _propWithProtectedGetChangedEventArgs = new PropertyChangedEventArgs(nameof(PropWithProtectedGet));
+    private static readonly PropertyChangedEventArgs _propWithInternalSetChangedEventArgs = new PropertyChangedEventArgs(nameof(PropWithInternalSet));
+    private static readonly PropertyChangedEventArgs _propWithProtectedInternalSetChangedEventArgs = new PropertyChangedEventArgs(nameof(PropWithProtectedInternalSet));
+
     /// <summary>
-    /// A partial class implementation for <see cref="TestClass"/>.
+    /// Gets or sets a value for <see cref="string"/>.
     /// </summary>
-    public partial class TestClass
+    /// <value>The <see cref="string"/> value.</value>
+    public partial string PropWithPrivateSet
     {
-        private static readonly PropertyChangedEventArgs _propWithPrivateSetChangedEventArgs = new PropertyChangedEventArgs(nameof(PropWithPrivateSet));
-        private static readonly PropertyChangedEventArgs _propWithProtectedGetChangedEventArgs = new PropertyChangedEventArgs(nameof(PropWithProtectedGet));
-        private static readonly PropertyChangedEventArgs _propWithInternalSetChangedEventArgs = new PropertyChangedEventArgs(nameof(PropWithInternalSet));
-        private static readonly PropertyChangedEventArgs _propWithProtectedInternalSetChangedEventArgs = new PropertyChangedEventArgs(nameof(PropWithProtectedInternalSet));
-
-        /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
-        /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
-        public partial string PropWithPrivateSet
+        get => field;
+        private set
         {
-            get => field;
-            private set
+            if (!Equals(field, value))
             {
-                if (!Equals(field, value))
-                {
-                    field = value;
-                    OnPropertyChanged(_propWithPrivateSetChangedEventArgs);
-                }
-            }
-        }
-
-        protected partial string PropWithProtectedGet
-        {
-            private get => field;
-            set
-            {
-                if (!Equals(field, value))
-                {
-                    field = value;
-                    OnPropertyChanged(_propWithProtectedGetChangedEventArgs);
-                }
-            }
-        }
-
-        internal partial string PropWithInternalSet
-        {
-            get => field;
-            set
-            {
-                if (!Equals(field, value))
-                {
-                    field = value;
-                    OnPropertyChanged(_propWithInternalSetChangedEventArgs);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
-        /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
-        public partial string PropWithProtectedInternalSet
-        {
-            get => field;
-            protected internal set
-            {
-                if (!Equals(field, value))
-                {
-                    field = value;
-                    OnPropertyChanged(_propWithProtectedInternalSetChangedEventArgs);
-                }
+                field = value;
+                OnPropertyChanged(_propWithPrivateSetChangedEventArgs);
             }
         }
     }
+
+    protected partial string PropWithProtectedGet
+    {
+        private get => field;
+        set
+        {
+            if (!Equals(field, value))
+            {
+                field = value;
+                OnPropertyChanged(_propWithProtectedGetChangedEventArgs);
+            }
+        }
+    }
+
+    internal partial string PropWithInternalSet
+    {
+        get => field;
+        set
+        {
+            if (!Equals(field, value))
+            {
+                field = value;
+                OnPropertyChanged(_propWithInternalSetChangedEventArgs);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets a value for <see cref="string"/>.
+    /// </summary>
+    /// <value>The <see cref="string"/> value.</value>
+    public partial string PropWithProtectedInternalSet
+    {
+        get => field;
+        protected internal set
+        {
+            if (!Equals(field, value))
+            {
+                field = value;
+                OnPropertyChanged(_propWithProtectedInternalSetChangedEventArgs);
+            }
+        }
+    }
+}
 
     }
   ],

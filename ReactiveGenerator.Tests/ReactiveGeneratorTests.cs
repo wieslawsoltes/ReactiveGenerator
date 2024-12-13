@@ -677,4 +677,267 @@ public class ReactiveGeneratorTests
 
         return TestAndVerify(source);
     }
+
+    [Fact]
+    public Task NestedPrivateClassWithReactiveProperties()
+    {
+        var source = @"
+            public partial class OuterClass
+            {
+                [Reactive]
+                private partial class PrivateInnerClass
+                {
+                    public partial string InnerProp { get; set; }
+                    private partial int PrivateInnerProp { get; set; }
+                }
+
+                [Reactive]
+                protected partial class ProtectedInnerClass
+                {
+                    public partial string ProtectedClassProp { get; set; }
+                }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task MultiLevelNestedClassesWithReactiveProperties()
+    {
+        var source = @"
+            public partial class Level1
+            {
+                [Reactive]
+                public partial class Level2
+                {
+                    public partial string Level2Prop { get; set; }
+
+                    [Reactive]
+                    private partial class Level3
+                    {
+                        public partial string Level3Prop { get; set; }
+                        
+                        [Reactive]
+                        internal partial class Level4
+                        {
+                            public partial string Level4Prop { get; set; }
+                        }
+                    }
+                }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task NestedClassesWithDifferentAccessModifiers()
+    {
+        var source = @"
+            [Reactive]
+            public partial class Container
+            {
+                public partial string ContainerProp { get; set; }
+
+                [Reactive]
+                private partial class Private
+                {
+                    public partial string PrivateProp { get; set; }
+                }
+
+                [Reactive]
+                protected partial class Protected
+                {
+                    public partial string ProtectedProp { get; set; }
+                }
+
+                [Reactive]
+                internal partial class Internal
+                {
+                    public partial string InternalProp { get; set; }
+                }
+
+                [Reactive]
+                public partial class Public
+                {
+                    public partial string PublicProp { get; set; }
+                }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task NestedClassesWithGenericConstraints()
+    {
+        var source = @"
+            public partial class Container<T>
+                where T : class
+            {
+                [Reactive]
+                public partial class Nested<U>
+                    where U : struct
+                {
+                    public partial T? RefProp { get; set; }
+                    public partial U ValueProp { get; set; }
+                    public partial Dictionary<T, List<U>> ComplexProp { get; set; }
+                }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task NestedClassesWithInheritanceAndInterfaces()
+    {
+        var source = @"
+            public interface INestedInterface
+            {
+                string Name { get; set; }
+            }
+
+            public partial class Container
+            {
+                [Reactive]
+                public abstract partial class NestedBase
+                {
+                    public abstract string AbstractProp { get; set; }
+                    public virtual partial string VirtualProp { get; set; }
+                }
+
+                [Reactive]
+                public partial class NestedDerived : NestedBase, INestedInterface
+                {
+                    public override string AbstractProp { get; set; }
+                    public override partial string VirtualProp { get; set; }
+                    string INestedInterface.Name { get; set; }
+                    public partial string RegularProp { get; set; }
+                }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task NestedClassesWithReactiveObjectInheritance()
+    {
+        var source = @"
+            using ReactiveUI;
+            
+            public partial class Container
+            {
+                [Reactive]
+                public partial class NestedReactiveViewModel : ReactiveObject
+                {
+                    public partial string ViewModelProp { get; set; }
+                    
+                    [Reactive]
+                    private partial class InnerViewModel : ReactiveObject
+                    {
+                        public partial string InnerProp { get; set; }
+                    }
+                }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task NestedClassesWithStaticAndInstanceMembers()
+    {
+        var source = @"
+            public partial class Container
+            {
+                [Reactive]
+                public partial class Nested
+                {
+                    public static partial string StaticProp { get; set; }
+                    public partial string InstanceProp { get; set; }
+                    
+                    [Reactive]
+                    private static partial class StaticNested
+                    {
+                        public static partial string StaticNestedProp { get; set; }
+                    }
+                }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task NestedClassesWithCustomPropertyImplementation()
+    {
+        var source = @"
+            public partial class Container
+            {
+                [Reactive]
+                public partial class Nested
+                {
+                    private string _customImpl = string.Empty;
+                    
+                    [Reactive]
+                    public partial string CustomImpl 
+                    { 
+                        get => _customImpl;
+                        set => _customImpl = value?.ToUpper() ?? string.Empty;
+                    }
+                    
+                    public partial string RegularProp { get; set; }
+                }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task NestedClassesWithMixedReactiveScopes()
+    {
+        var source = @"
+            [Reactive]
+            public partial class Container
+            {
+                public partial string ContainerProp { get; set; }
+
+                public partial class NonReactiveNested
+                {
+                    [Reactive]
+                    public partial string PropertyLevelReactiveProp { get; set; }
+                    public partial string NonReactiveProp { get; set; }
+                }
+
+                [Reactive]
+                public partial class ReactiveNested
+                {
+                    public partial string AllPropsReactiveProp { get; set; }
+                    [IgnoreReactive]
+                    public partial string IgnoredProp { get; set; }
+                }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task NestedClassesWithInitOnlyProperties()
+    {
+        var source = @"
+            public partial class Container
+            {
+                [Reactive]
+                public partial class Nested
+                {
+                    public partial string RegularProp { get; set; }
+                    public partial string InitOnlyProp { get; init; }
+                    
+                    [Reactive]
+                    private partial class InnerNested
+                    {
+                        public partial string InnerRegularProp { get; set; }
+                        public partial string InnerInitOnlyProp { get; init; }
+                    }
+                }
+            }";
+
+        return TestAndVerify(source);
+    }
 }
