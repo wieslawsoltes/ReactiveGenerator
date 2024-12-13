@@ -222,7 +222,7 @@ public static class TestClassExtensions
     /// Observes changes to the <see cref="TestClass.NullableRef"/> property.
     /// </summary>
     /// <param name="source">The source object.</param>
-    /// <returns>An observable sequence of <see cref="string"/> values.</returns>
+    /// <returns>An observable sequence of type string.</returns>
     public static IObservable<string?> WhenAnyNullableRef(
         this global::TestClass source)
     {
@@ -238,7 +238,7 @@ public static class TestClassExtensions
     /// Observes changes to the <see cref="TestClass.NullableValue"/> property.
     /// </summary>
     /// <param name="source">The source object.</param>
-    /// <returns>An observable sequence of <see cref="int?"/> values.</returns>
+    /// <returns>An observable sequence of type int?.</returns>
     public static IObservable<int?> WhenAnyNullableValue(
         this global::TestClass source)
     {

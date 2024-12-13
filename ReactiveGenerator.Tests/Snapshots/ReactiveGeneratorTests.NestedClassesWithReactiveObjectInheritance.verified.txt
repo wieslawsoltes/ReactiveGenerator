@@ -57,9 +57,9 @@ public partial class Container
             private static readonly PropertyChangedEventArgs _innerPropChangedEventArgs = new PropertyChangedEventArgs(nameof(InnerProp));
 
             /// <summary>
-            /// Gets or sets a value for <see cref="string"/>.
+            /// Gets or sets a value of type string.
             /// </summary>
-            /// <value>The <see cref="string"/> value.</value>
+            /// <value>The value of type string.</value>
             public partial string InnerProp
             {
                 get => field;
@@ -132,16 +132,16 @@ using System.Runtime.CompilerServices;
 public partial class Container
 {
     /// <summary>
-    /// A partial class implementation for <see cref="Container.NestedReactiveViewModel"/>.
+    /// A partial class implementation for Container.NestedReactiveViewModel.
     /// </summary>
     public partial class NestedReactiveViewModel
     {
         private static readonly PropertyChangedEventArgs _viewModelPropChangedEventArgs = new PropertyChangedEventArgs(nameof(ViewModelProp));
 
         /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
+        /// Gets or sets a value of type string.
         /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
+        /// <value>The value of type string.</value>
         public partial string ViewModelProp
         {
             get => field;

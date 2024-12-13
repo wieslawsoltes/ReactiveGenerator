@@ -121,15 +121,33 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         {
             var typeSymbol = group.Key;
             var source = GenerateHelperProperties(typeSymbol, group.ToList());
-    
+
             var fullTypeName = typeSymbol.ToDisplayString(new SymbolDisplayFormat(
                 typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
                 genericsOptions: SymbolDisplayGenericsOptions.None,
                 miscellaneousOptions: SymbolDisplayMiscellaneousOptions.None));
-        
+
             var fileName = $"{fullTypeName}.ObservableAsProperty.g.cs";
             context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
         }
+    }
+
+    private static string FormatTypeNameForXmlDoc(ITypeSymbol type)
+    {
+        var format = new SymbolDisplayFormat(
+            typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+            genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
+
+        return type.ToDisplayString(format).Replace("<", "{").Replace(">", "}");
+    }
+
+    private static string GetPropertyTypeWithNullability(IPropertySymbol property)
+    {
+        var propertyType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        return property.Type.NullableAnnotation == NullableAnnotation.NotAnnotated
+            ? propertyType
+            : $"{propertyType}?";
     }
 
     private static string GenerateHelperProperties(
@@ -154,36 +172,65 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
             sb.AppendLine("{");
         }
 
+        var indent = namespaceName != null ? "    " : "";
         var accessibility = classSymbol.DeclaredAccessibility.ToString().ToLowerInvariant();
 
         // Format class name with type parameters if generic
         var typeParameters = "";
+        var typeConstraints = "";
         if (classSymbol.TypeParameters.Length > 0)
         {
             typeParameters = "<" + string.Join(", ", classSymbol.TypeParameters.Select(tp => tp.Name)) + ">";
+
+            var constraints = new List<string>();
+            foreach (var typeParam in classSymbol.TypeParameters)
+            {
+                var paramConstraints = new List<string>();
+
+                if (typeParam.HasReferenceTypeConstraint)
+                    paramConstraints.Add("class");
+                else if (typeParam.HasValueTypeConstraint)
+                    paramConstraints.Add("struct");
+
+                foreach (var constraintType in typeParam.ConstraintTypes)
+                {
+                    paramConstraints.Add(constraintType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+                }
+
+                if (typeParam.HasConstructorConstraint)
+                    paramConstraints.Add("new()");
+
+                if (paramConstraints.Count > 0)
+                {
+                    constraints.Add($"where {typeParam.Name} : {string.Join(", ", paramConstraints)}");
+                }
+            }
+
+            if (constraints.Count > 0)
+            {
+                typeConstraints = " " + string.Join(" ", constraints);
+            }
         }
 
-        // Format XML doc class name
-        var minimalFormat = new SymbolDisplayFormat(
-            typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-            genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
-            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
+        var xmlClassName = FormatTypeNameForXmlDoc(classSymbol);
 
-        var xmlClassName = classSymbol.ToDisplayString(minimalFormat).Replace("<", "{").Replace(">", "}");
+        // Add XML documentation for the class
+        if (classSymbol.DeclaredAccessibility == Accessibility.Public)
+        {
+            sb.AppendLine($"{indent}/// <summary>");
+            sb.AppendLine(
+                $"{indent}/// A partial class implementation with observable property helpers for {xmlClassName}.");
+            sb.AppendLine($"{indent}/// </summary>");
+        }
 
-        // Add XML documentation comment if the class is public
-        sb.AppendLine("    /// <summary>");
-        sb.AppendLine(
-            $"    /// A partial class implementation with observable property helpers for <see cref=\"{xmlClassName}\"/>.");
-        sb.AppendLine("    /// </summary>");
-        sb.AppendLine($"    {accessibility} partial class {classSymbol.Name}{typeParameters}");
-        sb.AppendLine("    {");
+        sb.AppendLine($"{indent}{accessibility} partial class {classSymbol.Name}{typeParameters}{typeConstraints}");
+        sb.AppendLine($"{indent}{{");
 
         // Generate backing fields and properties
         var lastProperty = properties.Last();
         foreach (var property in properties)
         {
-            GenerateObservableAsPropertyHelper(sb, property.Property);
+            GenerateObservableAsPropertyHelper(sb, property.Property, indent + "    ");
 
             if (!SymbolEqualityComparer.Default.Equals(property.Property, lastProperty.Property))
             {
@@ -191,7 +238,7 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
             }
         }
 
-        sb.AppendLine("    }");
+        sb.AppendLine($"{indent}}}");
 
         if (namespaceName != null)
         {
@@ -201,46 +248,56 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         return sb.ToString();
     }
 
-    private static void GenerateObservableAsPropertyHelper(StringBuilder sb, IPropertySymbol property)
+    private static void GenerateObservableAsPropertyHelper(StringBuilder sb, IPropertySymbol property, string indent)
     {
-        var propertyType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        var nullablePropertyType = property.Type.NullableAnnotation == NullableAnnotation.NotAnnotated
-            ? propertyType
-            : $"{propertyType}?";
+        var nullablePropertyType = GetPropertyTypeWithNullability(property);
         var accessibility = property.DeclaredAccessibility.ToString().ToLowerInvariant();
         var backingFieldName = $"_{char.ToLowerInvariant(property.Name[0])}{property.Name.Substring(1)}Helper";
+        var xmlPropertyType = FormatTypeNameForXmlDoc(property.Type);
 
         // Add XML documentation for the backing field
-        sb.AppendLine("        /// <summary>");
-        sb.AppendLine($"        /// Gets the observable as property helper for <see cref=\"{property.Name}\"/>.");
-        sb.AppendLine("        /// </summary>");
+        if (property.DeclaredAccessibility == Accessibility.Public)
+        {
+            sb.AppendLine($"{indent}/// <summary>");
+            sb.AppendLine($"{indent}/// The ObservableAsPropertyHelper instance for the {property.Name} property.");
+            sb.AppendLine($"{indent}/// </summary>");
+        }
+
         sb.AppendLine(
-            $"        private readonly ObservableAsPropertyHelper<{nullablePropertyType}> {backingFieldName};");
+            $"{indent}private readonly ObservableAsPropertyHelper<{nullablePropertyType}> {backingFieldName};");
         sb.AppendLine();
 
         // Add XML documentation for the property
-        sb.AppendLine("        /// <summary>");
-        sb.AppendLine($"        /// Gets the value of the {property.Name} property.");
-        sb.AppendLine("        /// </summary>");
-        sb.AppendLine($"        /// <value>The value from the observable sequence.</value>");
-        sb.AppendLine($"        {accessibility} partial {nullablePropertyType} {property.Name}");
-        sb.AppendLine("        {");
-        sb.AppendLine($"            get => {backingFieldName}.Value;");
-        sb.AppendLine("        }");
+        if (property.DeclaredAccessibility == Accessibility.Public)
+        {
+            sb.AppendLine($"{indent}/// <summary>");
+            sb.AppendLine(
+                $"{indent}/// Gets the current value of type {xmlPropertyType} from the observable sequence.");
+            sb.AppendLine($"{indent}/// </summary>");
+            sb.AppendLine($"{indent}/// <value>The current value from the observable sequence.</value>");
+        }
+
+        sb.AppendLine($"{indent}{accessibility} partial {nullablePropertyType} {property.Name}");
+        sb.AppendLine($"{indent}{{");
+        sb.AppendLine($"{indent}    get => {backingFieldName}.Value;");
+        sb.AppendLine($"{indent}}}");
     }
 
-    private const string ObservableAsPropertyAttributeSource = @"using System;
+    private const string ObservableAsPropertyAttributeSource = @"// <auto-generated/>
+#nullable enable
+
+using System;
 
 namespace ReactiveGenerator
 {
     /// <summary>
-    /// Indicates that a property should be implemented as an ObservableAsPropertyHelper.
+    /// Indicates that a property should be implemented as an ObservableAsPropertyHelper instance.
     /// </summary>
     [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
     public sealed class ObservableAsPropertyAttribute : Attribute
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref=""ObservableAsPropertyAttribute""/> class.
+        /// Initializes a new instance of the ObservableAsPropertyAttribute class.
         /// </summary>
         public ObservableAsPropertyAttribute() { }
     }

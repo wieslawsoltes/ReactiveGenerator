@@ -48,9 +48,9 @@ internal partial class GenericViewModel<T>
     private static readonly PropertyChangedEventArgs _regularValueChangedEventArgs = new PropertyChangedEventArgs(nameof(RegularValue));
 
     /// <summary>
-    /// Gets or sets a value for <see cref="T"/>.
+    /// Gets or sets a value of type T.
     /// </summary>
-    /// <value>The <see cref="T"/> value.</value>
+    /// <value>The value of type T.</value>
     public partial T InitValue
     {
         get => field;
@@ -65,9 +65,9 @@ internal partial class GenericViewModel<T>
     }
 
     /// <summary>
-    /// Gets or sets a value for <see cref="T"/>.
+    /// Gets or sets a value of type T.
     /// </summary>
-    /// <value>The <see cref="T"/> value.</value>
+    /// <value>The value of type T.</value>
     public partial T RegularValue
     {
         get => field;

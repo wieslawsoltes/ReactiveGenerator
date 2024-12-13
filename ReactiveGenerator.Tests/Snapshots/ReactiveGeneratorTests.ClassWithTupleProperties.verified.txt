@@ -72,7 +72,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// A partial class implementation for <see cref="TestClass"/>.
+/// A partial class implementation for TestClass.
 /// </summary>
 public partial class TestClass
 {
@@ -80,9 +80,9 @@ public partial class TestClass
     private static readonly PropertyChangedEventArgs _pointChangedEventArgs = new PropertyChangedEventArgs(nameof(Point));
 
     /// <summary>
-    /// Gets or sets a value for <see cref="(string Name, int Age)"/>.
+    /// Gets or sets a value of type (string Name, int Age).
     /// </summary>
-    /// <value>The <see cref="(string Name, int Age)"/> value.</value>
+    /// <value>The value of type (string Name, int Age).</value>
     public partial (string Name, int Age) PersonInfo
     {
         get => field;
@@ -97,9 +97,9 @@ public partial class TestClass
     }
 
     /// <summary>
-    /// Gets or sets a value for <see cref="(int X, int Y, string Label)"/>.
+    /// Gets or sets a value of type (int X, int Y, string Label).
     /// </summary>
-    /// <value>The <see cref="(int X, int Y, string Label)"/> value.</value>
+    /// <value>The value of type (int X, int Y, string Label).</value>
     public partial (int X, int Y, string Label) Point
     {
         get => field;

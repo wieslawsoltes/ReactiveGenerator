@@ -154,11 +154,20 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         return true;
     }
 
+    private static string FormatTypeNameForXmlDoc(ITypeSymbol type)
+    {
+        var format = new SymbolDisplayFormat(
+            typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+            genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
+
+        return type.ToDisplayString(format).Replace("<", "{").Replace(">", "}");
+    }
+
     private static string GenerateExtensionsForClass(
         INamedTypeSymbol classSymbol,
         IEnumerable<IPropertySymbol> properties)
     {
-        // Skip generation for inaccessible types
         if (!IsTypeAccessible(classSymbol))
             return string.Empty;
 
@@ -172,12 +181,10 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         sb.AppendLine("using ReactiveGenerator.Internal;");
         sb.AppendLine();
 
-        // Get namespace
         var namespaceName = classSymbol.ContainingNamespace.IsGlobalNamespace
             ? null
             : classSymbol.ContainingNamespace.ToDisplayString();
 
-        // Add namespace
         if (namespaceName != null)
         {
             sb.AppendLine($"namespace {namespaceName}");
@@ -186,25 +193,21 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
 
         var indent = namespaceName != null ? "    " : "";
 
-        // Create class name based on full type path
         var extensionClassName = classSymbol.ToDisplayString(new SymbolDisplayFormat(
                 typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
                 genericsOptions: SymbolDisplayGenericsOptions.None,
                 miscellaneousOptions: SymbolDisplayMiscellaneousOptions.None))
             .Replace(".", "_") + "Extensions";
 
-        // Add class XML documentation
         sb.AppendLine($"{indent}/// <summary>");
         sb.AppendLine(
-            $"{indent}/// Provides extension methods for observing changes to properties of {classSymbol.Name}.");
+            $"{indent}/// Provides extension methods for observing changes to properties of {FormatTypeNameForXmlDoc(classSymbol)}.");
         sb.AppendLine($"{indent}/// </summary>");
 
-        // Extension class accessibility matches target type's effective accessibility
         var accessibility = classSymbol.DeclaredAccessibility == Accessibility.Internal ? "internal" : "public";
         sb.AppendLine($"{indent}{accessibility} static class {extensionClassName}");
         sb.AppendLine($"{indent}{{");
 
-        // Generate methods for each property
         var propertiesList = properties.ToList();
         var lastProperty = propertiesList.LastOrDefault();
 
@@ -220,7 +223,6 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
 
         sb.AppendLine($"{indent}}}");
 
-        // Close namespace
         if (namespaceName != null)
         {
             sb.AppendLine("}");
@@ -235,7 +237,6 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         IPropertySymbol property,
         string indent)
     {
-        // For generic classes, add type parameters and constraints
         var typeParameters = "";
         var typeConstraints = "";
         if (classSymbol.TypeParameters.Length > 0)
@@ -272,16 +273,10 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
             }
         }
 
-        // For XML documentation, use minimal format
-        var minimalFormat = new SymbolDisplayFormat(
-            typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-            genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
-            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
-
         var className = classSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        var xmlClassName = classSymbol.ToDisplayString(minimalFormat);
+        var xmlClassName = FormatTypeNameForXmlDoc(classSymbol);
+        var xmlPropertyType = FormatTypeNameForXmlDoc(property.Type);
 
-        // Handle nullable value types
         var propertyType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var isAlreadyNullable = property.Type.OriginalDefinition?.SpecialType == SpecialType.System_Nullable_T;
         var nullablePropertyType = isAlreadyNullable
@@ -290,17 +285,12 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
                 ? propertyType
                 : $"{propertyType}?");
 
-        var xmlPropertyType = property.Type.ToDisplayString(minimalFormat).Replace("<", "{").Replace(">", "}");
-
-        // Add XML documentation
         sb.AppendLine($"{indent}/// <summary>");
         sb.AppendLine($"{indent}/// Observes changes to the <see cref=\"{xmlClassName}.{property.Name}\"/> property.");
         sb.AppendLine($"{indent}/// </summary>");
         sb.AppendLine($"{indent}/// <param name=\"source\">The source object.</param>");
-        sb.AppendLine(
-            $"{indent}/// <returns>An observable sequence of <see cref=\"{xmlPropertyType}\"/> values.</returns>");
+        sb.AppendLine($"{indent}/// <returns>An observable sequence of type {xmlPropertyType}.</returns>");
 
-        // Extension method accessibility matches class accessibility
         var methodAccessibility = classSymbol.DeclaredAccessibility == Accessibility.Internal ? "internal" : "public";
 
         if (!string.IsNullOrEmpty(typeParameters))

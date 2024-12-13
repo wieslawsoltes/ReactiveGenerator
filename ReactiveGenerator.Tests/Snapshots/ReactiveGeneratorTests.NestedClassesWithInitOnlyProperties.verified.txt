@@ -58,9 +58,9 @@ public partial class Container
             private static readonly PropertyChangedEventArgs _innerInitOnlyPropChangedEventArgs = new PropertyChangedEventArgs(nameof(InnerInitOnlyProp));
 
             /// <summary>
-            /// Gets or sets a value for <see cref="string"/>.
+            /// Gets or sets a value of type string.
             /// </summary>
-            /// <value>The <see cref="string"/> value.</value>
+            /// <value>The value of type string.</value>
             public partial string InnerRegularProp
             {
                 get => field;
@@ -75,9 +75,9 @@ public partial class Container
             }
 
             /// <summary>
-            /// Gets or sets a value for <see cref="string"/>.
+            /// Gets or sets a value of type string.
             /// </summary>
-            /// <value>The <see cref="string"/> value.</value>
+            /// <value>The value of type string.</value>
             public partial string InnerInitOnlyProp
             {
                 get => field;
@@ -150,7 +150,7 @@ using System.Runtime.CompilerServices;
 public partial class Container
 {
     /// <summary>
-    /// A partial class implementation for <see cref="Container.Nested"/>.
+    /// A partial class implementation for Container.Nested.
     /// </summary>
     public partial class Nested
     {
@@ -158,9 +158,9 @@ public partial class Container
         private static readonly PropertyChangedEventArgs _initOnlyPropChangedEventArgs = new PropertyChangedEventArgs(nameof(InitOnlyProp));
 
         /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
+        /// Gets or sets a value of type string.
         /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
+        /// <value>The value of type string.</value>
         public partial string RegularProp
         {
             get => field;
@@ -175,9 +175,9 @@ public partial class Container
         }
 
         /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
+        /// Gets or sets a value of type string.
         /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
+        /// <value>The value of type string.</value>
         public partial string InitOnlyProp
         {
             get => field;

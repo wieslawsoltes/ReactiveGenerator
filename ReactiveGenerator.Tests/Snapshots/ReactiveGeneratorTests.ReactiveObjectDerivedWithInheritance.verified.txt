@@ -50,16 +50,16 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// A partial class implementation for <see cref="BaseViewModel"/>.
+/// A partial class implementation for BaseViewModel.
 /// </summary>
 public partial class BaseViewModel
 {
     private static readonly PropertyChangedEventArgs _basePropChangedEventArgs = new PropertyChangedEventArgs(nameof(BaseProp));
 
     /// <summary>
-    /// Gets or sets a value for <see cref="string"/>.
+    /// Gets or sets a value of type string.
     /// </summary>
-    /// <value>The <see cref="string"/> value.</value>
+    /// <value>The value of type string.</value>
     public partial string BaseProp
     {
         get => field;
@@ -85,16 +85,16 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// A partial class implementation for <see cref="DerivedViewModel"/>.
+/// A partial class implementation for DerivedViewModel.
 /// </summary>
 public partial class DerivedViewModel
 {
     private static readonly PropertyChangedEventArgs _derivedPropChangedEventArgs = new PropertyChangedEventArgs(nameof(DerivedProp));
 
     /// <summary>
-    /// Gets or sets a value for <see cref="string"/>.
+    /// Gets or sets a value of type string.
     /// </summary>
-    /// <value>The <see cref="string"/> value.</value>
+    /// <value>The value of type string.</value>
     public partial string DerivedProp
     {
         get => field;
@@ -120,16 +120,16 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// A partial class implementation for <see cref="GrandChildViewModel"/>.
+/// A partial class implementation for GrandChildViewModel.
 /// </summary>
 public partial class GrandChildViewModel
 {
     private static readonly PropertyChangedEventArgs _grandChildPropChangedEventArgs = new PropertyChangedEventArgs(nameof(GrandChildProp));
 
     /// <summary>
-    /// Gets or sets a value for <see cref="string"/>.
+    /// Gets or sets a value of type string.
     /// </summary>
-    /// <value>The <see cref="string"/> value.</value>
+    /// <value>The value of type string.</value>
     public partial string GrandChildProp
     {
         get => field;

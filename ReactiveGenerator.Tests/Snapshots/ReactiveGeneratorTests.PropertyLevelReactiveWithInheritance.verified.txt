@@ -50,16 +50,16 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// A partial class implementation for <see cref="BaseClass"/>.
+/// A partial class implementation for BaseClass.
 /// </summary>
 public partial class BaseClass
 {
     private static readonly PropertyChangedEventArgs _basePropChangedEventArgs = new PropertyChangedEventArgs(nameof(BaseProp));
 
     /// <summary>
-    /// Gets or sets a value for <see cref="string"/>.
+    /// Gets or sets a value of type string.
     /// </summary>
-    /// <value>The <see cref="string"/> value.</value>
+    /// <value>The value of type string.</value>
     public partial string BaseProp
     {
         get => field;
@@ -85,16 +85,16 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// A partial class implementation for <see cref="DerivedClass"/>.
+/// A partial class implementation for DerivedClass.
 /// </summary>
 public partial class DerivedClass
 {
     private static readonly PropertyChangedEventArgs _derivedPropChangedEventArgs = new PropertyChangedEventArgs(nameof(DerivedProp));
 
     /// <summary>
-    /// Gets or sets a value for <see cref="string"/>.
+    /// Gets or sets a value of type string.
     /// </summary>
-    /// <value>The <see cref="string"/> value.</value>
+    /// <value>The value of type string.</value>
     public partial string DerivedProp
     {
         get => field;

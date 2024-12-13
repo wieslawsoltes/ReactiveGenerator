@@ -55,16 +55,16 @@ using System.Runtime.CompilerServices;
 public partial class Container
 {
     /// <summary>
-    /// A partial class implementation for <see cref="Container.NestedBase"/>.
+    /// A partial class implementation for Container.NestedBase.
     /// </summary>
     public partial class NestedBase
     {
         private static readonly PropertyChangedEventArgs _virtualPropChangedEventArgs = new PropertyChangedEventArgs(nameof(VirtualProp));
 
         /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
+        /// Gets or sets a value of type string.
         /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
+        /// <value>The value of type string.</value>
         public partial string VirtualProp
         {
             get => field;
@@ -93,7 +93,7 @@ using System.Runtime.CompilerServices;
 public partial class Container
 {
     /// <summary>
-    /// A partial class implementation for <see cref="Container.NestedDerived"/>.
+    /// A partial class implementation for Container.NestedDerived.
     /// </summary>
     public partial class NestedDerived
     {
@@ -101,9 +101,9 @@ public partial class Container
         private static readonly PropertyChangedEventArgs _regularPropChangedEventArgs = new PropertyChangedEventArgs(nameof(RegularProp));
 
         /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
+        /// Gets or sets a value of type string.
         /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
+        /// <value>The value of type string.</value>
         public partial string VirtualProp
         {
             get => field;
@@ -118,9 +118,9 @@ public partial class Container
         }
 
         /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
+        /// Gets or sets a value of type string.
         /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
+        /// <value>The value of type string.</value>
         public partial string RegularProp
         {
             get => field;

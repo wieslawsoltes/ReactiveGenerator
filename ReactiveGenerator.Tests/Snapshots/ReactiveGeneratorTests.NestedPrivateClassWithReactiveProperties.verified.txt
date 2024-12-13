@@ -64,9 +64,9 @@ public partial class OuterClass
         private static readonly PropertyChangedEventArgs _privateInnerPropChangedEventArgs = new PropertyChangedEventArgs(nameof(PrivateInnerProp));
 
         /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
+        /// Gets or sets a value of type string.
         /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
+        /// <value>The value of type string.</value>
         public partial string InnerProp
         {
             get => field;
@@ -148,9 +148,9 @@ public partial class OuterClass
         private static readonly PropertyChangedEventArgs _protectedClassPropChangedEventArgs = new PropertyChangedEventArgs(nameof(ProtectedClassProp));
 
         /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
+        /// Gets or sets a value of type string.
         /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
+        /// <value>The value of type string.</value>
         public partial string ProtectedClassProp
         {
             get => field;

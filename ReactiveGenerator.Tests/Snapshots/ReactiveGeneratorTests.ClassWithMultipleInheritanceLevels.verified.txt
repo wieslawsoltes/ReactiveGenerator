@@ -10,16 +10,16 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// A partial class implementation for <see cref="Child"/>.
+/// A partial class implementation for Child.
 /// </summary>
 public partial class Child
 {
     private static readonly PropertyChangedEventArgs _childPropChangedEventArgs = new PropertyChangedEventArgs(nameof(ChildProp));
 
     /// <summary>
-    /// Gets or sets a value for <see cref="string"/>.
+    /// Gets or sets a value of type string.
     /// </summary>
-    /// <value>The <see cref="string"/> value.</value>
+    /// <value>The value of type string.</value>
     public partial string ChildProp
     {
         get => field;
@@ -96,16 +96,16 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// A partial class implementation for <see cref="Parent"/>.
+/// A partial class implementation for Parent.
 /// </summary>
 public partial class Parent
 {
     private static readonly PropertyChangedEventArgs _parentPropChangedEventArgs = new PropertyChangedEventArgs(nameof(ParentProp));
 
     /// <summary>
-    /// Gets or sets a value for <see cref="string"/>.
+    /// Gets or sets a value of type string.
     /// </summary>
-    /// <value>The <see cref="string"/> value.</value>
+    /// <value>The value of type string.</value>
     public partial string ParentProp
     {
         get => field;

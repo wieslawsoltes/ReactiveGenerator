@@ -95,16 +95,16 @@ using System.Runtime.CompilerServices;
 public partial class Container
 {
     /// <summary>
-    /// A partial class implementation for <see cref="Container.NonReactiveNested"/>.
+    /// A partial class implementation for Container.NonReactiveNested.
     /// </summary>
     public partial class NonReactiveNested
     {
         private static readonly PropertyChangedEventArgs _propertyLevelReactivePropChangedEventArgs = new PropertyChangedEventArgs(nameof(PropertyLevelReactiveProp));
 
         /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
+        /// Gets or sets a value of type string.
         /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
+        /// <value>The value of type string.</value>
         public partial string PropertyLevelReactiveProp
         {
             get => field;
@@ -176,16 +176,16 @@ using System.Runtime.CompilerServices;
 public partial class Container
 {
     /// <summary>
-    /// A partial class implementation for <see cref="Container.ReactiveNested"/>.
+    /// A partial class implementation for Container.ReactiveNested.
     /// </summary>
     public partial class ReactiveNested
     {
         private static readonly PropertyChangedEventArgs _allPropsReactivePropChangedEventArgs = new PropertyChangedEventArgs(nameof(AllPropsReactiveProp));
 
         /// <summary>
-        /// Gets or sets a value for <see cref="string"/>.
+        /// Gets or sets a value of type string.
         /// </summary>
-        /// <value>The <see cref="string"/> value.</value>
+        /// <value>The value of type string.</value>
         public partial string AllPropsReactiveProp
         {
             get => field;
@@ -212,16 +212,16 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// A partial class implementation for <see cref="Container"/>.
+/// A partial class implementation for Container.
 /// </summary>
 public partial class Container
 {
     private static readonly PropertyChangedEventArgs _containerPropChangedEventArgs = new PropertyChangedEventArgs(nameof(ContainerProp));
 
     /// <summary>
-    /// Gets or sets a value for <see cref="string"/>.
+    /// Gets or sets a value of type string.
     /// </summary>
-    /// <value>The <see cref="string"/> value.</value>
+    /// <value>The value of type string.</value>
     public partial string ContainerProp
     {
         get => field;

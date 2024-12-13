@@ -14,7 +14,7 @@ using ReactiveGenerator.Internal;
 namespace First
 {
     /// <summary>
-    /// Provides extension methods for observing changes to properties of TestClass.
+    /// Provides extension methods for observing changes to properties of First.TestClass.
     /// </summary>
     public static class First_TestClassExtensions
     {
@@ -22,7 +22,7 @@ namespace First
         /// Observes changes to the <see cref="First.TestClass.Name"/> property.
         /// </summary>
         /// <param name="source">The source object.</param>
-        /// <returns>An observable sequence of <see cref="string"/> values.</returns>
+        /// <returns>An observable sequence of type string.</returns>
         public static IObservable<string?> WhenAnyName(
             this global::First.TestClass source)
         {
@@ -253,7 +253,7 @@ using ReactiveGenerator.Internal;
 namespace Second
 {
     /// <summary>
-    /// Provides extension methods for observing changes to properties of TestClass.
+    /// Provides extension methods for observing changes to properties of Second.TestClass.
     /// </summary>
     public static class Second_TestClassExtensions
     {
@@ -261,7 +261,7 @@ namespace Second
         /// Observes changes to the <see cref="Second.TestClass.Name"/> property.
         /// </summary>
         /// <param name="source">The source object.</param>
-        /// <returns>An observable sequence of <see cref="string"/> values.</returns>
+        /// <returns>An observable sequence of type string.</returns>
         public static IObservable<string?> WhenAnyName(
             this global::Second.TestClass source)
         {

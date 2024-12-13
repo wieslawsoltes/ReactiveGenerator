@@ -72,7 +72,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 /// <summary>
-/// A partial class implementation for <see cref="TestViewModel"/>.
+/// A partial class implementation for TestViewModel.
 /// </summary>
 public partial class TestViewModel
 {
@@ -80,9 +80,9 @@ public partial class TestViewModel
     private static readonly PropertyChangedEventArgs _ageChangedEventArgs = new PropertyChangedEventArgs(nameof(Age));
 
     /// <summary>
-    /// Gets or sets a value for <see cref="string"/>.
+    /// Gets or sets a value of type string.
     /// </summary>
-    /// <value>The <see cref="string"/> value.</value>
+    /// <value>The value of type string.</value>
     public partial string Name
     {
         get => field;
@@ -97,9 +97,9 @@ public partial class TestViewModel
     }
 
     /// <summary>
-    /// Gets or sets a value for <see cref="int"/>.
+    /// Gets or sets a value of type int.
     /// </summary>
-    /// <value>The <see cref="int"/> value.</value>
+    /// <value>The value of type int.</value>
     public partial int Age
     {
         get => field;

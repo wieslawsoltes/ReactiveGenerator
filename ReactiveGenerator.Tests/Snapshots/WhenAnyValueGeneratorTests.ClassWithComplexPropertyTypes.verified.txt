@@ -222,7 +222,7 @@ public static class TestClassExtensions
     /// Observes changes to the <see cref="TestClass.StringList"/> property.
     /// </summary>
     /// <param name="source">The source object.</param>
-    /// <returns>An observable sequence of <see cref="System.Collections.Generic.List{string}"/> values.</returns>
+    /// <returns>An observable sequence of type System.Collections.Generic.List{string}.</returns>
     public static IObservable<global::System.Collections.Generic.List<string>?> WhenAnyStringList(
         this global::TestClass source)
     {
@@ -238,7 +238,7 @@ public static class TestClassExtensions
     /// Observes changes to the <see cref="TestClass.IntStringMap"/> property.
     /// </summary>
     /// <param name="source">The source object.</param>
-    /// <returns>An observable sequence of <see cref="System.Collections.Generic.Dictionary{int, string}"/> values.</returns>
+    /// <returns>An observable sequence of type System.Collections.Generic.Dictionary{int, string}.</returns>
     public static IObservable<global::System.Collections.Generic.Dictionary<int, string>?> WhenAnyIntStringMap(
         this global::TestClass source)
     {
@@ -254,7 +254,7 @@ public static class TestClassExtensions
     /// Observes changes to the <see cref="TestClass.PersonInfo"/> property.
     /// </summary>
     /// <param name="source">The source object.</param>
-    /// <returns>An observable sequence of <see cref="(string Name, int Age)"/> values.</returns>
+    /// <returns>An observable sequence of type (string Name, int Age).</returns>
     public static IObservable<(string Name, int Age)> WhenAnyPersonInfo(
         this global::TestClass source)
     {
