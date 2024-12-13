@@ -9,20 +9,23 @@
 using System;
 using ReactiveUI;
 
-private partial class PrivateViewModel
+public partial class Container
 {
-    /// <summary>
-    /// The ObservableAsPropertyHelper instance for the Value property.
-    /// </summary>
-    private readonly ObservableAsPropertyHelper<string?> _valueHelper;
-
-    /// <summary>
-    /// Gets the current value of type string from the observable sequence.
-    /// </summary>
-    /// <value>The current value from the observable sequence.</value>
-    public partial string? Value
+    private partial class PrivateViewModel
     {
-        get => _valueHelper.Value;
+        /// <summary>
+        /// The ObservableAsPropertyHelper instance for the Value property.
+        /// </summary>
+        private readonly ObservableAsPropertyHelper<string?> _valueHelper;
+
+        /// <summary>
+        /// Gets the current value of type string from the observable sequence.
+        /// </summary>
+        /// <value>The current value from the observable sequence.</value>
+        public partial string? Value
+        {
+            get => _valueHelper.Value;
+        }
     }
 }
 
@@ -36,20 +39,23 @@ private partial class PrivateViewModel
 using System;
 using ReactiveUI;
 
-protected partial class ProtectedViewModel
+public partial class Container
 {
-    /// <summary>
-    /// The ObservableAsPropertyHelper instance for the Value property.
-    /// </summary>
-    private readonly ObservableAsPropertyHelper<string?> _valueHelper;
-
-    /// <summary>
-    /// Gets the current value of type string from the observable sequence.
-    /// </summary>
-    /// <value>The current value from the observable sequence.</value>
-    public partial string? Value
+    protected partial class ProtectedViewModel
     {
-        get => _valueHelper.Value;
+        /// <summary>
+        /// The ObservableAsPropertyHelper instance for the Value property.
+        /// </summary>
+        private readonly ObservableAsPropertyHelper<string?> _valueHelper;
+
+        /// <summary>
+        /// Gets the current value of type string from the observable sequence.
+        /// </summary>
+        /// <value>The current value from the observable sequence.</value>
+        public partial string? Value
+        {
+            get => _valueHelper.Value;
+        }
     }
 }
 

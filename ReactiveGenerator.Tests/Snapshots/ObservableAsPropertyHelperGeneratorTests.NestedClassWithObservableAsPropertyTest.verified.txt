@@ -9,23 +9,26 @@
 using System;
 using ReactiveUI;
 
-/// <summary>
-/// A partial class implementation with observable property helpers for Container.NestedViewModel.
-/// </summary>
-public partial class NestedViewModel
+public partial class Container
 {
     /// <summary>
-    /// The ObservableAsPropertyHelper instance for the Value property.
+    /// A partial class implementation with observable property helpers for Container.NestedViewModel.
     /// </summary>
-    private readonly ObservableAsPropertyHelper<string?> _valueHelper;
-
-    /// <summary>
-    /// Gets the current value of type string from the observable sequence.
-    /// </summary>
-    /// <value>The current value from the observable sequence.</value>
-    public partial string? Value
+    public partial class NestedViewModel
     {
-        get => _valueHelper.Value;
+        /// <summary>
+        /// The ObservableAsPropertyHelper instance for the Value property.
+        /// </summary>
+        private readonly ObservableAsPropertyHelper<string?> _valueHelper;
+
+        /// <summary>
+        /// Gets the current value of type string from the observable sequence.
+        /// </summary>
+        /// <value>The current value from the observable sequence.</value>
+        public partial string? Value
+        {
+            get => _valueHelper.Value;
+        }
     }
 }
 
