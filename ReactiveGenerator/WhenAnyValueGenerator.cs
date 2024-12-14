@@ -322,6 +322,7 @@ using System;
 using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Threading;
+using System.Diagnostics.CodeAnalysis;
 
 namespace ReactiveGenerator.Internal
 {
@@ -330,7 +331,7 @@ namespace ReactiveGenerator.Internal
     /// </summary>
     /// <typeparam name=""TSource"">The type of the source object.</typeparam>
     /// <typeparam name=""TProperty"">The type of the property being observed.</typeparam>
-    internal sealed class PropertyObserver<TSource, TProperty> : IObservable<TProperty>, IDisposable
+    internal sealed class PropertyObserver<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicEvents)] TSource, TProperty> : IObservable<TProperty>, IDisposable
         where TSource : INotifyPropertyChanged
     {
         private readonly object _gate = new object();
