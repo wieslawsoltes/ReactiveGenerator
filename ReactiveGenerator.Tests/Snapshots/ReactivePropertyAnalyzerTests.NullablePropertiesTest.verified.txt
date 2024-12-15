@@ -3,20 +3,30 @@
     {
       Id: REACTIVE001,
       Severity: Info,
-      StartLinePosition: {
+      Location: {
         _line: 6,
         _character: 16
       },
-      GetMessage: Property 'NullableString' can be simplified using [Reactive] attribute
+      Message: Property 'NullableString' can be simplified using [Reactive] attribute
     },
     {
       Id: REACTIVE001,
       Severity: Info,
-      StartLinePosition: {
+      Location: {
         _line: 13,
         _character: 16
       },
-      GetMessage: Property 'NullableInt' can be simplified using [Reactive] attribute
+      Message: Property 'NullableInt' can be simplified using [Reactive] attribute
     }
-  ]
+  ],
+  FixedSource:
+            using ReactiveUI;
+            
+            public partial class TestViewModel : ReactiveObject
+            {
+    [Reactive]
+    public partial string? NullableString { get; set; }
+    [Reactive]
+    public partial int? NullableInt { get; set; }
+}
 }
