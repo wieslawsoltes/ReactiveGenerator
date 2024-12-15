@@ -1,14 +1,16 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.CodeFixes;
 using System.Runtime.CompilerServices;
 using System.Collections.Immutable;
+using Microsoft.CodeAnalysis.CodeActions;
 
 namespace ReactiveGenerator.Tests;
 
 public static class AnalyzerTestHelper
 {
-    public static Task TestAndVerify(
+    public static async Task TestAndVerify(
         string source,
         Dictionary<string, string>? analyzerConfigOptions = null,
         [CallerMemberName] string? testName = null,
@@ -28,24 +30,74 @@ public static class AnalyzerTestHelper
                 new AnalyzerOptions(ImmutableArray<AdditionalText>.Empty));
 
         // Run analysis
-        var diagnostics = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().Result;
+        var diagnostics = await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
 
-        // Get any suggested fixes
-        var fixes = new List<object>();
-        // Note: You would need to implement code fix collection here if needed
+        // Apply code fixes if available
+        var codeFixProvider = new ReactivePropertyCodeFixProvider();
+        var newSource = source;
+        
+        if (diagnostics.Any() && codeFixProvider != null)
+        {
+            var document = compilation.SyntaxTrees.First().GetText().ToString();
+            var project = CreateProject(newSource);
+            var documentId = project.DocumentIds[0];
+            
+            var fixedDocument = project.GetDocument(documentId);
+            foreach (var diagnostic in diagnostics)
+            {
+                var actions = new List<CodeAction>();
+                var context = new CodeFixContext(fixedDocument, diagnostic,
+                    (a, d) => actions.Add(a), CancellationToken.None);
+                
+                await codeFixProvider.RegisterCodeFixesAsync(context);
+                
+                if (actions.Any())
+                {
+                    var operation = await actions[0].GetOperationsAsync(CancellationToken.None);
+                    var solution = operation.OfType<ApplyChangesOperation>().Single().ChangedSolution;
+                    fixedDocument = solution.GetDocument(documentId);
+                }
+            }
+            
+            newSource = (await fixedDocument.GetSyntaxRootAsync())?.ToFullString() ?? source;
+        }
 
         // Use Verify
-        return Verifier.Verify(new
+        await Verifier.Verify(new
         {
             Diagnostics = diagnostics.Select(d => new
             {
                 d.Id,
                 d.Severity,
-                d.Location.GetLineSpan().StartLinePosition,
-                GetMessage = d.GetMessage()
-            }).OrderBy(d => d.Id).ThenBy(d => d.StartLinePosition.Line),
-            Fixes = fixes
+                Location = d.Location.GetLineSpan().StartLinePosition,
+                Message = d.GetMessage()
+            }).OrderBy(d => d.Id).ThenBy(d => d.Location.Line),
+            FixedSource = newSource
         });
+    }
+
+    private static Project CreateProject(string source)
+    {
+        var projectId = ProjectId.CreateNewId();
+        var documentId = DocumentId.CreateNewId(projectId);
+        var solution = new AdhocWorkspace()
+            .CurrentSolution
+            .AddProject(projectId, "TestProject", "TestProject", LanguageNames.CSharp)
+            .WithProjectCompilationOptions(projectId, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
+            .AddDocument(documentId, "Test.cs", source);
+
+        var project = solution.GetProject(projectId)!;
+
+        var references = new[]
+        {
+            MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(System.ComponentModel.INotifyPropertyChanged).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(ReactiveUI.ReactiveObject).Assembly.Location)
+        };
+
+        project = project.AddMetadataReferences(references);
+        return project;
     }
 
     private static Compilation CreateCompilation(string source)

@@ -5,16 +5,16 @@
       Severity: Info,
       Location: {
         _line: 6,
-        _character: 16
+        _character: 12
       },
       Message: Property 'Value' can be simplified using [Reactive] attribute
     }
   ],
   FixedSource:
-            using ReactiveUI;
-            
-            public partial class TestViewModel : ReactiveObject
-            {
+        using ReactiveUI;
+        
+        public partial class TestViewModel : ReactiveObject
+        {
     [Reactive]
     public partial string Value { get; set; }
 }

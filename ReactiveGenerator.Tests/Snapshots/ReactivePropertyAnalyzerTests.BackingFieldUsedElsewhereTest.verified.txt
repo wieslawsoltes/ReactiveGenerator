@@ -3,11 +3,21 @@
     {
       Id: REACTIVE001,
       Severity: Info,
-      StartLinePosition: {
+      Location: {
         _line: 6,
         _character: 16
       },
-      GetMessage: Property 'Value' can be simplified using [Reactive] attribute
+      Message: Property 'Value' can be simplified using [Reactive] attribute
     }
-  ]
+  ],
+  FixedSource:
+            using ReactiveUI;
+            
+            public partial class TestViewModel : ReactiveObject
+            {
+    [Reactive]
+    public partial string Value { get; set; }
+
+    public string GetValueDirectly() => _value;
+            }
 }

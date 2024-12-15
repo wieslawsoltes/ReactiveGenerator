@@ -19,7 +19,10 @@ public class ReactivePropertyAnalyzer : DiagnosticAnalyzer
     public const string DiagnosticId = "REACTIVE001";
     private const string Title = "Property can use [Reactive] attribute";
     private const string MessageFormat = "Property '{0}' can be simplified using [Reactive] attribute";
-    private const string Description = "Properties using RaiseAndSetIfChanged can be simplified using the [Reactive] attribute.";
+
+    private const string Description =
+        "Properties using RaiseAndSetIfChanged can be simplified using the [Reactive] attribute.";
+
     private const string Category = "Usage";
 
     private static readonly DiagnosticDescriptor Rule = new(
@@ -63,7 +66,7 @@ public class ReactivePropertyAnalyzer : DiagnosticAnalyzer
             Rule,
             propertyDeclaration.GetLocation(),
             propertyDeclaration.Identifier.Text);
-            
+
         context.ReportDiagnostic(diagnostic);
     }
 
@@ -76,6 +79,7 @@ public class ReactivePropertyAnalyzer : DiagnosticAnalyzer
                 return true;
             current = current.BaseType;
         }
+
         return false;
     }
 
@@ -105,7 +109,7 @@ public class ReactivePropertyAnalyzer : DiagnosticAnalyzer
             return false;
 
         // Additionally check for correct backing field reference
-        var backingFieldName = "_" + char.ToLower(property.Identifier.Text[0]) + 
+        var backingFieldName = "_" + char.ToLower(property.Identifier.Text[0]) +
                                property.Identifier.Text.Substring(1);
         return setterText.Contains($"ref {backingFieldName}");
     }
@@ -151,12 +155,23 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
         var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
         if (root == null || semanticModel == null) return document;
 
-        // Find the backing field
-        var backingFieldName = "_" + char.ToLower(propertyDeclaration.Identifier.Text[0]) + 
+        var classDeclaration = propertyDeclaration.Parent as ClassDeclarationSyntax;
+        if (classDeclaration == null) return document;
+
+        // Find the backing field name
+        var backingFieldName = "_" + char.ToLower(propertyDeclaration.Identifier.Text[0]) +
                                propertyDeclaration.Identifier.Text.Substring(1);
-            
-        // Create the new property with [Reactive] attribute and partial modifier
-        var newProperty = propertyDeclaration
+
+        // Find the backing field
+        var backingField = classDeclaration.Members
+            .OfType<FieldDeclarationSyntax>()
+            .FirstOrDefault(f => f.Declaration.Variables
+                .Any(v => v.Identifier.Text == backingFieldName));
+
+        // Create new reactive property
+        var newProperty = SyntaxFactory.PropertyDeclaration(
+                propertyDeclaration.Type,
+                propertyDeclaration.Identifier)
             .WithAttributeLists(
                 SyntaxFactory.SingletonList(
                     SyntaxFactory.AttributeList(
@@ -173,37 +188,27 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
                             .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)),
                         SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
                             .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
-                    })));
+                    })))
+            .WithLeadingTrivia(SyntaxFactory.Whitespace("    "));
 
-        // Create a new root with the updated property
-        var newRoot = root.ReplaceNode(propertyDeclaration, newProperty);
-
-        // Find and analyze the backing field
-        var classDeclaration = propertyDeclaration.Parent as ClassDeclarationSyntax;
-        if (classDeclaration != null)
-        {
-            var backingField = classDeclaration.Members
-                .OfType<FieldDeclarationSyntax>()
-                .FirstOrDefault(f => f.Declaration.Variables
-                    .Any(v => v.Identifier.Text == backingFieldName));
-
-            if (backingField != null)
+        // Create new members list without backing field and with new property
+        var newMembers = classDeclaration.Members
+            .Where(member => !SymbolEqualityComparer.Default.Equals(
+                semanticModel.GetDeclaredSymbol(member),
+                semanticModel.GetDeclaredSymbol(backingField)))
+            .Select(member =>
             {
-                // Check if the backing field is only used by this property
-                var fieldSymbol = semanticModel.GetDeclaredSymbol(backingField.Declaration.Variables.First());
-                if (fieldSymbol != null)
-                {
-                    var references = await SymbolFinder.FindReferencesAsync(fieldSymbol, document.Project.Solution, cancellationToken);
-                    var referencesCount = references.SelectMany(r => r.Locations).Count();
+                if (member == propertyDeclaration)
+                    return newProperty;
+                return member;
+            });
 
-                    // If field is only referenced in the property (getter and setter), it's safe to remove
-                    if (referencesCount <= 2)
-                    {
-                        newRoot = newRoot.RemoveNode(backingField, SyntaxRemoveOptions.KeepNoTrivia);
-                    }
-                }
-            }
-        }
+        // Create new class declaration
+        var newClass = classDeclaration
+            .WithMembers(SyntaxFactory.List(newMembers));
+
+        // Replace the class in the root
+        var newRoot = root.ReplaceNode(classDeclaration, newClass);
 
         return document.WithSyntaxRoot(newRoot);
     }

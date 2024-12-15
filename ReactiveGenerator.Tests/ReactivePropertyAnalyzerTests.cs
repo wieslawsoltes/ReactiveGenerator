@@ -181,4 +181,23 @@ public class ReactivePropertyAnalyzerTests
 
         return TestAndVerify(source);
     }
+    
+    [Fact]
+    public Task FieldRemovalTest()
+    {
+        var source = @"
+        using ReactiveUI;
+        
+        public partial class TestViewModel : ReactiveObject
+        {
+            private string _value;
+            public string Value
+            {
+                get => _value;
+                set => this.RaiseAndSetIfChanged(ref _value, value);
+            }
+        }";
+
+        return TestAndVerify(source);
+    }
 }
