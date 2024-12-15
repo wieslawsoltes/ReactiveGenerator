@@ -208,8 +208,17 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
             .Where(member => member != null)
             .ToList();
 
-        // Create new class with updated members
-        var newClass = classDeclaration.WithMembers(SyntaxFactory.List(newMembers));
+        // Check if class already has partial modifier
+        bool hasPartialModifier = classDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword));
+
+        // If not partial, add the partial modifier
+        var newClass = !hasPartialModifier
+            ? classDeclaration
+                .WithModifiers(classDeclaration.Modifiers.Add(SyntaxFactory.Token(SyntaxKind.PartialKeyword)))
+                .WithMembers(SyntaxFactory.List(newMembers))
+            : classDeclaration
+                .WithMembers(SyntaxFactory.List(newMembers));
+
         var newRoot = root.ReplaceNode(classDeclaration, newClass);
 
         return document.WithSyntaxRoot(newRoot);
