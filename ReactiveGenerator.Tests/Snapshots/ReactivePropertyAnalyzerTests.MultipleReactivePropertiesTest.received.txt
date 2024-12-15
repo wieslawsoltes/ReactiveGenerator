@@ -7,7 +7,7 @@
         _line: 6,
         _character: 16
       },
-      Message: Property 'NullableString' can be simplified using [Reactive] attribute
+      Message: Property 'First' can be simplified using [Reactive] attribute
     },
     {
       Id: REACTIVE001,
@@ -16,7 +16,7 @@
         _line: 13,
         _character: 16
       },
-      Message: Property 'NullableInt' can be simplified using [Reactive] attribute
+      Message: Property 'Second' can be simplified using [Reactive] attribute
     }
   ],
   FixedSource:
@@ -26,9 +26,9 @@
             {
 
     [Reactive]
-    public partial string? NullableString { get; set; }
+    public partial string First { get; set; }
 
     [Reactive]
-    public partial int? NullableInt { get; set; }
+    public partial int Second { get; set; }
 }
 }

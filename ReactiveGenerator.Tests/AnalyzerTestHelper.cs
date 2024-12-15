@@ -23,10 +23,10 @@ public static class AnalyzerTestHelper
 
         // Create compilation
         var compilation = CreateCompilation(source);
-        
+
         // Create analyzer driver
         var compilationWithAnalyzers = compilation
-            .WithAnalyzers(ImmutableArray.Create(analyzers), 
+            .WithAnalyzers(ImmutableArray.Create(analyzers),
                 new AnalyzerOptions(ImmutableArray<AdditionalText>.Empty));
 
         // Run analysis
@@ -35,31 +35,42 @@ public static class AnalyzerTestHelper
         // Apply code fixes if available
         var codeFixProvider = new ReactivePropertyCodeFixProvider();
         var newSource = source;
-        
+
         if (diagnostics.Any() && codeFixProvider != null)
         {
-            var document = compilation.SyntaxTrees.First().GetText().ToString();
             var project = CreateProject(newSource);
             var documentId = project.DocumentIds[0];
-            
-            var fixedDocument = project.GetDocument(documentId);
-            foreach (var diagnostic in diagnostics)
+            var document = project.GetDocument(documentId);
+
+            // Keep applying fixes until no more diagnostics are found
+            while (true)
             {
+                var currentDiagnostics = await compilation
+                    .WithAnalyzers(ImmutableArray.Create(analyzers))
+                    .GetAnalyzerDiagnosticsAsync();
+
+                if (!currentDiagnostics.Any())
+                    break;
+
                 var actions = new List<CodeAction>();
-                var context = new CodeFixContext(fixedDocument, diagnostic,
+                var context = new CodeFixContext(document, currentDiagnostics.First(),
                     (a, d) => actions.Add(a), CancellationToken.None);
-                
+
                 await codeFixProvider.RegisterCodeFixesAsync(context);
-                
-                if (actions.Any())
-                {
-                    var operation = await actions[0].GetOperationsAsync(CancellationToken.None);
-                    var solution = operation.OfType<ApplyChangesOperation>().Single().ChangedSolution;
-                    fixedDocument = solution.GetDocument(documentId);
-                }
+
+                if (!actions.Any())
+                    break;
+
+                var operation = await actions[0].GetOperationsAsync(CancellationToken.None);
+                var solution = operation.OfType<ApplyChangesOperation>().Single().ChangedSolution;
+                document = solution.GetDocument(documentId);
+
+                // Update compilation for next iteration
+                var newText = await document.GetTextAsync();
+                compilation = CreateCompilation(newText.ToString());
             }
-            
-            newSource = (await fixedDocument.GetSyntaxRootAsync())?.ToFullString() ?? source;
+
+            newSource = (await document.GetTextAsync()).ToString();
         }
 
         // Use Verify
@@ -92,7 +103,8 @@ public static class AnalyzerTestHelper
         {
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(System.ComponentModel.INotifyPropertyChanged).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(System.ComponentModel.INotifyPropertyChanged).Assembly
+                .Location),
             MetadataReference.CreateFromFile(typeof(ReactiveUI.ReactiveObject).Assembly.Location)
         };
 
@@ -107,7 +119,8 @@ public static class AnalyzerTestHelper
         {
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(System.ComponentModel.INotifyPropertyChanged).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(System.ComponentModel.INotifyPropertyChanged).Assembly
+                .Location),
             MetadataReference.CreateFromFile(typeof(ReactiveUI.ReactiveObject).Assembly.Location)
         };
 

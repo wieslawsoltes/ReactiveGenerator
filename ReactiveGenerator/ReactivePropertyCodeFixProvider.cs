@@ -29,13 +29,13 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
 
         foreach (var diagnostic in context.Diagnostics)
         {
-            // Find all property declarations
-            var properties = root.DescendantNodes().OfType<PropertyDeclarationSyntax>();
+            var diagnosticSpan = diagnostic.Location.SourceSpan;
+        
+            // Find the property declaration containing the diagnostic span
+            var propertyNode = root.DescendantNodes()
+                .OfType<PropertyDeclarationSyntax>()
+                .FirstOrDefault(p => p.Span.Contains(diagnosticSpan));
             
-            // Find the property that contains the diagnostic location
-            var propertyNode = properties.FirstOrDefault(prop => 
-                prop.Span.Contains(diagnostic.Location.SourceSpan.Start));
-
             if (propertyNode == null) continue;
 
             context.RegisterCodeFix(
