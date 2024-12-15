@@ -12,6 +12,10 @@
     <RootNamespace>ReactiveGeneratorDemo</RootNamespace>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <PublishAot>true</PublishAot>
+  </PropertyGroup>
+
   <Import Project="..\ReactiveGenerator\build\ReactiveGenerator.props" />
 
   <PropertyGroup>
