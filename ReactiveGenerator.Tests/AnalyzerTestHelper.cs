@@ -2,9 +2,9 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.CodeFixes;
+using Microsoft.CodeAnalysis.CodeActions;
 using System.Runtime.CompilerServices;
 using System.Collections.Immutable;
-using Microsoft.CodeAnalysis.CodeActions;
 
 namespace ReactiveGenerator.Tests;
 
@@ -23,10 +23,10 @@ public static class AnalyzerTestHelper
 
         // Create compilation
         var compilation = CreateCompilation(source);
-
+        
         // Create analyzer driver
         var compilationWithAnalyzers = compilation
-            .WithAnalyzers(ImmutableArray.Create(analyzers),
+            .WithAnalyzers(ImmutableArray.Create(analyzers), 
                 new AnalyzerOptions(ImmutableArray<AdditionalText>.Empty));
 
         // Run analysis
@@ -35,41 +35,39 @@ public static class AnalyzerTestHelper
         // Apply code fixes if available
         var codeFixProvider = new ReactivePropertyCodeFixProvider();
         var newSource = source;
-
+        
         if (diagnostics.Any() && codeFixProvider != null)
         {
             var project = CreateProject(newSource);
             var documentId = project.DocumentIds[0];
             var document = project.GetDocument(documentId);
-
-            // Keep applying fixes until no more diagnostics are found
-            while (true)
+            
+            // Create a list to store all actions
+            var allActions = new List<CodeAction>();
+            
+            // Collect all actions for all diagnostics
+            foreach (var diagnostic in diagnostics.OrderBy(d => d.Location.SourceSpan.Start))
             {
-                var currentDiagnostics = await compilation
-                    .WithAnalyzers(ImmutableArray.Create(analyzers))
-                    .GetAnalyzerDiagnosticsAsync();
-
-                if (!currentDiagnostics.Any())
-                    break;
-
-                var actions = new List<CodeAction>();
-                var context = new CodeFixContext(document, currentDiagnostics.First(),
-                    (a, d) => actions.Add(a), CancellationToken.None);
-
+                var context = new CodeFixContext(document, diagnostic,
+                    (a, _) => allActions.Add(a),
+                    CancellationToken.None);
+                
                 await codeFixProvider.RegisterCodeFixesAsync(context);
-
-                if (!actions.Any())
-                    break;
-
-                var operation = await actions[0].GetOperationsAsync(CancellationToken.None);
-                var solution = operation.OfType<ApplyChangesOperation>().Single().ChangedSolution;
-                document = solution.GetDocument(documentId);
-
-                // Update compilation for next iteration
-                var newText = await document.GetTextAsync();
-                compilation = CreateCompilation(newText.ToString());
             }
-
+            
+            // Apply all actions in sequence
+            foreach (var action in allActions)
+            {
+                var operations = await action.GetOperationsAsync(CancellationToken.None);
+                var operation = operations.OfType<ApplyChangesOperation>().Single();
+                var solution = operation.ChangedSolution;
+                document = solution.GetDocument(documentId);
+                
+                // Update compilation to get fresh diagnostics
+                var text = await document.GetTextAsync();
+                compilation = CreateCompilation(text.ToString());
+            }
+            
             newSource = (await document.GetTextAsync()).ToString();
         }
 
@@ -103,8 +101,7 @@ public static class AnalyzerTestHelper
         {
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(System.ComponentModel.INotifyPropertyChanged).Assembly
-                .Location),
+            MetadataReference.CreateFromFile(typeof(System.ComponentModel.INotifyPropertyChanged).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(ReactiveUI.ReactiveObject).Assembly.Location)
         };
 
@@ -119,8 +116,7 @@ public static class AnalyzerTestHelper
         {
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(System.ComponentModel.INotifyPropertyChanged).Assembly
-                .Location),
+            MetadataReference.CreateFromFile(typeof(System.ComponentModel.INotifyPropertyChanged).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(ReactiveUI.ReactiveObject).Assembly.Location)
         };
 
