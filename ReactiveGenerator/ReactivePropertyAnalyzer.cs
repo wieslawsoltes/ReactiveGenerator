@@ -169,15 +169,24 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
             .FirstOrDefault(f => f.Declaration.Variables
                 .Any(v => v.Identifier.Text == backingFieldName));
 
+        // Get the indentation from the property
+        var leadingTrivia = propertyDeclaration.GetLeadingTrivia();
+        var indentation = leadingTrivia
+            .Where(t => t.IsKind(SyntaxKind.WhitespaceTrivia))
+            .LastOrDefault();
+
+        // Create the [Reactive] attribute with proper indentation
+        var reactiveAttribute = SyntaxFactory.AttributeList(
+                SyntaxFactory.SingletonSeparatedList(
+                    SyntaxFactory.Attribute(SyntaxFactory.IdentifierName("Reactive"))))
+            .WithLeadingTrivia(leadingTrivia);
+
         // Create new reactive property
         var newProperty = SyntaxFactory.PropertyDeclaration(
                 propertyDeclaration.Type,
                 propertyDeclaration.Identifier)
             .WithAttributeLists(
-                SyntaxFactory.SingletonList(
-                    SyntaxFactory.AttributeList(
-                        SyntaxFactory.SingletonSeparatedList(
-                            SyntaxFactory.Attribute(SyntaxFactory.IdentifierName("Reactive"))))))
+                SyntaxFactory.SingletonList(reactiveAttribute))
             .WithModifiers(
                 propertyDeclaration.Modifiers.Add(SyntaxFactory.Token(SyntaxKind.PartialKeyword)))
             .WithAccessorList(
@@ -193,7 +202,7 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
                                 .FirstOrDefault(a => a.IsKind(SyntaxKind.SetAccessorDeclaration))?.Modifiers ?? default)
                             .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
                     })))
-            .WithLeadingTrivia(propertyDeclaration.GetLeadingTrivia());
+            .WithLeadingTrivia(SyntaxFactory.LineFeed, indentation);
 
         // Build the new members list
         var newMembers = classDeclaration.Members
@@ -222,13 +231,5 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
         var newRoot = root.ReplaceNode(classDeclaration, newClass);
 
         return document.WithSyntaxRoot(newRoot);
-    }
-}
-
-public static class SyntaxNodeExtensions
-{
-    public static int GetIndex<T>(this T node, SyntaxNode parent) where T : SyntaxNode
-    {
-        return parent.ChildNodes().TakeWhile(n => n != node).Count();
     }
 }
