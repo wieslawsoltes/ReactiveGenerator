@@ -24,6 +24,7 @@
             
             public partial class TestViewModel : ReactiveObject
             {
+
     [Reactive]
     public partial string? NullableString { get; set; }
 

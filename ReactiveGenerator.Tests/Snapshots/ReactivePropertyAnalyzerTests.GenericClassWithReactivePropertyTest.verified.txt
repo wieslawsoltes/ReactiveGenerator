@@ -16,6 +16,7 @@
             public partial class TestViewModel<T> : ReactiveObject
                 where T : class
             {
+
     [Reactive]
     public partial T? Value { get; set; }
 }
