@@ -28,6 +28,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MultiTargetingDemo", "Multi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReactiveGenerator.Integration.Tests", "ReactiveGenerator.Integration.Tests\ReactiveGenerator.Integration.Tests.csproj", "{70C6A82A-870F-4610-87AA-F746E2EDB33E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AnalyzerDemo", "AnalyzerDemo\AnalyzerDemo.csproj", "{DBDD60ED-B80B-41CD-A589-91E1434215B6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -54,6 +56,10 @@ Global
 		{70C6A82A-870F-4610-87AA-F746E2EDB33E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{70C6A82A-870F-4610-87AA-F746E2EDB33E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{70C6A82A-870F-4610-87AA-F746E2EDB33E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DBDD60ED-B80B-41CD-A589-91E1434215B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DBDD60ED-B80B-41CD-A589-91E1434215B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DBDD60ED-B80B-41CD-A589-91E1434215B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DBDD60ED-B80B-41CD-A589-91E1434215B6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{1CB4E13F-3FF0-43A5-AA31-73DD6F61F571} = {D1A6A247-0682-49EF-AB3C-7A0D36EB69F1}
@@ -61,5 +67,6 @@ Global
 		{E7DD1F82-ECB2-4780-B823-9DDFF85CF078} = {C6278E1F-E680-48E6-9ED1-51F92ACEC074}
 		{E7C9468B-5FD0-46E8-8A47-7B828FE054F2} = {C6278E1F-E680-48E6-9ED1-51F92ACEC074}
 		{70C6A82A-870F-4610-87AA-F746E2EDB33E} = {9BCC3FB1-02CE-4C52-BF4E-B44C4143174F}
+		{DBDD60ED-B80B-41CD-A589-91E1434215B6} = {C6278E1F-E680-48E6-9ED1-51F92ACEC074}
 	EndGlobalSection
 EndGlobal
