@@ -6,12 +6,15 @@
     <IsPackable>false</IsPackable>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    </PropertyGroup>
+
+  <Import Project="..\ReactiveGenerator\build\ReactiveGenerator.props" />
+
+  <PropertyGroup>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\GeneratedFiles</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>
-
-  <Import Project="..\ReactiveGenerator\build\ReactiveGenerator.props" />
 
   <PropertyGroup>
     <LangVersion>preview</LangVersion>

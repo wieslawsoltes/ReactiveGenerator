@@ -1,0 +1,37 @@
+﻿{
+  Diagnostics: [
+    {
+      Id: REACTIVE001,
+      Severity: Info,
+      Location: {
+        _line: 6,
+        _character: 16
+      },
+      Message: Property 'NullableString' can be simplified using [Reactive] attribute
+    },
+    {
+      Id: REACTIVE001,
+      Severity: Info,
+      Location: {
+        _line: 13,
+        _character: 16
+      },
+      Message: Property 'NullableInt' can be simplified using [Reactive] attribute
+    }
+  ],
+  FixedSource:
+            using ReactiveUI;
+            
+            public partial class TestViewModel : ReactiveObject
+            {
+                private string? _nullableString;
+                public string? NullableString
+                {
+                    get => _nullableString;
+                    set => this.RaiseAndSetIfChanged(ref _nullableString, value);
+                }
+
+    [Reactive]
+    public partial int? NullableInt { get; set; }
+}
+}
