@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Composition;
@@ -10,6 +11,7 @@ using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.FindSymbols;
 
 namespace ReactiveGenerator;
 
@@ -19,10 +21,7 @@ public class ReactivePropertyAnalyzer : DiagnosticAnalyzer
     public const string DiagnosticId = "REACTIVE001";
     private const string Title = "Property can use [Reactive] attribute";
     private const string MessageFormat = "Property '{0}' can be simplified using [Reactive] attribute";
-
-    private const string Description =
-        "Properties using RaiseAndSetIfChanged can be simplified using the [Reactive] attribute.";
-
+    private const string Description = "Properties using RaiseAndSetIfChanged can be simplified using the [Reactive] attribute.";
     private const string Category = "Usage";
 
     private static readonly DiagnosticDescriptor Rule = new(
@@ -79,7 +78,6 @@ public class ReactivePropertyAnalyzer : DiagnosticAnalyzer
                 return true;
             current = current.BaseType;
         }
-
         return false;
     }
 
@@ -129,21 +127,23 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
         var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
         if (root == null) return;
 
-        var diagnostic = context.Diagnostics.First();
-        var diagnosticSpan = diagnostic.Location.SourceSpan;
-        var propertyDeclaration = root.FindToken(diagnosticSpan.Start)
-            .Parent?.AncestorsAndSelf()
-            .OfType<PropertyDeclarationSyntax>()
-            .First();
+        foreach (var diagnostic in context.Diagnostics)
+        {
+            var propertyNode = root
+                .FindNode(diagnostic.Location.SourceSpan)
+                .AncestorsAndSelf()
+                .OfType<PropertyDeclarationSyntax>()
+                .FirstOrDefault();
 
-        if (propertyDeclaration == null) return;
+            if (propertyNode == null) continue;
 
-        context.RegisterCodeFix(
-            CodeAction.Create(
-                title: "Convert to [Reactive] property",
-                createChangedDocument: c => ConvertToReactivePropertyAsync(context.Document, propertyDeclaration, c),
-                equivalenceKey: nameof(ReactivePropertyCodeFixProvider)),
-            diagnostic);
+            context.RegisterCodeFix(
+                CodeAction.Create(
+                    title: "Convert to [Reactive] property",
+                    createChangedDocument: c => ConvertToReactivePropertyAsync(context.Document, propertyNode, c),
+                    equivalenceKey: nameof(ReactivePropertyCodeFixProvider)),
+                diagnostic);
+        }
     }
 
     private async Task<Document> ConvertToReactivePropertyAsync(
@@ -152,7 +152,7 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
         CancellationToken cancellationToken)
     {
         var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
+        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
         if (root == null || semanticModel == null) return document;
 
         var classDeclaration = propertyDeclaration.Parent as ClassDeclarationSyntax;
@@ -160,7 +160,7 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
 
         // Find the backing field name
         var backingFieldName = "_" + char.ToLower(propertyDeclaration.Identifier.Text[0]) +
-                               propertyDeclaration.Identifier.Text.Substring(1);
+                             propertyDeclaration.Identifier.Text.Substring(1);
 
         // Find the backing field
         var backingField = classDeclaration.Members
@@ -178,45 +178,72 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
                         SyntaxFactory.SingletonSeparatedList(
                             SyntaxFactory.Attribute(SyntaxFactory.IdentifierName("Reactive"))))))
             .WithModifiers(
-                propertyDeclaration.Modifiers
-                    .Add(SyntaxFactory.Token(SyntaxKind.PartialKeyword)))
+                propertyDeclaration.Modifiers.Add(SyntaxFactory.Token(SyntaxKind.PartialKeyword)))
             .WithAccessorList(
                 SyntaxFactory.AccessorList(
                     SyntaxFactory.List(new[]
                     {
                         SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                            .WithModifiers(propertyDeclaration.AccessorList?.Accessors
+                                .FirstOrDefault(a => a.IsKind(SyntaxKind.GetAccessorDeclaration))?.Modifiers ?? default)
                             .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)),
                         SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                            .WithModifiers(propertyDeclaration.AccessorList?.Accessors
+                                .FirstOrDefault(a => a.IsKind(SyntaxKind.SetAccessorDeclaration))?.Modifiers ?? default)
                             .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
                     })))
             .WithLeadingTrivia(propertyDeclaration.GetLeadingTrivia());
 
-        // Create new members list
+        // Check if backing field can be removed
+        var canRemoveBackingField = false;
+        if (backingField != null)
+        {
+            var fieldSymbol = semanticModel.GetDeclaredSymbol(backingField.Declaration.Variables.First());
+            if (fieldSymbol != null)
+            {
+                var references = await SymbolFinder.FindReferencesAsync(
+                    fieldSymbol,
+                    document.Project.Solution,
+                    cancellationToken);
+
+                // Only remove if all references are within the property being converted
+                canRemoveBackingField = references.All(r => r.Locations.All(loc => 
+                    loc.Location.SourceSpan.Start >= propertyDeclaration.Span.Start &&
+                    loc.Location.SourceSpan.End <= propertyDeclaration.Span.End));
+            }
+        }
+
+        // Build the new members list
         var newMembers = new List<MemberDeclarationSyntax>();
         foreach (var member in classDeclaration.Members)
         {
             if (member == propertyDeclaration)
             {
                 newMembers.Add(newProperty);
-                continue;
             }
-
-            // Only filter out the backing field if we found it
-            if (backingField != null && member == backingField)
+            else if (member == backingField && canRemoveBackingField)
             {
+                // Skip the backing field if we can remove it
                 continue;
             }
-
-            newMembers.Add(member);
+            else
+            {
+                newMembers.Add(member);
+            }
         }
 
-        // Create new class declaration
-        var newClass = classDeclaration
-            .WithMembers(SyntaxFactory.List<MemberDeclarationSyntax>(newMembers));
-
-        // Replace the class in the root
+        // Create new class with updated members
+        var newClass = classDeclaration.WithMembers(SyntaxFactory.List(newMembers));
         var newRoot = root.ReplaceNode(classDeclaration, newClass);
 
         return document.WithSyntaxRoot(newRoot);
+    }
+}
+
+public static class SyntaxNodeExtensions
+{
+    public static int GetIndex<T>(this T node, SyntaxNode parent) where T : SyntaxNode
+    {
+        return parent.ChildNodes().TakeWhile(n => n != node).Count();
     }
 }

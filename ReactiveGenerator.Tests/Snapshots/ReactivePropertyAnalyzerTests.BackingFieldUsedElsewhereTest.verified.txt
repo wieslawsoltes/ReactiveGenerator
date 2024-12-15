@@ -15,6 +15,7 @@
             
             public partial class TestViewModel : ReactiveObject
             {
+                private string _value;
     [Reactive]
     public partial string Value { get; set; }
 

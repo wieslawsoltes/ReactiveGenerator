@@ -16,6 +16,6 @@
             public partial class TestViewModel : ReactiveObject
             {
     [Reactive]
-    public partial string Value { get; set; }
+    public partial string Value { protected get; private set; }
 }
 }
