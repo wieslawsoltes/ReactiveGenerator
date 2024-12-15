@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System;
+using System.ComponentModel;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -13,7 +15,6 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // No changes to Initialize method
         var classDeclarations = context.SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: (s, _) => IsCandidateClass(s),
@@ -41,7 +42,6 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
 
     private static bool IsCandidateClass(SyntaxNode node)
     {
-        // Look for classes that might have reactive properties
         if (node is not ClassDeclarationSyntax classDeclaration)
             return false;
 
@@ -54,7 +54,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
                 al.Attributes.Any(a => a.Name.ToString() is "Reactive" or "ReactiveAttribute")))
             return true;
 
-        // Or has any property with [Reactive] attribute
+        // Or any property has [Reactive] attribute
         return classDeclaration.Members
             .OfType<PropertyDeclarationSyntax>()
             .Any(p => p.AttributeLists.Count > 0 &&
@@ -77,11 +77,10 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
     {
         if (classes.Count == 0) return;
 
-        // Use a HashSet to track distinct types
         var processedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
         var reactiveClasses = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
 
-        // First pass: identify classes with [Reactive] attribute
+        // Identify classes with [Reactive] attribute
         foreach (var (typeSymbol, _) in classes)
         {
             if (typeSymbol.GetAttributes().Any(attr =>
@@ -91,10 +90,8 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
             }
         }
 
-        // Process each class, skipping duplicates
         foreach (var (typeSymbol, _) in classes)
         {
-            // Only process each type once
             if (processedTypes.Add(typeSymbol))
             {
                 var properties = GetReactiveProperties(typeSymbol, reactiveClasses);
@@ -123,20 +120,13 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
             .OfType<IPropertySymbol>()
             .Where(p =>
             {
-                // Check for [IgnoreReactive] attribute
                 var hasIgnoreAttribute = p.GetAttributes()
                     .Any(a => a.AttributeClass?.Name is "IgnoreReactiveAttribute" or "IgnoreReactive");
-
                 if (hasIgnoreAttribute)
                     return false;
 
-                // Check for explicit [Reactive] attribute
                 var hasReactiveAttribute = p.GetAttributes()
                     .Any(a => a.AttributeClass?.Name is "ReactiveAttribute" or "Reactive");
-
-                // Include if:
-                // 1. Has explicit [Reactive] attribute, or
-                // 2. Class has [Reactive] attribute and property doesn't have [IgnoreReactive]
                 return hasReactiveAttribute || isReactiveClass;
             });
     }
@@ -150,7 +140,6 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
                 return false;
             current = current.ContainingType;
         }
-
         return true;
     }
 
@@ -160,7 +149,6 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
             typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
             genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
             miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
-
         return type.ToDisplayString(format).Replace("<", "{").Replace(">", "}");
     }
 
@@ -327,8 +315,9 @@ namespace ReactiveGenerator.Internal
 {
     /// <summary>
     /// Observes property changes on a source object and notifies subscribers.
+    /// Uses WeakEventManager to avoid memory leaks, but without reflection.
     /// </summary>
-    /// <typeparam name=""TSource"">The type of the source object.</typeparam>
+    /// <typeparam name=""TSource"">The type of the source object, must implement INotifyPropertyChanged.</typeparam>
     /// <typeparam name=""TProperty"">The type of the property being observed.</typeparam>
     internal sealed class PropertyObserver<TSource, TProperty> : IObservable<TProperty>, IDisposable
         where TSource : INotifyPropertyChanged
@@ -337,17 +326,13 @@ namespace ReactiveGenerator.Internal
         private readonly TSource _source;
         private readonly string _propertyName;
         private readonly Func<TProperty> _getter;
-        private readonly WeakEventManager<PropertyChangedEventHandler> _eventManager;
-        private readonly PropertyChangedEventHandler _handler;
         private bool _isDisposed;
-        private readonly ConcurrentDictionary<IDisposable, byte> _subscriptions;
+        private readonly ConcurrentDictionary<Subscription, byte> _subscriptions;
+        private readonly PropertyChangedEventHandler _handler;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref=""PropertyObserver{TSource, TProperty}""/> class.
-        /// </summary>
-        /// <param name=""source"">The source object.</param>
-        /// <param name=""propertyName"">The name of the property to observe.</param>
-        /// <param name=""getter"">A function to get the property value.</param>
+        // A WeakEventManager that doesn't use reflection. We give it known delegates to subscribe/unsubscribe.
+        private readonly WeakEventManager<PropertyChangedEventHandler> _weakEventManager;
+
         public PropertyObserver(TSource source, string propertyName, Func<TProperty> getter)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
@@ -357,16 +342,16 @@ namespace ReactiveGenerator.Internal
             _source = source;
             _propertyName = propertyName;
             _getter = getter;
-            _eventManager = new WeakEventManager<PropertyChangedEventHandler>();
-            _subscriptions = new ConcurrentDictionary<IDisposable, byte>();
+            _subscriptions = new ConcurrentDictionary<Subscription, byte>();
             _handler = HandlePropertyChanged;
+
+            // Initialize WeakEventManager with known add/remove actions for INotifyPropertyChanged.PropertyChanged
+            _weakEventManager = new WeakEventManager<PropertyChangedEventHandler>(
+                (obj, h) => ((INotifyPropertyChanged)obj).PropertyChanged += h,
+                (obj, h) => ((INotifyPropertyChanged)obj).PropertyChanged -= h
+            );
         }
 
-        /// <summary>
-        /// Subscribes an observer to receive notifications.
-        /// </summary>
-        /// <param name=""observer"">The observer to subscribe.</param>
-        /// <returns>A disposable to unsubscribe the observer.</returns>
         public IDisposable Subscribe(IObserver<TProperty> observer)
         {
             if (observer == null) throw new ArgumentNullException(nameof(observer));
@@ -385,7 +370,8 @@ namespace ReactiveGenerator.Internal
                 try
                 {
                     observer.OnNext(_getter());
-                    _eventManager.AddEventHandler(_source, ""PropertyChanged"", _handler);
+                    // Use WeakEventManager to add a weak reference event handler
+                    _weakEventManager.AddEventHandler(_source, _handler);
                 }
                 catch (Exception ex)
                 {
@@ -400,53 +386,43 @@ namespace ReactiveGenerator.Internal
 
         private void HandlePropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName != _propertyName && !string.IsNullOrEmpty(e.PropertyName)) 
+            if (e.PropertyName != _propertyName && !string.IsNullOrEmpty(e.PropertyName))
                 return;
 
             foreach (var subscription in _subscriptions.Keys)
             {
-                if (subscription is Subscription activeSubscription)
+                var obs = subscription.Observer;
+                if (obs == null)
                 {
-                    try
-                    {
-                        var observer = activeSubscription.Observer;
-                        if (observer != null)
-                        {
-                            observer.OnNext(_getter());
-                        }
-                        else
-                        {
-                            activeSubscription.Dispose();
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        var observer = activeSubscription.Observer;
-                        if (observer != null)
-                        {
-                            observer.OnError(ex);
-                        }
-                        activeSubscription.Dispose();
-                    }
+                    subscription.Dispose();
+                    continue;
+                }
+
+                try
+                {
+                    obs.OnNext(_getter());
+                }
+                catch (Exception ex)
+                {
+                    obs.OnError(ex);
+                    subscription.Dispose();
                 }
             }
         }
 
-        /// <summary>
-        /// Disposes the observer and unsubscribes all observers.
-        /// </summary>
         public void Dispose()
         {
             lock (_gate)
             {
                 if (!_isDisposed)
                 {
+                    // Remove the event handler from WeakEventManager
+                    _weakEventManager.RemoveEventHandler(_source, _handler);
                     foreach (var subscription in _subscriptions.Keys)
                     {
-                        subscription.Dispose();
+                        subscription.DisposeInternal();
                     }
                     _subscriptions.Clear();
-                    _eventManager.RemoveEventHandler(_source, ""PropertyChanged"", _handler);
                     _isDisposed = true;
                 }
             }
@@ -464,17 +440,11 @@ namespace ReactiveGenerator.Internal
                 _weakObserver = new WeakReference<IObserver<TProperty>>(observer);
             }
 
-            /// <summary>
-            /// Gets the observer if it is still alive.
-            /// </summary>
             public IObserver<TProperty>? Observer
             {
-                get => _weakObserver.TryGetTarget(out var observer) ? observer : null;
+                get => _weakObserver.TryGetTarget(out var obs) ? obs : null;
             }
 
-            /// <summary>
-            /// Disposes the subscription and removes it from the parent observer.
-            /// </summary>
             public void Dispose()
             {
                 if (Interlocked.Exchange(ref _disposed, 1) == 0)
@@ -492,40 +462,36 @@ namespace ReactiveGenerator.Internal
                     }
                 }
             }
+
+            // Called internally by the parent when cleaning up
+            public void DisposeInternal()
+            {
+                Interlocked.Exchange(ref _disposed, 1);
+            }
+        }
+
+        private sealed class Disposable : IDisposable
+        {
+            public static readonly IDisposable Empty = new Disposable();
+            private Disposable() { }
+            public void Dispose() { }
         }
     }
-
-    /// <summary>
-    /// Represents a disposable resource that does nothing when disposed.
-    /// </summary>
-    internal sealed class Disposable : IDisposable
-    {
-        /// <summary>
-        /// Gets a disposable that does nothing when disposed.
-        /// </summary>
-        public static readonly IDisposable Empty = new Disposable();
-
-        private Disposable() { }
-
-        /// <summary>
-        /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
-        /// </summary>
-        public void Dispose() { }
-    }
-}";
+}
+";
 
     private const string WeakEventManagerSource = @"// <auto-generated/>
 #nullable enable
 
 using System;
 using System.Collections.Concurrent;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 
 namespace ReactiveGenerator.Internal
 {
     /// <summary>
-    /// Manages weak event subscriptions to avoid memory leaks.
+    /// Manages weak event subscriptions to avoid memory leaks, without using reflection.
+    /// Instead, add/remove handler actions are provided.
     /// </summary>
     /// <typeparam name=""TDelegate"">The type of the event handler delegate.</typeparam>
     internal sealed class WeakEventManager<TDelegate> where TDelegate : class, Delegate
@@ -533,69 +499,54 @@ namespace ReactiveGenerator.Internal
         private readonly ConditionalWeakTable<object, EventRegistrationList> _registrations =
             new ConditionalWeakTable<object, EventRegistrationList>();
 
-        /// <summary>
-        /// Adds a weak event handler to the specified event on the source object.
-        /// </summary>
-        /// <param name=""source"">The source object.</param>
-        /// <param name=""eventName"">The name of the event.</param>
-        /// <param name=""handler"">The event handler.</param>
-        public void AddEventHandler(object source, string eventName, TDelegate handler)
+        private readonly Action<object, TDelegate> _addHandler;
+        private readonly Action<object, TDelegate> _removeHandler;
+
+        public WeakEventManager(Action<object, TDelegate> addHandler, Action<object, TDelegate> removeHandler)
         {
-            if (source == null) throw new ArgumentNullException(nameof(source));
-            if (eventName == null) throw new ArgumentNullException(nameof(eventName));
-            if (handler == null) throw new ArgumentNullException(nameof(handler));
-
-            var eventInfo = source.GetType().GetEvent(eventName);
-            if (eventInfo == null)
-            {
-                throw new ArgumentException($""Event '{eventName}' not found on type '{source.GetType()}'."");
-            }
-
-            var list = _registrations.GetOrCreateValue(source);
-            var registration = new WeakEventRegistration(source, eventInfo, handler);
-            list.Add(registration);
+            _addHandler = addHandler ?? throw new ArgumentNullException(nameof(addHandler));
+            _removeHandler = removeHandler ?? throw new ArgumentNullException(nameof(removeHandler));
         }
 
-        /// <summary>
-        /// Removes a weak event handler from the specified event on the source object.
-        /// </summary>
-        /// <param name=""source"">The source object.</param>
-        /// <param name=""eventName"">The name of the event.</param>
-        /// <param name=""handler"">The event handler.</param>
-        public void RemoveEventHandler(object source, string eventName, TDelegate handler)
+        public void AddEventHandler(object source, TDelegate handler)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
-            if (eventName == null) throw new ArgumentNullException(nameof(eventName));
+            if (handler == null) throw new ArgumentNullException(nameof(handler));
+
+            var list = _registrations.GetOrCreateValue(source);
+            var registration = new WeakEventRegistration(source, handler, _removeHandler);
+            list.Add(registration);
+
+            // Actually subscribe to the source event
+            _addHandler(source, handler);
+        }
+
+        public void RemoveEventHandler(object source, TDelegate handler)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
             if (handler == null) throw new ArgumentNullException(nameof(handler));
 
             if (_registrations.TryGetValue(source, out var list))
             {
-                list.Remove(eventName, handler);
+                list.Remove(handler);
             }
         }
 
         private sealed class EventRegistrationList
         {
-            private readonly ConcurrentDictionary<string, ConcurrentDictionary<TDelegate, WeakEventRegistration>> _registrations =
-                new ConcurrentDictionary<string, ConcurrentDictionary<TDelegate, WeakEventRegistration>>();
+            private readonly ConcurrentDictionary<TDelegate, WeakEventRegistration> _registrations =
+                new ConcurrentDictionary<TDelegate, WeakEventRegistration>();
 
             public void Add(WeakEventRegistration registration)
             {
-                var eventHandlers = _registrations.GetOrAdd(
-                    registration.EventInfo.Name,
-                    _ => new ConcurrentDictionary<TDelegate, WeakEventRegistration>());
-
-                eventHandlers[registration.Handler] = registration;
+                _registrations[registration.Handler] = registration;
             }
 
-            public void Remove(string eventName, TDelegate handler)
+            public void Remove(TDelegate handler)
             {
-                if (_registrations.TryGetValue(eventName, out var eventHandlers))
+                if (_registrations.TryRemove(handler, out var registration))
                 {
-                    if (eventHandlers.TryRemove(handler, out var registration))
-                    {
-                        registration.Unsubscribe();
-                    }
+                    registration.Unsubscribe();
                 }
             }
         }
@@ -604,25 +555,15 @@ namespace ReactiveGenerator.Internal
         {
             private readonly WeakReference _sourceReference;
             private readonly WeakReference<TDelegate> _handlerReference;
-            private readonly EventInfo _eventInfo;
+            private readonly Action<object, TDelegate> _removeHandler;
 
-            public WeakEventRegistration(object source, EventInfo eventInfo, TDelegate handler)
+            public WeakEventRegistration(object source, TDelegate handler, Action<object, TDelegate> removeHandler)
             {
                 _sourceReference = new WeakReference(source);
-                _eventInfo = eventInfo;
                 _handlerReference = new WeakReference<TDelegate>(handler);
-
-                Subscribe();
+                _removeHandler = removeHandler;
             }
 
-            /// <summary>
-            /// Gets the event information for the event being managed.
-            /// </summary>
-            public EventInfo EventInfo => _eventInfo;
-
-            /// <summary>
-            /// Gets the event handler delegate.
-            /// </summary>
             public TDelegate Handler
             {
                 get
@@ -632,27 +573,15 @@ namespace ReactiveGenerator.Internal
                 }
             }
 
-            private void Subscribe()
-            {
-                if (_sourceReference.Target is object source &&
-                    _handlerReference.TryGetTarget(out var handler))
-                {
-                    _eventInfo.AddEventHandler(source, handler);
-                }
-            }
-
-            /// <summary>
-            /// Unsubscribes the handler from the event.
-            /// </summary>
             public void Unsubscribe()
             {
-                if (_sourceReference.Target is object source &&
-                    _handlerReference.TryGetTarget(out var handler))
+                if (_handlerReference.TryGetTarget(out var handler) && _sourceReference.Target is object source)
                 {
-                    _eventInfo.RemoveEventHandler(source, handler);
+                    _removeHandler(source, handler);
                 }
             }
         }
     }
-}";
+}
+";
 }
