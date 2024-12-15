@@ -1,4 +1,3 @@
-using ReactiveAnalyzer;
 using Xunit;
 
 namespace ReactiveGenerator.Tests;
