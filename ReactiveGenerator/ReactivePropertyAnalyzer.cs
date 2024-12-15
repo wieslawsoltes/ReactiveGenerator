@@ -129,11 +129,12 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
 
         foreach (var diagnostic in context.Diagnostics)
         {
-            var propertyNode = root
-                .FindNode(diagnostic.Location.SourceSpan)
-                .AncestorsAndSelf()
-                .OfType<PropertyDeclarationSyntax>()
-                .FirstOrDefault();
+            // Find all property declarations
+            var properties = root.DescendantNodes().OfType<PropertyDeclarationSyntax>();
+            
+            // Find the property that contains the diagnostic location
+            var propertyNode = properties.FirstOrDefault(prop => 
+                prop.Span.Contains(diagnostic.Location.SourceSpan.Start));
 
             if (propertyNode == null) continue;
 
@@ -194,43 +195,18 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
                     })))
             .WithLeadingTrivia(propertyDeclaration.GetLeadingTrivia());
 
-        // Check if backing field can be removed
-        var canRemoveBackingField = false;
-        if (backingField != null)
-        {
-            var fieldSymbol = semanticModel.GetDeclaredSymbol(backingField.Declaration.Variables.First());
-            if (fieldSymbol != null)
-            {
-                var references = await SymbolFinder.FindReferencesAsync(
-                    fieldSymbol,
-                    document.Project.Solution,
-                    cancellationToken);
-
-                // Only remove if all references are within the property being converted
-                canRemoveBackingField = references.All(r => r.Locations.All(loc => 
-                    loc.Location.SourceSpan.Start >= propertyDeclaration.Span.Start &&
-                    loc.Location.SourceSpan.End <= propertyDeclaration.Span.End));
-            }
-        }
-
         // Build the new members list
-        var newMembers = new List<MemberDeclarationSyntax>();
-        foreach (var member in classDeclaration.Members)
-        {
-            if (member == propertyDeclaration)
+        var newMembers = classDeclaration.Members
+            .Select(member =>
             {
-                newMembers.Add(newProperty);
-            }
-            else if (member == backingField && canRemoveBackingField)
-            {
-                // Skip the backing field if we can remove it
-                continue;
-            }
-            else
-            {
-                newMembers.Add(member);
-            }
-        }
+                if (member == propertyDeclaration)
+                    return newProperty;
+                if (member == backingField)
+                    return null;
+                return member;
+            })
+            .Where(member => member != null)
+            .ToList();
 
         // Create new class with updated members
         var newClass = classDeclaration.WithMembers(SyntaxFactory.List(newMembers));
