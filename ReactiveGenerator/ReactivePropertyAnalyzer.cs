@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Composition;
 using System.Linq;
@@ -9,7 +10,6 @@ using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
-using Microsoft.CodeAnalysis.FindSymbols;
 
 namespace ReactiveGenerator;
 
@@ -189,23 +189,30 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
                         SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
                             .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
                     })))
-            .WithLeadingTrivia(SyntaxFactory.Whitespace("    "));
+            .WithLeadingTrivia(propertyDeclaration.GetLeadingTrivia());
 
-        // Create new members list without backing field and with new property
-        var newMembers = classDeclaration.Members
-            .Where(member => !SymbolEqualityComparer.Default.Equals(
-                semanticModel.GetDeclaredSymbol(member),
-                semanticModel.GetDeclaredSymbol(backingField)))
-            .Select(member =>
+        // Create new members list
+        var newMembers = new List<MemberDeclarationSyntax>();
+        foreach (var member in classDeclaration.Members)
+        {
+            if (member == propertyDeclaration)
             {
-                if (member == propertyDeclaration)
-                    return newProperty;
-                return member;
-            });
+                newMembers.Add(newProperty);
+                continue;
+            }
+
+            // Only filter out the backing field if we found it
+            if (backingField != null && member == backingField)
+            {
+                continue;
+            }
+
+            newMembers.Add(member);
+        }
 
         // Create new class declaration
         var newClass = classDeclaration
-            .WithMembers(SyntaxFactory.List(newMembers));
+            .WithMembers(SyntaxFactory.List<MemberDeclarationSyntax>(newMembers));
 
         // Replace the class in the root
         var newRoot = root.ReplaceNode(classDeclaration, newClass);
