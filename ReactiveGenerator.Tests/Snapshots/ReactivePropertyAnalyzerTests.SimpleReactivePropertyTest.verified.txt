@@ -1,0 +1,13 @@
+﻿{
+  Diagnostics: [
+    {
+      Id: REACTIVE001,
+      Severity: Info,
+      StartLinePosition: {
+        _line: 6,
+        _character: 16
+      },
+      GetMessage: Property 'Value' can be simplified using [Reactive] attribute
+    }
+  ]
+}
