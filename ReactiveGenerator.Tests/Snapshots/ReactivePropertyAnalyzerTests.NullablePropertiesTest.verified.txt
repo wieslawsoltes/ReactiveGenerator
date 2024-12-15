@@ -27,12 +27,7 @@
 
     [Reactive]
     public partial string? NullableString { get; set; }
-
-    private int? _nullableInt;
-                public int? NullableInt
-                {
-                    get => _nullableInt;
-                    set => this.RaiseAndSetIfChanged(ref _nullableInt, value);
-                }
-            }
+    [Reactive]
+    public partial int? NullableInt { get; set; }
+}
 }
