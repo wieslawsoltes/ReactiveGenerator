@@ -1,0 +1,38 @@
+﻿{
+  Diagnostics: [
+    {
+      Id: REACTIVE001,
+      Severity: Info,
+      Location: {
+        _line: 6,
+        _character: 16
+      },
+      Message: Property 'First' can be simplified using [Reactive] attribute
+    },
+    {
+      Id: REACTIVE001,
+      Severity: Info,
+      Location: {
+        _line: 13,
+        _character: 16
+      },
+      Message: Property 'Second' can be simplified using [Reactive] attribute
+    }
+  ],
+  FixedSource:
+            using ReactiveUI;
+            
+            public partial class TestViewModel : ReactiveObject
+            {
+
+    [Reactive]
+    public partial string First { get; set; }
+
+    private int _second;
+                public int Second
+                {
+                    get => _second;
+                    set => this.RaiseAndSetIfChanged(ref _second, value);
+                }
+            }
+}
