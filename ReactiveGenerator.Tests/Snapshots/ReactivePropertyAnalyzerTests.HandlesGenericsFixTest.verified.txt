@@ -1,0 +1,23 @@
+﻿{
+  Diagnostics: [
+    {
+      Id: REACTIVE001,
+      Severity: Info,
+      Location: {
+        _line: 7,
+        _character: 16
+      },
+      Message: Property 'Items' can be simplified using [Reactive] attribute
+    }
+  ],
+  FixedSource:
+            using ReactiveUI;
+            using System.Collections.ObjectModel;
+            
+            public partial class TestViewModel<T> : ReactiveObject where T : class
+            {
+
+    [Reactive]
+    public partial ObservableCollection<T>? Items { get; set; }
+}
+}

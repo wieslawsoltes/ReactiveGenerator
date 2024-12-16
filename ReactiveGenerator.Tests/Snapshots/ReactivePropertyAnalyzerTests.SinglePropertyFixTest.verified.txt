@@ -27,7 +27,12 @@
 
     [Reactive]
     public partial string First { get; set; }
-    [Reactive]
-    public partial int Second { get; set; }
-}
+
+    private int _second;
+                public int Second
+                {
+                    get => _second;
+                    set => this.RaiseAndSetIfChanged(ref _second, value);
+                }
+            }
 }

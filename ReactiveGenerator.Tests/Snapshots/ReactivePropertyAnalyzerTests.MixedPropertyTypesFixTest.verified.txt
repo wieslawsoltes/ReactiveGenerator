@@ -1,0 +1,39 @@
+﻿{
+  Diagnostics: [
+    {
+      Id: REACTIVE001,
+      Severity: Info,
+      Location: {
+        _line: 8,
+        _character: 16
+      },
+      Message: Property 'Name' can be simplified using [Reactive] attribute
+    },
+    {
+      Id: REACTIVE001,
+      Severity: Info,
+      Location: {
+        _line: 19,
+        _character: 16
+      },
+      Message: Property 'Count' can be simplified using [Reactive] attribute
+    }
+  ],
+  FixedSource:
+            using ReactiveUI;
+            using System;
+            using System.Windows.Input;
+            
+            public partial class TestViewModel : ReactiveObject
+            {
+
+    [Reactive]
+    public partial string Name { get; set; }
+    public ICommand UpdateCommand { get; set; }
+                public IObservable<int> Values { get; }
+                public string ReadOnlyProperty { get; }
+
+    [Reactive]
+    public partial int Count { get; set; }
+}
+}

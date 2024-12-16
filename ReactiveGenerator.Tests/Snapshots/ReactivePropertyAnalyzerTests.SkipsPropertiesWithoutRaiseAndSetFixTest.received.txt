@@ -1,0 +1,33 @@
+﻿{
+  Diagnostics: [
+    {
+      Id: REACTIVE001,
+      Severity: Info,
+      Location: {
+        _line: 6,
+        _character: 16
+      },
+      Message: Property 'Name' can be simplified using [Reactive] attribute
+    }
+  ],
+  FixedSource:
+            using ReactiveUI;
+            
+            public partial class TestViewModel : ReactiveObject
+            {
+
+    [Reactive]
+    public partial string Name { get; set; }
+
+    private string _title;
+                public string Title
+                {
+                    get => _title;
+                    set
+                    {
+                        _title = value;
+                        this.RaisePropertyChanged();
+                    }
+                }
+            }
+}
