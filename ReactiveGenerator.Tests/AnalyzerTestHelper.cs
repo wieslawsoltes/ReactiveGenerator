@@ -73,9 +73,7 @@ public static class AnalyzerTestHelper
             // Apply the matching action if found
             if (matchingActions.Any())
             {
-                var action = matchingActions
-                    .OrderBy(a => a.Title, StringComparer.Ordinal)
-                    .First();
+                var action = matchingActions.First();
                 var operations = await action.GetOperationsAsync(CancellationToken.None);
                 var operation = operations.OfType<ApplyChangesOperation>().Single();
                 var solution = operation.ChangedSolution;
