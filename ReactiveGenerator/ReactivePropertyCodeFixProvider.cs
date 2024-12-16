@@ -36,10 +36,11 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
                 case FixAllScope.Document:
                     var documentDiagnostics = await fixAllContext.GetDocumentDiagnosticsAsync(fixAllContext.Document);
                     if (!documentDiagnostics.Any()) return null;
-                    
+
                     return CodeAction.Create(
                         DocumentFixTitle,
-                        c => GetFixedDocumentAsync(fixAllContext.Solution, fixAllContext.Document, documentDiagnostics, c),
+                        c => GetFixedDocumentAsync(fixAllContext.Solution, fixAllContext.Document, documentDiagnostics,
+                            c),
                         $"{nameof(ReactivePropertyCodeFixProvider)}_Document");
 
                 case FixAllScope.Project:
@@ -64,6 +65,7 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
                                 $"{nameof(ReactivePropertyCodeFixProvider)}_Solution");
                         }
                     }
+
                     return null;
 
                 default:
@@ -79,36 +81,69 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
         var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
         if (root == null) return;
 
-        var diagnostic = context.Diagnostics.First();
+        // Order diagnostics deterministically
+        var diagnostics = context.Diagnostics
+            .OrderBy(d => d.Location.SourceSpan.Start)
+            .ToList();
+
+        var diagnostic = diagnostics.First();
         var diagnosticSpan = diagnostic.Location.SourceSpan;
-        
-        // Find the property declaration containing the diagnostic span
-        var propertyNode = root.DescendantNodes()
+
+        // Find all property declarations in a deterministic order
+        var propertyNodes = root.DescendantNodes()
             .OfType<PropertyDeclarationSyntax>()
-            .FirstOrDefault(p => p.Span.Contains(diagnosticSpan));
-            
-        if (propertyNode == null) return;
+            .Where(p => p.Span.Contains(diagnosticSpan))
+            .OrderBy(p => p.SpanStart)
+            .ToList();
 
-        // Register single property fix
-        context.RegisterCodeFix(
-            CodeAction.Create(
-                title: SingleFixTitle,
-                createChangedDocument: c => ConvertToReactivePropertyAsync(context.Document, propertyNode, c),
-                equivalenceKey: $"{nameof(ReactivePropertyCodeFixProvider)}_Single"),
-            diagnostic);
+        if (!propertyNodes.Any()) return;
 
-        // Register document-wide fix
-        var syntaxRoot = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
-        if (syntaxRoot != null)
+        var propertyNode = propertyNodes.First();
+
+        // Register fixes in a deterministic order
+        var fixes = new[]
         {
-            var documentDiagnostics = syntaxRoot
-                .DescendantNodes()
-                .OfType<PropertyDeclarationSyntax>()
-                .Where(p => !p.AttributeLists
-                    .SelectMany(al => al.Attributes)
-                    .Any(a => a.Name.ToString() == "Reactive"))
-                .Where(CanConvertToReactiveProperty)
-                .Select(p => Diagnostic.Create(
+            (SingleFixTitle, "Single"), (DocumentFixTitle, "Document"), (ProjectFixTitle, "Project"),
+            (SolutionFixTitle, "Solution")
+        };
+
+        foreach (var (title, scope) in fixes.OrderBy(f => f.Item1))
+        {
+            context.RegisterCodeFix(
+                CodeAction.Create(
+                    title: title,
+                    createChangedSolution: c => GetFixedSolutionForScope(
+                        context.Document,
+                        propertyNode,
+                        scope,
+                        c),
+                    equivalenceKey: $"{nameof(ReactivePropertyCodeFixProvider)}_{scope}"),
+                diagnostic);
+        }
+    }
+
+    private async Task<Solution> ConvertSinglePropertyAsync(
+        Document document,
+        PropertyDeclarationSyntax property,
+        CancellationToken cancellationToken)
+    {
+        var fixedDoc = await ConvertToReactivePropertyAsync(document, property, cancellationToken);
+        return fixedDoc.Project.Solution;
+    }
+
+    private async Task<Solution> GetFixedSolutionForScope(
+        Document document,
+        PropertyDeclarationSyntax property,
+        string scope,
+        CancellationToken cancellationToken)
+    {
+        switch (scope)
+        {
+            case "Single":
+                var fixedDoc = await ConvertToReactivePropertyAsync(document, property, cancellationToken);
+                return fixedDoc.Project.Solution;
+            case "Document":
+                var documentDiagnostic = Diagnostic.Create(
                     new DiagnosticDescriptor(
                         ReactivePropertyAnalyzer.DiagnosticId,
                         "Property can be made reactive",
@@ -116,37 +151,22 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
                         "Design",
                         DiagnosticSeverity.Info,
                         true),
-                    p.Identifier.GetLocation(),
-                    p.Identifier.Text));
+                    property.GetLocation(),
+                    property.Identifier.Text);
 
-            if (documentDiagnostics.Any())
-            {
-                context.RegisterCodeFix(
-                    CodeAction.Create(
-                        title: DocumentFixTitle,
-                        createChangedDocument: c => GetFixedDocumentAsync(
-                            context.Document.Project.Solution,
-                            context.Document,
-                            documentDiagnostics.ToImmutableArray(),
-                            c),
-                        equivalenceKey: $"{nameof(ReactivePropertyCodeFixProvider)}_Document"),
-                    diagnostic);
-            }
+                var fixedDocument = await GetFixedDocumentAsync(
+                    document.Project.Solution,
+                    document,
+                    ImmutableArray.Create(documentDiagnostic),
+                    cancellationToken);
+                return fixedDocument.Project.Solution;
+            case "Project":
+                return await GetFixedProjectAsync(document.Project, cancellationToken);
+            case "Solution":
+                return await GetFixedSolutionAsync(document.Project.Solution, cancellationToken);
+            default:
+                return document.Project.Solution;
         }
-
-        context.RegisterCodeFix(
-            CodeAction.Create(
-                title: ProjectFixTitle,
-                createChangedSolution: c => GetFixedProjectAsync(context.Document.Project, c),
-                equivalenceKey: $"{nameof(ReactivePropertyCodeFixProvider)}_Project"),
-            diagnostic);
-
-        context.RegisterCodeFix(
-            CodeAction.Create(
-                title: SolutionFixTitle,
-                createChangedSolution: c => GetFixedSolutionAsync(context.Document.Project.Solution, c),
-                equivalenceKey: $"{nameof(ReactivePropertyCodeFixProvider)}_Solution"),
-            diagnostic);
     }
 
     private static bool CanConvertToReactiveProperty(PropertyDeclarationSyntax property)
@@ -162,11 +182,12 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
         // Check if the setter uses RaiseAndSetIfChanged
         var setterText = (setAccessor.Body?.ToString() ?? setAccessor.ExpressionBody?.ToString() ?? "")
             .Replace(" ", "").Replace("\n", "").Replace("\r", "");
-        
+
         return setterText.Contains("this.RaiseAndSetIfChanged(ref");
     }
 
-    private static async Task<Document> GetFixedDocumentAsync(Solution solution, Document document, ImmutableArray<Diagnostic> diagnostics, CancellationToken cancellationToken)
+    private static async Task<Document> GetFixedDocumentAsync(Solution solution, Document document,
+        ImmutableArray<Diagnostic> diagnostics, CancellationToken cancellationToken)
     {
         var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
         if (root == null) return document;
@@ -180,7 +201,7 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
                 .AncestorsAndSelf()
                 .OfType<PropertyDeclarationSyntax>()
                 .FirstOrDefault();
-            
+
             if (property != null && CanConvertToReactiveProperty(property))
             {
                 propertyNodes.Add(property);
@@ -198,7 +219,7 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
 
             // Find the backing field name
             var backingFieldName = "_" + char.ToLower(property.Identifier.Text[0]) +
-                                 property.Identifier.Text.Substring(1);
+                                   property.Identifier.Text.Substring(1);
 
             // Find the backing field
             var backingField = classDeclaration.Members
@@ -234,10 +255,12 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
                 {
                     return replacement;
                 }
+
                 if (classModifications.TryGetValue(oldNode as ClassDeclarationSyntax, out var modifiedClass))
                 {
                     return modifiedClass;
                 }
+
                 return rewrittenOldNode;
             },
             tokens: null,
@@ -284,8 +307,8 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
                             .WithLeadingTrivia(indentation)
                     })))
             .WithLeadingTrivia(
-                leadingTrivia.Any(t => t.IsKind(SyntaxKind.EndOfLineTrivia)) 
-                    ? leadingTrivia 
+                leadingTrivia.Any(t => t.IsKind(SyntaxKind.EndOfLineTrivia))
+                    ? leadingTrivia
                     : leadingTrivia.Add(SyntaxFactory.EndOfLine("\n")).Add(indentation));
     }
 
@@ -297,14 +320,15 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
         if (compilation == null) return project.Solution;
 
         var diagnostics = await GetProjectDiagnosticsAsync(compilation, analyzer, project, cancellationToken);
-        
+
         var solution = project.Solution;
         foreach (var documentGroup in diagnostics.GroupBy(d => d.Location.SourceTree))
         {
             var document = solution.GetDocument(documentGroup.Key);
             if (document == null) continue;
 
-            var newDocument = await GetFixedDocumentAsync(solution, document, documentGroup.ToImmutableArray(), cancellationToken);
+            var newDocument = await GetFixedDocumentAsync(solution, document, documentGroup.ToImmutableArray(),
+                cancellationToken);
             solution = newDocument.Project.Solution;
         }
 
@@ -317,6 +341,7 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
         {
             solution = await GetFixedProjectAsync(project, cancellationToken);
         }
+
         return solution;
     }
 
@@ -357,7 +382,7 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
 
         // Find the backing field name
         var backingFieldName = "_" + char.ToLower(propertyDeclaration.Identifier.Text[0]) +
-                             propertyDeclaration.Identifier.Text.Substring(1);
+                               propertyDeclaration.Identifier.Text.Substring(1);
 
         // Find the backing field
         var backingField = classDeclaration.Members

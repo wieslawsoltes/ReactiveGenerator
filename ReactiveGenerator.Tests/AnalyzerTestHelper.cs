@@ -36,61 +36,70 @@ public static class AnalyzerTestHelper
             throw new ArgumentException("At least one analyzer must be provided", nameof(analyzers));
         }
 
-        // Create compilation
-        var compilation = CreateCompilation(source);
+        // Create initial project with the source
+        var project = CreateProject(source);
+        var document = project.Documents.First();
 
-        // Create analyzer driver
-        var compilationWithAnalyzers = compilation
+        // Run analysis
+        var compilation = await project.GetCompilationAsync();
+        var compilationWithAnalyzers = compilation!
             .WithAnalyzers(ImmutableArray.Create(analyzers),
                 new AnalyzerOptions(ImmutableArray<AdditionalText>.Empty));
 
-        // Run analysis
+        // Get diagnostics synchronously to ensure consistency
         var diagnostics = await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
 
-        // Apply code fixes if available
-        var codeFixProvider = new ReactivePropertyCodeFixProvider();
+        // Sort diagnostics deterministically
+        diagnostics = diagnostics.OrderBy(d => d.Location.SourceSpan.Start)
+            .ThenBy(d => d.Id)
+            .ToImmutableArray();
+
         var newSource = source;
-
-        if (diagnostics.Any() && codeFixProvider != null)
+        if (diagnostics.Any())
         {
-            var project = CreateProject(newSource);
-            var documentId = project.DocumentIds[0];
-            var document = project.GetDocument(documentId);
+            var codeFixProvider = new ReactivePropertyCodeFixProvider();
 
-            var diagnostic = diagnostics.First();
-            var matchingActions = new List<CodeAction>();
-
-            var context = new CodeFixContext(document!, diagnostic,
-                (a, _) =>
-                {
-                    // If no equivalenceKey filter is provided or matches, add the action
-                    if (equivalenceKey == null || a.EquivalenceKey == equivalenceKey)
-                    {
-                        matchingActions.Add(a);
-                    }
-                },
-                CancellationToken.None);
-
-            await codeFixProvider.RegisterCodeFixesAsync(context);
-
-            if (matchingActions.Any())
+            // Apply fixes one at a time in a deterministic order
+            foreach (var diagnostic in diagnostics)
             {
-                // Sort the code actions to ensure deterministic selection
-                // First by equivalence key (if given), then by title as a fallback.
-                matchingActions = matchingActions
-                    .OrderBy(a => a.Title, StringComparer.Ordinal)
-                    .ToList();
+                var actions = new List<CodeAction>();
+                var context = new CodeFixContext(document, diagnostic,
+                    (a, _) =>
+                    {
+                        if (equivalenceKey == null || a.EquivalenceKey == equivalenceKey)
+                        {
+                            actions.Add(a);
+                        }
+                    },
+                    CancellationToken.None);
 
-                var action = matchingActions.First();
-                var operations = await action.GetOperationsAsync(CancellationToken.None);
-                var operation = operations.OfType<ApplyChangesOperation>().Single();
-                var solution = operation.ChangedSolution;
-                document = solution.GetDocument(documentId);
-                newSource = (await document.GetTextAsync()).ToString();
+                await codeFixProvider.RegisterCodeFixesAsync(context);
+
+                if (actions.Any())
+                {
+                    // Sort actions deterministically
+                    actions = actions
+                        .OrderBy(a => a.EquivalenceKey)
+                        .ThenBy(a => a.Title)
+                        .ToList();
+
+                    var action = actions[0];
+
+                    // Apply the fix
+                    var operations = await action.GetOperationsAsync(CancellationToken.None);
+                    var operation = operations.OfType<ApplyChangesOperation>().First();
+
+                    // Get the new solution and document
+                    project = operation.ChangedSolution.GetProject(project.Id)!;
+                    document = project.Documents.First();
+
+                    // Update the source for verification
+                    newSource = (await document.GetTextAsync()).ToString();
+                }
             }
         }
 
-        // Use Verify
+        // Verify results
         await Verifier.Verify(new
         {
             Diagnostics = diagnostics.Select(d => new
@@ -99,9 +108,9 @@ public static class AnalyzerTestHelper
                 d.Severity,
                 Location = d.Location.GetLineSpan().StartLinePosition,
                 Message = d.GetMessage()
-            }).OrderBy(d => d.Id).ThenBy(d => d.Location.Line),
+            }).OrderBy(d => d.Location.Line).ThenBy(d => d.Id),
             FixedSource = newSource
-        });
+        }).UseDirectory("Snapshots");
     }
 
     private static Project CreateProject(string source)
@@ -120,7 +129,8 @@ public static class AnalyzerTestHelper
         {
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(System.ComponentModel.INotifyPropertyChanged).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(System.ComponentModel.INotifyPropertyChanged).Assembly
+                .Location),
             MetadataReference.CreateFromFile(typeof(ReactiveUI.ReactiveObject).Assembly.Location)
         };
 
@@ -135,7 +145,8 @@ public static class AnalyzerTestHelper
         {
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(System.ComponentModel.INotifyPropertyChanged).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(System.ComponentModel.INotifyPropertyChanged).Assembly
+                .Location),
             MetadataReference.CreateFromFile(typeof(ReactiveUI.ReactiveObject).Assembly.Location)
         };
 

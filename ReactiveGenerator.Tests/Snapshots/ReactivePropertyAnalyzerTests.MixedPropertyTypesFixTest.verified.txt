@@ -33,7 +33,11 @@
                 public IObservable<int> Values { get; }
                 public string ReadOnlyProperty { get; }
 
-    [Reactive]
-    public partial int Count { get; set; }
-}
+                private int _count;
+                public int Count
+                {
+                    get => _count;
+                    set => this.RaiseAndSetIfChanged(ref _count, value);
+                }
+            }
 }
