@@ -137,35 +137,96 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
         string scope,
         CancellationToken cancellationToken)
     {
+        var solution = document.Project.Solution;
+
         switch (scope)
         {
             case "Single":
-                var fixedDoc = await ConvertToReactivePropertyAsync(document, property, cancellationToken);
-                return fixedDoc.Project.Solution;
-            case "Document":
-                var documentDiagnostic = Diagnostic.Create(
-                    new DiagnosticDescriptor(
-                        ReactivePropertyAnalyzer.DiagnosticId,
-                        "Property can be made reactive",
-                        "Property '{0}' can be made reactive",
-                        "Design",
-                        DiagnosticSeverity.Info,
-                        true),
-                    property.GetLocation(),
-                    property.Identifier.Text);
+                return (await ConvertToReactivePropertyAsync(document, property, cancellationToken))
+                    .Project.Solution;
 
-                var fixedDocument = await GetFixedDocumentAsync(
-                    document.Project.Solution,
-                    document,
-                    ImmutableArray.Create(documentDiagnostic),
-                    cancellationToken);
-                return fixedDocument.Project.Solution;
+            case "Document":
+                var currentDoc = document;
+                var syntaxRoot = await currentDoc.GetSyntaxRootAsync(cancellationToken);
+                if (syntaxRoot == null) return solution;
+
+                // Get all property declarations that can be converted
+                var properties = syntaxRoot.DescendantNodes()
+                    .OfType<PropertyDeclarationSyntax>()
+                    .Where(p => !p.AttributeLists
+                        .SelectMany(al => al.Attributes)
+                        .Any(a => a.Name.ToString() == "Reactive"))
+                    .Where(CanConvertToReactiveProperty)
+                    .OrderBy(p => p.SpanStart)
+                    .ToList();
+
+                // Convert each property
+                foreach (var prop in properties)
+                {
+                    currentDoc = await ConvertToReactivePropertyAsync(currentDoc, prop, cancellationToken);
+                    solution = currentDoc.Project.Solution;
+                }
+
+                return solution;
+
             case "Project":
-                return await GetFixedProjectAsync(document.Project, cancellationToken);
+                var project = document.Project;
+                foreach (var doc in project.Documents)
+                {
+                    var docRoot = await doc.GetSyntaxRootAsync(cancellationToken);
+                    if (docRoot == null) continue;
+
+                    var projectProperties = docRoot.DescendantNodes()
+                        .OfType<PropertyDeclarationSyntax>()
+                        .Where(p => !p.AttributeLists
+                            .SelectMany(al => al.Attributes)
+                            .Any(a => a.Name.ToString() == "Reactive"))
+                        .Where(CanConvertToReactiveProperty)
+                        .OrderBy(p => p.SpanStart)
+                        .ToList();
+
+                    var currentDocument = doc;
+                    foreach (var prop in projectProperties)
+                    {
+                        currentDocument = await ConvertToReactivePropertyAsync(
+                            currentDocument, prop, cancellationToken);
+                        solution = currentDocument.Project.Solution;
+                    }
+                }
+
+                return solution;
+
             case "Solution":
-                return await GetFixedSolutionAsync(document.Project.Solution, cancellationToken);
+                foreach (var proj in solution.Projects)
+                {
+                    foreach (var doc in proj.Documents)
+                    {
+                        var docRoot = await doc.GetSyntaxRootAsync(cancellationToken);
+                        if (docRoot == null) continue;
+
+                        var solutionProperties = docRoot.DescendantNodes()
+                            .OfType<PropertyDeclarationSyntax>()
+                            .Where(p => !p.AttributeLists
+                                .SelectMany(al => al.Attributes)
+                                .Any(a => a.Name.ToString() == "Reactive"))
+                            .Where(CanConvertToReactiveProperty)
+                            .OrderBy(p => p.SpanStart)
+                            .ToList();
+
+                        var currentDocument = doc;
+                        foreach (var prop in solutionProperties)
+                        {
+                            currentDocument = await ConvertToReactivePropertyAsync(
+                                currentDocument, prop, cancellationToken);
+                            solution = currentDocument.Project.Solution;
+                        }
+                    }
+                }
+
+                return solution;
+
             default:
-                return document.Project.Solution;
+                return solution;
         }
     }
 
