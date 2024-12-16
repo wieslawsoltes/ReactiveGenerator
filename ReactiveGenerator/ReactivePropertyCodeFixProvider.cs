@@ -137,8 +137,6 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
         string scope,
         CancellationToken cancellationToken)
     {
-        var solution = document.Project.Solution;
-
         switch (scope)
         {
             case "Single":
@@ -146,87 +144,148 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
                     .Project.Solution;
 
             case "Document":
-                var currentDoc = document;
-                var syntaxRoot = await currentDoc.GetSyntaxRootAsync(cancellationToken);
-                if (syntaxRoot == null) return solution;
+                // Get all properties from the document in one go
+                var root = await document.GetSyntaxRootAsync(cancellationToken);
+                if (root == null) return document.Project.Solution;
 
-                // Get all property declarations that can be converted
-                var properties = syntaxRoot.DescendantNodes()
-                    .OfType<PropertyDeclarationSyntax>()
-                    .Where(p => !p.AttributeLists
-                        .SelectMany(al => al.Attributes)
-                        .Any(a => a.Name.ToString() == "Reactive"))
-                    .Where(CanConvertToReactiveProperty)
-                    .OrderBy(p => p.SpanStart)
-                    .ToList();
+                var nodesToReplace = new Dictionary<SyntaxNode, SyntaxNode>();
+                var classModifications = new Dictionary<ClassDeclarationSyntax, SyntaxNode>();
 
-                // Convert each property
-                foreach (var prop in properties)
+                // Identify all convertible properties
+                foreach (var prop in root.DescendantNodes()
+                             .OfType<PropertyDeclarationSyntax>()
+                             .Where(CanConvertToReactiveProperty)
+                             .OrderBy(p => p.SpanStart))
                 {
-                    currentDoc = await ConvertToReactivePropertyAsync(currentDoc, prop, cancellationToken);
-                    solution = currentDoc.Project.Solution;
+                    var classDeclaration = prop.Parent as ClassDeclarationSyntax;
+                    if (classDeclaration == null) continue;
+
+                    // Find backing field
+                    var backingFieldName = "_" + char.ToLower(prop.Identifier.Text[0]) +
+                                           prop.Identifier.Text.Substring(1);
+
+                    var backingField = classDeclaration.Members
+                        .OfType<FieldDeclarationSyntax>()
+                        .FirstOrDefault(f => f.Declaration.Variables
+                            .Any(v => v.Identifier.Text == backingFieldName));
+
+                    // Create new reactive property
+                    var newProperty = CreateReactiveProperty(prop);
+
+                    // Track nodes to be replaced
+                    nodesToReplace[prop] = newProperty;
+                    if (backingField != null)
+                    {
+                        nodesToReplace[backingField] = null; // Mark for removal
+                    }
+
+                    // Ensure class is partial if not already
+                    if (!classDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)))
+                    {
+                        var newClass = classDeclaration.WithModifiers(
+                            classDeclaration.Modifiers.Add(SyntaxFactory.Token(SyntaxKind.PartialKeyword)));
+                        classModifications[classDeclaration] = newClass;
+                    }
                 }
 
-                return solution;
+                // Apply all transformations at once
+                var newRoot = root.ReplaceSyntax(
+                    nodes: nodesToReplace.Keys,
+                    computeReplacementNode: (oldNode, rewrittenOldNode) =>
+                    {
+                        if (nodesToReplace.TryGetValue(oldNode, out var replacement))
+                        {
+                            return replacement;
+                        }
+
+                        if (classModifications.TryGetValue(oldNode as ClassDeclarationSyntax, out var modifiedClass))
+                        {
+                            return modifiedClass;
+                        }
+
+                        return rewrittenOldNode;
+                    },
+                    tokens: null,
+                    computeReplacementToken: null,
+                    trivia: null,
+                    computeReplacementTrivia: null);
+
+                var newDocument = document.WithSyntaxRoot(newRoot);
+                return newDocument.Project.Solution;
 
             case "Project":
+                // Start with current solution
+                var projectSolution = document.Project.Solution;
                 var project = document.Project;
+
+                // Process each document in the project
                 foreach (var doc in project.Documents)
                 {
                     var docRoot = await doc.GetSyntaxRootAsync(cancellationToken);
                     if (docRoot == null) continue;
 
+                    // Get all properties in document
                     var projectProperties = docRoot.DescendantNodes()
                         .OfType<PropertyDeclarationSyntax>()
-                        .Where(p => !p.AttributeLists
-                            .SelectMany(al => al.Attributes)
-                            .Any(a => a.Name.ToString() == "Reactive"))
                         .Where(CanConvertToReactiveProperty)
                         .OrderBy(p => p.SpanStart)
                         .ToList();
 
-                    var currentDocument = doc;
-                    foreach (var prop in projectProperties)
+                    // Convert properties
+                    if (projectProperties.Any())
                     {
-                        currentDocument = await ConvertToReactivePropertyAsync(
-                            currentDocument, prop, cancellationToken);
-                        solution = currentDocument.Project.Solution;
+                        var currentDoc = projectSolution.GetDocument(doc.Id);
+                        if (currentDoc == null) continue;
+
+                        var documentSolution = await GetFixedSolutionForScope(
+                            currentDoc,
+                            projectProperties.First(),
+                            "Document",
+                            cancellationToken);
+
+                        projectSolution = documentSolution;
                     }
                 }
 
-                return solution;
+                return projectSolution;
 
             case "Solution":
-                foreach (var proj in solution.Projects)
+                var solutionToFix = document.Project.Solution;
+
+                // Process each project
+                foreach (var proj in solutionToFix.Projects)
                 {
+                    var firstDoc = proj.Documents.FirstOrDefault();
+                    if (firstDoc == null) continue;
+
+                    // Get first doc with convertible properties
                     foreach (var doc in proj.Documents)
                     {
                         var docRoot = await doc.GetSyntaxRootAsync(cancellationToken);
                         if (docRoot == null) continue;
 
-                        var solutionProperties = docRoot.DescendantNodes()
+                        var hasConvertibleProperties = docRoot.DescendantNodes()
                             .OfType<PropertyDeclarationSyntax>()
-                            .Where(p => !p.AttributeLists
-                                .SelectMany(al => al.Attributes)
-                                .Any(a => a.Name.ToString() == "Reactive"))
-                            .Where(CanConvertToReactiveProperty)
-                            .OrderBy(p => p.SpanStart)
-                            .ToList();
+                            .Any(CanConvertToReactiveProperty);
 
-                        var currentDocument = doc;
-                        foreach (var prop in solutionProperties)
+                        if (hasConvertibleProperties)
                         {
-                            currentDocument = await ConvertToReactivePropertyAsync(
-                                currentDocument, prop, cancellationToken);
-                            solution = currentDocument.Project.Solution;
+                            var updatedSolution = await GetFixedSolutionForScope(
+                                doc,
+                                property,
+                                "Project",
+                                cancellationToken);
+
+                            solutionToFix = updatedSolution;
+                            break;
                         }
                     }
                 }
 
-                return solution;
+                return solutionToFix;
 
             default:
-                return solution;
+                return document.Project.Solution;
         }
     }
 
