@@ -107,6 +107,7 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
                 .Where(p => !p.AttributeLists
                     .SelectMany(al => al.Attributes)
                     .Any(a => a.Name.ToString() == "Reactive"))
+                .Where(CanConvertToReactiveProperty)
                 .Select(p => Diagnostic.Create(
                     new DiagnosticDescriptor(
                         ReactivePropertyAnalyzer.DiagnosticId,
@@ -148,6 +149,23 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
             diagnostic);
     }
 
+    private static bool CanConvertToReactiveProperty(PropertyDeclarationSyntax property)
+    {
+        // Must have both getter and setter
+        if (property.AccessorList?.Accessors.Count != 2) return false;
+
+        // Must have a set accessor with a body or expression
+        var setAccessor = property.AccessorList.Accessors
+            .FirstOrDefault(a => a.IsKind(SyntaxKind.SetAccessorDeclaration));
+        if (setAccessor == null || setAccessor.Body == null && setAccessor.ExpressionBody == null) return false;
+
+        // Check if the setter uses RaiseAndSetIfChanged
+        var setterText = (setAccessor.Body?.ToString() ?? setAccessor.ExpressionBody?.ToString() ?? "")
+            .Replace(" ", "").Replace("\n", "").Replace("\r", "");
+        
+        return setterText.Contains("this.RaiseAndSetIfChanged(ref");
+    }
+
     private static async Task<Document> GetFixedDocumentAsync(Solution solution, Document document, ImmutableArray<Diagnostic> diagnostics, CancellationToken cancellationToken)
     {
         var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
@@ -163,7 +181,7 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
                 .OfType<PropertyDeclarationSyntax>()
                 .FirstOrDefault();
             
-            if (property != null)
+            if (property != null && CanConvertToReactiveProperty(property))
             {
                 propertyNodes.Add(property);
             }
@@ -232,22 +250,22 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
 
     private static PropertyDeclarationSyntax CreateReactiveProperty(PropertyDeclarationSyntax property)
     {
+        // Get the full indentation from the property
         var leadingTrivia = property.GetLeadingTrivia();
-        var indentation = leadingTrivia
-            .Where(t => t.IsKind(SyntaxKind.WhitespaceTrivia))
-            .LastOrDefault();
+        var indentation = SyntaxFactory.Whitespace(new string(' ', leadingTrivia.ToFullString().Count(c => c == ' ')));
 
         // Create the [Reactive] attribute with proper indentation
-        var reactiveAttribute = SyntaxFactory.AttributeList(
+        var attributeList = SyntaxFactory.AttributeList(
                 SyntaxFactory.SingletonSeparatedList(
                     SyntaxFactory.Attribute(SyntaxFactory.IdentifierName("Reactive"))))
-            .WithLeadingTrivia(leadingTrivia);
+            .WithLeadingTrivia(indentation);
 
+        // Create new reactive property with proper indentation
         return SyntaxFactory.PropertyDeclaration(
                 property.Type,
                 property.Identifier)
             .WithAttributeLists(
-                SyntaxFactory.SingletonList(reactiveAttribute))
+                SyntaxFactory.SingletonList(attributeList))
             .WithModifiers(
                 property.Modifiers.Add(SyntaxFactory.Token(SyntaxKind.PartialKeyword)))
             .WithAccessorList(
@@ -257,13 +275,18 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
                         SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
                             .WithModifiers(property.AccessorList?.Accessors
                                 .FirstOrDefault(a => a.IsKind(SyntaxKind.GetAccessorDeclaration))?.Modifiers ?? default)
-                            .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)),
+                            .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
+                            .WithLeadingTrivia(indentation),
                         SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
                             .WithModifiers(property.AccessorList?.Accessors
                                 .FirstOrDefault(a => a.IsKind(SyntaxKind.SetAccessorDeclaration))?.Modifiers ?? default)
                             .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
+                            .WithLeadingTrivia(indentation)
                     })))
-            .WithLeadingTrivia(SyntaxFactory.LineFeed, indentation);
+            .WithLeadingTrivia(
+                leadingTrivia.Any(t => t.IsKind(SyntaxKind.EndOfLineTrivia)) 
+                    ? leadingTrivia 
+                    : leadingTrivia.Add(SyntaxFactory.EndOfLine("\n")).Add(indentation));
     }
 
     private static async Task<Solution> GetFixedProjectAsync(Project project, CancellationToken cancellationToken)
