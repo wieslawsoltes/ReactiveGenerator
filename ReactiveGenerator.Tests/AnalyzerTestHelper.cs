@@ -5,6 +5,11 @@ using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CodeActions;
 using System.Runtime.CompilerServices;
 using System.Collections.Immutable;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System;
+using System.Collections.Generic;
 
 namespace ReactiveGenerator.Tests;
 
@@ -33,10 +38,10 @@ public static class AnalyzerTestHelper
 
         // Create compilation
         var compilation = CreateCompilation(source);
-        
+
         // Create analyzer driver
         var compilationWithAnalyzers = compilation
-            .WithAnalyzers(ImmutableArray.Create(analyzers), 
+            .WithAnalyzers(ImmutableArray.Create(analyzers),
                 new AnalyzerOptions(ImmutableArray<AdditionalText>.Empty));
 
         // Run analysis
@@ -45,34 +50,37 @@ public static class AnalyzerTestHelper
         // Apply code fixes if available
         var codeFixProvider = new ReactivePropertyCodeFixProvider();
         var newSource = source;
-        
+
         if (diagnostics.Any() && codeFixProvider != null)
         {
             var project = CreateProject(newSource);
             var documentId = project.DocumentIds[0];
             var document = project.GetDocument(documentId);
-            
-            // Create a list to store matching actions
-            var matchingActions = new List<CodeAction>();
-            
-            // Get first diagnostic to trigger fix registration
+
             var diagnostic = diagnostics.First();
-            var context = new CodeFixContext(document, diagnostic,
-                (a, _) => 
+            var matchingActions = new List<CodeAction>();
+
+            var context = new CodeFixContext(document!, diagnostic,
+                (a, _) =>
                 {
-                    // If equivalenceKey is null or matches, add the action
+                    // If no equivalenceKey filter is provided or matches, add the action
                     if (equivalenceKey == null || a.EquivalenceKey == equivalenceKey)
                     {
                         matchingActions.Add(a);
                     }
                 },
                 CancellationToken.None);
-            
+
             await codeFixProvider.RegisterCodeFixesAsync(context);
 
-            // Apply the matching action if found
             if (matchingActions.Any())
             {
+                // Sort the code actions to ensure deterministic selection
+                // First by equivalence key (if given), then by title as a fallback.
+                matchingActions = matchingActions
+                    .OrderBy(a => a.Title, StringComparer.Ordinal)
+                    .ToList();
+
                 var action = matchingActions.First();
                 var operations = await action.GetOperationsAsync(CancellationToken.None);
                 var operation = operations.OfType<ApplyChangesOperation>().Single();
