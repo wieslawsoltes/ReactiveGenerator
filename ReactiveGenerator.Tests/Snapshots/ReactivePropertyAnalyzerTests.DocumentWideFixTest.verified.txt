@@ -27,14 +27,8 @@
 
     [Reactive]
     public partial string First { get; set; }
-
-    private int _second;
-                public int Second
-                {
-                    get => _second;
-                    set => this.RaiseAndSetIfChanged(ref _second, value);
-                }
-
-                public string NonReactiveProperty { get; set; }
+    [Reactive]
+    public partial int Second { get; set; }
+    public string NonReactiveProperty { get; set; }
             }
 }

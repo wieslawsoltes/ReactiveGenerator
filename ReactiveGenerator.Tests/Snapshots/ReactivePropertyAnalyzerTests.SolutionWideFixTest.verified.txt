@@ -31,11 +31,8 @@
 
             public partial class SecondViewModel : ReactiveObject
             {
-                private int _count;
-                public int Count
-                {
-                    get => _count;
-                    set => this.RaiseAndSetIfChanged(ref _count, value);
-                }
-            }
+
+    [Reactive]
+    public partial int Count { get; set; }
+}
 }
