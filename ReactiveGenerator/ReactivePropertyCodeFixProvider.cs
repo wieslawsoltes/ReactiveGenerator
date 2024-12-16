@@ -122,15 +122,6 @@ public class ReactivePropertyCodeFixProvider : CodeFixProvider
         }
     }
 
-    private async Task<Solution> ConvertSinglePropertyAsync(
-        Document document,
-        PropertyDeclarationSyntax property,
-        CancellationToken cancellationToken)
-    {
-        var fixedDoc = await ConvertToReactivePropertyAsync(document, property, cancellationToken);
-        return fixedDoc.Project.Solution;
-    }
-
     private async Task<Solution> GetFixedSolutionForScope(
         Document document,
         PropertyDeclarationSyntax property,
