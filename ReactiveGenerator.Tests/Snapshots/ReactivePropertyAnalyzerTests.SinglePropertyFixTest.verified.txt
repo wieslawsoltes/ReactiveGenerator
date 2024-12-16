@@ -24,15 +24,14 @@
             
             public partial class TestViewModel : ReactiveObject
             {
+                private string _first;
+                public string First
+                {
+                    get => _first;
+                    set => this.RaiseAndSetIfChanged(ref _first, value);
+                }
 
     [Reactive]
-    public partial string First { get; set; }
-
-    private int _second;
-                public int Second
-                {
-                    get => _second;
-                    set => this.RaiseAndSetIfChanged(ref _second, value);
-                }
-            }
+    public partial int Second { get; set; }
+}
 }

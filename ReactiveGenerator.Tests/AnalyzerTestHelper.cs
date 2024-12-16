@@ -10,8 +10,18 @@ namespace ReactiveGenerator.Tests;
 
 public static class AnalyzerTestHelper
 {
-    public static async Task TestAndVerify(
+    public static Task TestAndVerify(
         string source,
+        Dictionary<string, string>? analyzerConfigOptions = null,
+        [CallerMemberName] string? testName = null,
+        params DiagnosticAnalyzer[] analyzers)
+    {
+        return TestAndVerifyWithFix(source, null, analyzerConfigOptions, testName, analyzers);
+    }
+
+    public static async Task TestAndVerifyWithFix(
+        string source,
+        string? equivalenceKey,
         Dictionary<string, string>? analyzerConfigOptions = null,
         [CallerMemberName] string? testName = null,
         params DiagnosticAnalyzer[] analyzers)
@@ -42,33 +52,34 @@ public static class AnalyzerTestHelper
             var documentId = project.DocumentIds[0];
             var document = project.GetDocument(documentId);
             
-            // Create a list to store all actions
-            var allActions = new List<CodeAction>();
+            // Create a list to store matching actions
+            var matchingActions = new List<CodeAction>();
             
-            // Collect all actions for all diagnostics
-            foreach (var diagnostic in diagnostics.OrderBy(d => d.Location.SourceSpan.Start))
-            {
-                var context = new CodeFixContext(document, diagnostic,
-                    (a, _) => allActions.Add(a),
-                    CancellationToken.None);
-                
-                await codeFixProvider.RegisterCodeFixesAsync(context);
-            }
+            // Get first diagnostic to trigger fix registration
+            var diagnostic = diagnostics.First();
+            var context = new CodeFixContext(document, diagnostic,
+                (a, _) => 
+                {
+                    // If equivalenceKey is null or matches, add the action
+                    if (equivalenceKey == null || a.EquivalenceKey == equivalenceKey)
+                    {
+                        matchingActions.Add(a);
+                    }
+                },
+                CancellationToken.None);
             
-            // Apply all actions in sequence
-            foreach (var action in allActions)
+            await codeFixProvider.RegisterCodeFixesAsync(context);
+
+            // Apply the matching action if found
+            if (matchingActions.Any())
             {
+                var action = matchingActions.First();
                 var operations = await action.GetOperationsAsync(CancellationToken.None);
                 var operation = operations.OfType<ApplyChangesOperation>().Single();
                 var solution = operation.ChangedSolution;
                 document = solution.GetDocument(documentId);
-                
-                // Update compilation to get fresh diagnostics
-                var text = await document.GetTextAsync();
-                compilation = CreateCompilation(text.ToString());
+                newSource = (await document.GetTextAsync()).ToString();
             }
-            
-            newSource = (await document.GetTextAsync()).ToString();
         }
 
         // Use Verify

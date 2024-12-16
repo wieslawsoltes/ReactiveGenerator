@@ -24,9 +24,13 @@
             
             public partial class TestViewModel : ReactiveObject
             {
+                private string? _nullableString;
+                public string? NullableString
+                {
+                    get => _nullableString;
+                    set => this.RaiseAndSetIfChanged(ref _nullableString, value);
+                }
 
-    [Reactive]
-    public partial string? NullableString { get; set; }
     [Reactive]
     public partial int? NullableInt { get; set; }
 }

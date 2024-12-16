@@ -1,0 +1,39 @@
+﻿{
+  Diagnostics: [
+    {
+      Id: REACTIVE001,
+      Severity: Info,
+      Location: {
+        _line: 6,
+        _character: 16
+      },
+      Message: Property 'Name' can be simplified using [Reactive] attribute
+    },
+    {
+      Id: REACTIVE001,
+      Severity: Info,
+      Location: {
+        _line: 16,
+        _character: 16
+      },
+      Message: Property 'Count' can be simplified using [Reactive] attribute
+    }
+  ],
+  FixedSource:
+            using ReactiveUI;
+            
+            public partial class FirstViewModel : ReactiveObject
+            {
+
+    [Reactive]
+    public partial string Name { get; set; }
+}
+
+            public partial class SecondViewModel : ReactiveObject
+            {
+
+    [Reactive]
+    public partial int Count { get; set; }
+    public string NonReactiveProperty { get; set; }
+            }
+}
