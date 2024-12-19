@@ -67,25 +67,58 @@ public class ReactiveGenerator : IIncrementalGenerator
                 spc));
     }
 
+    private static bool IsTypeReactive(INamedTypeSymbol type)
+    {
+        // If type inherits from ReactiveObject, it's already reactive
+        if (InheritsFromReactiveObject(type))
+            return true;
+
+        // First check if the type has [IgnoreReactive]
+        foreach (var attribute in type.GetAttributes())
+        {
+            if (attribute.AttributeClass?.Name is "IgnoreReactiveAttribute" or "IgnoreReactive")
+                return false;
+        }
+
+        // Then check if the type has [Reactive]
+        foreach (var attribute in type.GetAttributes())
+        {
+            if (attribute.AttributeClass?.Name is "ReactiveAttribute" or "Reactive")
+                return true;
+        }
+
+        // Finally check base types (excluding ReactiveObject)
+        var current = type.BaseType;
+        while (current != null)
+        {
+            if (InheritsFromReactiveObject(current))
+                return true;
+
+            foreach (var attribute in current.GetAttributes())
+            {
+                if (attribute.AttributeClass?.Name is "ReactiveAttribute" or "Reactive")
+                    return true;
+            }
+
+            current = current.BaseType;
+        }
+
+        return false;
+    }
+
     private static (INamedTypeSymbol Type, Location Location)? GetClassInfo(GeneratorSyntaxContext context)
     {
         if (context.Node is not ClassDeclarationSyntax classDeclaration)
             return null;
 
-        foreach (var attributeList in classDeclaration.AttributeLists)
+        var symbol = (INamedTypeSymbol?)context.SemanticModel.GetDeclaredSymbol(classDeclaration);
+        if (symbol == null)
+            return null;
+
+        // Check if this type should be reactive
+        if (IsTypeReactive(symbol))
         {
-            foreach (var attribute in attributeList.Attributes)
-            {
-                var name = attribute.Name.ToString();
-                if (name is "Reactive" or "ReactiveAttribute")
-                {
-                    var symbol = (INamedTypeSymbol?)context.SemanticModel.GetDeclaredSymbol(classDeclaration);
-                    if (symbol != null)
-                    {
-                        return (symbol, classDeclaration.GetLocation());
-                    }
-                }
-            }
+            return (symbol, classDeclaration.GetLocation());
         }
 
         return null;
@@ -103,6 +136,7 @@ public class ReactiveGenerator : IIncrementalGenerator
         bool hasReactiveAttribute = false;
         bool hasIgnoreAttribute = false;
 
+        // Check property attributes
         foreach (var attributeList in propertyDeclaration.AttributeLists)
         {
             foreach (var attribute in attributeList.Attributes)
@@ -115,17 +149,9 @@ public class ReactiveGenerator : IIncrementalGenerator
             }
         }
 
-        // Check if containing type has [Reactive] attribute
         var containingType = symbol.ContainingType;
-        bool classHasReactiveAttribute = false;
-        foreach (var attribute in containingType.GetAttributes())
-        {
-            if (attribute.AttributeClass?.Name is "ReactiveAttribute" or "Reactive")
-            {
-                classHasReactiveAttribute = true;
-                break;
-            }
-        }
+        // Check if containing type should be reactive
+        bool classHasReactiveAttribute = IsTypeReactive(containingType);
 
         // Check if property has an implementation
         bool hasImplementation = propertyDeclaration.AccessorList?.Accessors.Any(
@@ -133,7 +159,7 @@ public class ReactiveGenerator : IIncrementalGenerator
 
         // Return property info if it either:
         // 1. Has [Reactive] attribute directly
-        // 2. Is in a class with [Reactive] attribute and doesn't have [IgnoreReactive]
+        // 2. Is in a class (or base class) with [Reactive] attribute and doesn't have [IgnoreReactive]
         // 3. Has no implementation yet
         if ((hasReactiveAttribute || (classHasReactiveAttribute && !hasIgnoreAttribute)) && !hasImplementation)
         {
@@ -148,9 +174,14 @@ public class ReactiveGenerator : IIncrementalGenerator
         var current = typeSymbol;
         while (current is not null)
         {
-            if (current.Name == "ReactiveObject" &&
-                current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat).StartsWith("global::ReactiveUI."))
+            if (current.Name == "ReactiveObject" ||
+                current.ToString() == "ReactiveUI.ReactiveObject" ||
+                current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ==
+                "global::ReactiveUI.ReactiveObject")
+            {
                 return true;
+            }
+
             current = current.BaseType;
         }
 
@@ -170,6 +201,71 @@ public class ReactiveGenerator : IIncrementalGenerator
         return depth;
     }
 
+    private static IEnumerable<INamedTypeSymbol> GetAllTypesInCompilation(Compilation compilation)
+    {
+        var result = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+
+        void ProcessNamespaceTypes(INamespaceSymbol ns)
+        {
+            foreach (var member in ns.GetMembers())
+            {
+                switch (member)
+                {
+                    case INamespaceSymbol nestedNs:
+                        ProcessNamespaceTypes(nestedNs);
+                        break;
+                    case INamedTypeSymbol type:
+                        result.Add(type);
+                        foreach (var nestedType in type.GetTypeMembers())
+                        {
+                            result.Add(nestedType);
+                        }
+
+                        break;
+                }
+            }
+        }
+
+        ProcessNamespaceTypes(compilation.GlobalNamespace);
+        return result;
+    }
+
+    private static bool IsTypeMarkedReactive(INamedTypeSymbol type)
+    {
+        // Check if type has [Reactive]
+        foreach (var attribute in type.GetAttributes())
+        {
+            if (attribute.AttributeClass?.Name is "ReactiveAttribute" or "Reactive")
+                return true;
+        }
+
+        // Check base types for [Reactive]
+        var current = type.BaseType;
+        while (current != null)
+        {
+            foreach (var attribute in current.GetAttributes())
+            {
+                if (attribute.AttributeClass?.Name is "ReactiveAttribute" or "Reactive")
+                    return true;
+            }
+
+            current = current.BaseType;
+        }
+
+        return false;
+    }
+
+    private static bool HasAnyReactiveProperties(INamedTypeSymbol type,
+        Dictionary<ISymbol, List<PropertyInfo>> propertyGroups)
+    {
+        if (propertyGroups.TryGetValue(type, out var properties))
+        {
+            return properties.Any(p => p.HasReactiveAttribute);
+        }
+
+        return false;
+    }
+
     private static void Execute(
         Compilation compilation,
         List<(INamedTypeSymbol Type, Location Location)> reactiveClasses,
@@ -181,64 +277,36 @@ public class ReactiveGenerator : IIncrementalGenerator
             return;
 
         var processedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-        var reactiveTypesSet = new HashSet<INamedTypeSymbol>(
-            reactiveClasses.Select(rc => rc.Type),
-            SymbolEqualityComparer.Default);
+        var allTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
 
         // Group properties by containing type
         var propertyGroups = properties
             .GroupBy(p => p.Property.ContainingType, SymbolEqualityComparer.Default)
             .ToDictionary(g => g.Key, g => g.ToList(), SymbolEqualityComparer.Default);
 
-        // Get all types that need processing
-        var allTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-
-        // Add types from reactive classes
-        foreach (var reactiveClass in reactiveClasses)
-            allTypes.Add(reactiveClass.Type);
-
-        // Add types from properties that should be reactive and don't have implementation
-        foreach (var property in properties)
+        // Add types that need processing
+        foreach (var type in GetAllTypesInCompilation(compilation))
         {
-            if ((property.HasReactiveAttribute ||
-                 (reactiveTypesSet.Contains(property.Property.ContainingType) && !property.HasIgnoreAttribute)) &&
-                !property.HasImplementation &&
-                property.Property.ContainingType is INamedTypeSymbol type)
+            if (IsTypeMarkedReactive(type) || HasAnyReactiveProperties(type, propertyGroups))
             {
                 allTypes.Add(type);
             }
         }
 
-        // First pass: Process base types that need INPC
-        var typesToProcess = allTypes.ToList(); // Create a copy to avoid modification during enumeration
-        foreach (var type in typesToProcess)
-        {
-            var current = type.BaseType;
-            while (current is not null)
-            {
-                allTypes.Add(current); // Add base type to processing queue
-                current = current.BaseType;
-            }
-        }
-
-        // Process types in correct order (base types first)
+        // Process types in correct order
         foreach (var type in allTypes.OrderBy(t => GetTypeHierarchyDepth(t)))
         {
-            // Skip if type already processed or inherits from ReactiveObject
-            if (processedTypes.Contains(type) || InheritsFromReactiveObject(type))
+            if (processedTypes.Contains(type))
                 continue;
 
-            // Check if type needs INPC implementation
-            var needsInpc = !HasINPCImplementation(compilation, type, processedTypes) &&
-                            (reactiveTypesSet.Contains(type) || // Has [Reactive] class attribute
-                             propertyGroups.ContainsKey(type)); // Has properties that should be reactive
+            var isReactiveObjectDerived = InheritsFromReactiveObject(type);
 
-            if (needsInpc)
+            // Generate INPC implementation if needed
+            if (!isReactiveObjectDerived && !HasINPCImplementation(compilation, type, processedTypes))
             {
                 var inpcSource = GenerateINPCImplementation(type);
                 if (!string.IsNullOrEmpty(inpcSource))
                 {
-                    // Create a unique filename using the full type name (including namespace)
                     var fullTypeName = type.ToDisplayString(new SymbolDisplayFormat(
                         typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
                         genericsOptions: SymbolDisplayGenericsOptions.None,
@@ -246,43 +314,44 @@ public class ReactiveGenerator : IIncrementalGenerator
 
                     var fileName = $"{fullTypeName}.INPC.g.cs";
                     context.AddSource(fileName, SourceText.From(inpcSource, Encoding.UTF8));
-                    processedTypes.Add(type);
                 }
             }
-        }
 
-        // Process properties
-        foreach (var group in propertyGroups)
-        {
-            var typeSymbol = group.Key as INamedTypeSymbol;
-            if (typeSymbol == null) continue;
-
-            // Filter properties that should be reactive
-            var reactiveProperties = group.Value
-                .Where(p => p.HasReactiveAttribute ||
-                            (reactiveTypesSet.Contains(typeSymbol) && !p.HasIgnoreAttribute))
-                .Select(p => p.Property)
-                .ToList();
-
-            if (!reactiveProperties.Any())
-                continue;
-
-            var source = GenerateClassSource(
-                typeSymbol,
-                reactiveProperties,
-                implementInpc: false, // INPC already implemented in first pass if needed
-                useLegacyMode);
-
-            if (!string.IsNullOrEmpty(source))
+            // Generate property implementations
+            if (propertyGroups.TryGetValue(type, out var typeProperties))
             {
-                var fullTypeName = typeSymbol.ToDisplayString(new SymbolDisplayFormat(
-                    typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-                    genericsOptions: SymbolDisplayGenericsOptions.None,
-                    miscellaneousOptions: SymbolDisplayMiscellaneousOptions.None));
+                var isTypeReactive = IsTypeMarkedReactive(type);
+                var reactiveProperties = typeProperties
+                    .Where(p => !p.HasImplementation &&
+                                !p.HasIgnoreAttribute &&
+                                (p.HasReactiveAttribute || // Include properties marked with [Reactive]
+                                 isTypeReactive)) // Include all properties if class is marked with [Reactive]
+                    .Select(p => p.Property)
+                    .ToList();
 
-                var fileName = $"{fullTypeName}.ReactiveProperties.g.cs";
-                context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
+                if (reactiveProperties.Any())
+                {
+                    var source = GenerateClassSource(
+                        type,
+                        reactiveProperties,
+                        implementInpc: false,
+                        useLegacyMode);
+
+                    if (!string.IsNullOrEmpty(source))
+                    {
+                        var fullTypeName = type.ToDisplayString(new SymbolDisplayFormat(
+                            typeQualificationStyle: SymbolDisplayTypeQualificationStyle
+                                .NameAndContainingTypesAndNamespaces,
+                            genericsOptions: SymbolDisplayGenericsOptions.None,
+                            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.None));
+
+                        var fileName = $"{fullTypeName}.ReactiveProperties.g.cs";
+                        context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
+                    }
+                }
             }
+
+            processedTypes.Add(type);
         }
     }
 

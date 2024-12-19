@@ -5,8 +5,8 @@ public class ReactiveGeneratorTests
     private Task TestAndVerify(string source, Dictionary<string, string>? analyzerConfigOptions = null)
     {
         return SourceGeneratorTestHelper.TestAndVerify(
-            source, 
-            analyzerConfigOptions, 
+            source,
+            analyzerConfigOptions,
             generators: new ReactiveGenerator());
     }
 
@@ -186,10 +186,7 @@ public class ReactiveGeneratorTests
                 public partial string Name { get; set; }
             }";
 
-        var analyzerConfigOptions = new Dictionary<string, string>
-        {
-            ["build_property.UseBackingFields"] = "true"
-        };
+        var analyzerConfigOptions = new Dictionary<string, string> { ["build_property.UseBackingFields"] = "true" };
 
         return TestAndVerify(source, analyzerConfigOptions);
     }
@@ -206,7 +203,7 @@ public class ReactiveGeneratorTests
 
         return TestAndVerify(source);
     }
-    
+
     [Fact]
     public Task ClassWithMultipleReactiveAttributes()
     {
@@ -483,7 +480,7 @@ public class ReactiveGeneratorTests
 
         return TestAndVerify(source);
     }
-    
+
     [Fact]
     public Task PropertyLevelReactiveWithMixedProperties()
     {
@@ -1066,6 +1063,209 @@ public class ReactiveGeneratorTests
                 public partial T InitValue { get; init; }
                 public partial T RegularValue { get; set; }
             }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task InheritedReactiveAttribute()
+    {
+        var source = @"
+        [Reactive]
+        public abstract partial class BaseViewModel
+        {
+            public partial string BaseProp { get; set; }
+        }
+
+        public partial class ViewModel : BaseViewModel
+        {
+            public partial string ViewModelProp { get; set; }
+        }
+
+        [IgnoreReactive]
+        public partial class NonReactiveViewModel : BaseViewModel
+        {
+            public partial string IgnoredProp { get; set; }
+        }
+
+        public partial class DerivedViewModel : ViewModel
+        {
+            public partial string DerivedProp { get; set; }
+        }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task MultiLevelInheritanceWithMixedReactiveAttributes()
+    {
+        var source = @"
+        [Reactive]
+        public abstract partial class BaseViewModel
+        {
+            public partial string BaseProp { get; set; }
+        }
+
+        public partial class MiddleViewModel : BaseViewModel
+        {
+            public partial string MiddleProp { get; set; }
+            
+            [IgnoreReactive]
+            public partial string IgnoredMiddleProp { get; set; }
+        }
+
+        [IgnoreReactive]
+        public partial class NonReactiveViewModel : MiddleViewModel
+        {
+            public partial string NonReactiveProp { get; set; }
+        }
+
+        [Reactive]
+        public partial class ReactiveDerivedViewModel : NonReactiveViewModel
+        {
+            public partial string ReactiveProp { get; set; }
+        }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task ReactiveObjectWithSingleReactiveProperty()
+    {
+        var source = @"
+        using ReactiveUI;
+        
+        public partial class Car : ReactiveObject
+        {
+            [Reactive]
+            public partial string? Make { get; set; }
+
+            public partial string Model { get; set; }  // Should not be processed
+        }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task ReactiveObjectWithClassLevelReactive()
+    {
+        var source = @"
+        using ReactiveUI;
+        
+        [Reactive]
+        internal partial class ReactiveViewModel : ReactiveObject
+        {
+            public partial string FirstName { get; set; }
+            public partial string LastName { get; set; }
+        }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task ReactiveObjectWithoutAnyReactiveAttribute()
+    {
+        var source = @"
+        using ReactiveUI;
+        
+        public partial class OaphViewModel<T> : ReactiveObject
+        {
+            public partial string ComputedValue { get; }  // Should not be processed
+            public partial string NormalProperty { get; set; }  // Should not be processed
+        }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task ReactiveObjectWithNullableGenerics()
+    {
+        var source = @"
+        using System;
+        using ReactiveUI;
+
+        public partial class NullableGenericsTest<T>
+        {
+            [Reactive]
+            public partial DateTime? StartDate { get; set; }
+
+            [Reactive]
+            public partial DateTime? EndDate { get; set; }
+        }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task ReactiveObjectWithMixedReactiveProperties()
+    {
+        var source = @"
+        using ReactiveUI;
+        
+        public partial class MixedViewModel : ReactiveObject
+        {
+            [Reactive]
+            public partial string ReactiveProperty { get; set; }
+            
+            public partial string NonReactiveProperty { get; set; }
+            
+            [Reactive]
+            public partial int? NullableReactiveProperty { get; set; }
+            
+            [ObservableAsProperty]
+            public partial string ComputedProperty { get; }
+        }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task ReactiveObjectWithClassLevelReactiveAndIgnoreOverride()
+    {
+        var source = @"
+        using ReactiveUI;
+        
+        [Reactive]
+        public partial class AllReactiveViewModel : ReactiveObject
+        {
+            public partial string Property1 { get; set; }
+            
+            [IgnoreReactive]
+            public partial string IgnoredProperty { get; set; }
+            
+            public partial string Property2 { get; set; }
+        }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task ReactiveObjectWithPropertyInitializer()
+    {
+        var source = @"
+        using ReactiveUI;
+        
+        [Reactive]
+        public partial class InitializedViewModel : ReactiveObject
+        {
+            public partial string Name { get; set; } = string.Empty;
+            public partial int Count { get; set; } = 42;
+        }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task NonReactiveObjectWithMixedProperties()
+    {
+        var source = @"
+        public partial class RegularClass
+        {
+            [Reactive]
+            public partial string ReactiveProperty { get; set; }
+            
+            public partial string NonReactiveProperty { get; set; }
+        }";
 
         return TestAndVerify(source);
     }
