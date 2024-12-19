@@ -31,30 +31,15 @@ sealed class ReactiveAttribute : Attribute
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-/// <summary>
-/// A partial class implementation of <see cref="INotifyPropertyChanged"/> for <see cref="TestClass{T, U}"/>.
-/// </summary>
 public partial class TestClass<T, U> : INotifyPropertyChanged where T : class, IDisposable where U : struct, IComparable<U>
 {
-    /// <summary>
-    /// Occurs when a property value changes.
-    /// </summary>
-    /// <seealso cref="INotifyPropertyChanged"/>
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    /// <summary>
-    /// Raises the <see cref="PropertyChanged"/> event.
-    /// </summary>
-    /// <param name="propertyName">The name of the property that changed.</param>
     protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    /// <summary>
-    /// Raises the <see cref="PropertyChanged"/> event.
-    /// </summary>
-    /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
     protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
     {
         PropertyChanged?.Invoke(this, args);
@@ -79,10 +64,6 @@ public partial class TestClass<T, U> where T : class, IDisposable where U : stru
     private static readonly PropertyChangedEventArgs _nullableRefChangedEventArgs = new PropertyChangedEventArgs(nameof(NullableRef));
     private static readonly PropertyChangedEventArgs _nullableStructChangedEventArgs = new PropertyChangedEventArgs(nameof(NullableStruct));
 
-    /// <summary>
-    /// Gets or sets a value of type T.
-    /// </summary>
-    /// <value>The value of type T.</value>
     public partial T? NullableRef
     {
         get => field;
@@ -96,10 +77,6 @@ public partial class TestClass<T, U> where T : class, IDisposable where U : stru
         }
     }
 
-    /// <summary>
-    /// Gets or sets a value of type U?.
-    /// </summary>
-    /// <value>The value of type U?.</value>
     public partial U? NullableStruct
     {
         get => field;

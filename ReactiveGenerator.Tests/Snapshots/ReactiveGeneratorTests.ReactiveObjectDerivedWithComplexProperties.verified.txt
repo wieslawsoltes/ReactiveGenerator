@@ -31,30 +31,15 @@ sealed class ReactiveAttribute : Attribute
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-/// <summary>
-/// A partial class implementation of <see cref="INotifyPropertyChanged"/> for <see cref="TestViewModel"/>.
-/// </summary>
 public partial class TestViewModel : INotifyPropertyChanged
 {
-    /// <summary>
-    /// Occurs when a property value changes.
-    /// </summary>
-    /// <seealso cref="INotifyPropertyChanged"/>
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    /// <summary>
-    /// Raises the <see cref="PropertyChanged"/> event.
-    /// </summary>
-    /// <param name="propertyName">The name of the property that changed.</param>
     protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    /// <summary>
-    /// Raises the <see cref="PropertyChanged"/> event.
-    /// </summary>
-    /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
     protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
     {
         PropertyChanged?.Invoke(this, args);
@@ -80,10 +65,6 @@ public partial class TestViewModel
     private static readonly PropertyChangedEventArgs _complexDataChangedEventArgs = new PropertyChangedEventArgs(nameof(ComplexData));
     private static readonly PropertyChangedEventArgs _tupleDataChangedEventArgs = new PropertyChangedEventArgs(nameof(TupleData));
 
-    /// <summary>
-    /// Gets or sets a value of type System.Collections.ObjectModel.ObservableCollection{string}.
-    /// </summary>
-    /// <value>The value of type System.Collections.ObjectModel.ObservableCollection{string}.</value>
     public partial global::System.Collections.ObjectModel.ObservableCollection<string> Items
     {
         get => field;
@@ -97,10 +78,6 @@ public partial class TestViewModel
         }
     }
 
-    /// <summary>
-    /// Gets or sets a value of type Dictionary{string, List{int}}.
-    /// </summary>
-    /// <value>The value of type Dictionary{string, List{int}}.</value>
     public partial Dictionary<string, List<int>> ComplexData
     {
         get => field;
@@ -114,10 +91,6 @@ public partial class TestViewModel
         }
     }
 
-    /// <summary>
-    /// Gets or sets a value of type (string Name, int Count).
-    /// </summary>
-    /// <value>The value of type (string Name, int Count).</value>
     public partial (string Name, int Count) TupleData
     {
         get => field;

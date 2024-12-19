@@ -10,15 +10,9 @@ using System;
 
 namespace ReactiveGenerator
 {
-    /// <summary>
-    /// Indicates that a property should be implemented as an ObservableAsPropertyHelper instance.
-    /// </summary>
     [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
     public sealed class ObservableAsPropertyAttribute : Attribute
     {
-        /// <summary>
-        /// Initializes a new instance of the ObservableAsPropertyAttribute class.
-        /// </summary>
         public ObservableAsPropertyAttribute() { }
     }
 }
@@ -32,34 +26,17 @@ namespace ReactiveGenerator
 using System;
 using ReactiveUI;
 
-/// <summary>
-/// A partial class implementation with observable property helpers for TestViewModel{T}.
-/// </summary>
 public partial class TestViewModel<T> where T : class
 {
-    /// <summary>
-    /// The ObservableAsPropertyHelper instance for the ComplexProperty property.
-    /// </summary>
-    private readonly ObservableAsPropertyHelper<global::System.Collections.Generic.List<global::System.Collections.Generic.Dictionary<string, T>>?> _complexPropertyHelper;
+    private ObservableAsPropertyHelper<global::System.Collections.Generic.List<global::System.Collections.Generic.Dictionary<string, T>>?> _complexPropertyHelper;
 
-    /// <summary>
-    /// Gets the current value of type System.Collections.Generic.List{System.Collections.Generic.Dictionary{string, T}} from the observable sequence.
-    /// </summary>
-    /// <value>The current value from the observable sequence.</value>
     public partial global::System.Collections.Generic.List<global::System.Collections.Generic.Dictionary<string, T>>? ComplexProperty
     {
         get => _complexPropertyHelper.Value;
     }
 
-    /// <summary>
-    /// The ObservableAsPropertyHelper instance for the NestedProperty property.
-    /// </summary>
-    private readonly ObservableAsPropertyHelper<global::System.Collections.Generic.Dictionary<int, global::System.Collections.Generic.List<T>>?> _nestedPropertyHelper;
+    private ObservableAsPropertyHelper<global::System.Collections.Generic.Dictionary<int, global::System.Collections.Generic.List<T>>?> _nestedPropertyHelper;
 
-    /// <summary>
-    /// Gets the current value of type System.Collections.Generic.Dictionary{int, System.Collections.Generic.List{T}} from the observable sequence.
-    /// </summary>
-    /// <value>The current value from the observable sequence.</value>
     public partial global::System.Collections.Generic.Dictionary<int, global::System.Collections.Generic.List<T>>? NestedProperty
     {
         get => _nestedPropertyHelper.Value;

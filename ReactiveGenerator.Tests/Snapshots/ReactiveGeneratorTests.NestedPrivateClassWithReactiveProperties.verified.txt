@@ -26,19 +26,11 @@ public partial class OuterClass
     {
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        /// <summary>
-        /// Raises the <see cref="PropertyChanged"/> event.
-        /// </summary>
-        /// <param name="propertyName">The name of the property that changed.</param>
         protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        /// <summary>
-        /// Raises the <see cref="PropertyChanged"/> event.
-        /// </summary>
-        /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
         protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
         {
             PropertyChanged?.Invoke(this, args);
@@ -63,10 +55,6 @@ public partial class OuterClass
         private static readonly PropertyChangedEventArgs _innerPropChangedEventArgs = new PropertyChangedEventArgs(nameof(InnerProp));
         private static readonly PropertyChangedEventArgs _privateInnerPropChangedEventArgs = new PropertyChangedEventArgs(nameof(PrivateInnerProp));
 
-        /// <summary>
-        /// Gets or sets a value of type string.
-        /// </summary>
-        /// <value>The value of type string.</value>
         public partial string InnerProp
         {
             get => field;
@@ -111,19 +99,11 @@ public partial class OuterClass
     {
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        /// <summary>
-        /// Raises the <see cref="PropertyChanged"/> event.
-        /// </summary>
-        /// <param name="propertyName">The name of the property that changed.</param>
         protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        /// <summary>
-        /// Raises the <see cref="PropertyChanged"/> event.
-        /// </summary>
-        /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
         protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
         {
             PropertyChanged?.Invoke(this, args);
@@ -147,10 +127,6 @@ public partial class OuterClass
     {
         private static readonly PropertyChangedEventArgs _protectedClassPropChangedEventArgs = new PropertyChangedEventArgs(nameof(ProtectedClassProp));
 
-        /// <summary>
-        /// Gets or sets a value of type string.
-        /// </summary>
-        /// <value>The value of type string.</value>
         public partial string ProtectedClassProp
         {
             get => field;

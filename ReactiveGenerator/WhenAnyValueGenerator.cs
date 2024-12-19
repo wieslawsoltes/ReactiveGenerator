@@ -140,6 +140,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
                 return false;
             current = current.ContainingType;
         }
+
         return true;
     }
 
@@ -186,11 +187,6 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
                 genericsOptions: SymbolDisplayGenericsOptions.None,
                 miscellaneousOptions: SymbolDisplayMiscellaneousOptions.None))
             .Replace(".", "_") + "Extensions";
-
-        sb.AppendLine($"{indent}/// <summary>");
-        sb.AppendLine(
-            $"{indent}/// Provides extension methods for observing changes to properties of {FormatTypeNameForXmlDoc(classSymbol)}.");
-        sb.AppendLine($"{indent}/// </summary>");
 
         var accessibility = classSymbol.DeclaredAccessibility == Accessibility.Internal ? "internal" : "public";
         sb.AppendLine($"{indent}{accessibility} static class {extensionClassName}");
@@ -262,9 +258,6 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         }
 
         var className = classSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        var xmlClassName = FormatTypeNameForXmlDoc(classSymbol);
-        var xmlPropertyType = FormatTypeNameForXmlDoc(property.Type);
-
         var propertyType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var isAlreadyNullable = property.Type.OriginalDefinition?.SpecialType == SpecialType.System_Nullable_T;
         var nullablePropertyType = isAlreadyNullable
@@ -272,12 +265,6 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
             : (property.Type.NullableAnnotation == NullableAnnotation.NotAnnotated
                 ? propertyType
                 : $"{propertyType}?");
-
-        sb.AppendLine($"{indent}/// <summary>");
-        sb.AppendLine($"{indent}/// Observes changes to the <see cref=\"{xmlClassName}.{property.Name}\"/> property.");
-        sb.AppendLine($"{indent}/// </summary>");
-        sb.AppendLine($"{indent}/// <param name=\"source\">The source object.</param>");
-        sb.AppendLine($"{indent}/// <returns>An observable sequence of type {xmlPropertyType}.</returns>");
 
         var methodAccessibility = classSymbol.DeclaredAccessibility == Accessibility.Internal ? "internal" : "public";
 
@@ -313,12 +300,6 @@ using System.Threading;
 
 namespace ReactiveGenerator.Internal
 {
-    /// <summary>
-    /// Observes property changes on a source object and notifies subscribers.
-    /// Uses WeakEventManager to avoid memory leaks, but without reflection.
-    /// </summary>
-    /// <typeparam name=""TSource"">The type of the source object, must implement INotifyPropertyChanged.</typeparam>
-    /// <typeparam name=""TProperty"">The type of the property being observed.</typeparam>
     internal sealed class PropertyObserver<TSource, TProperty> : IObservable<TProperty>, IDisposable
         where TSource : INotifyPropertyChanged
     {
@@ -329,8 +310,6 @@ namespace ReactiveGenerator.Internal
         private bool _isDisposed;
         private readonly ConcurrentDictionary<Subscription, byte> _subscriptions;
         private readonly PropertyChangedEventHandler _handler;
-
-        // A WeakEventManager that doesn't use reflection. We give it known delegates to subscribe/unsubscribe.
         private readonly WeakEventManager<PropertyChangedEventHandler> _weakEventManager;
 
         public PropertyObserver(TSource source, string propertyName, Func<TProperty> getter)
@@ -344,8 +323,6 @@ namespace ReactiveGenerator.Internal
             _getter = getter;
             _subscriptions = new ConcurrentDictionary<Subscription, byte>();
             _handler = HandlePropertyChanged;
-
-            // Initialize WeakEventManager with known add/remove actions for INotifyPropertyChanged.PropertyChanged
             _weakEventManager = new WeakEventManager<PropertyChangedEventHandler>(
                 (obj, h) => ((INotifyPropertyChanged)obj).PropertyChanged += h,
                 (obj, h) => ((INotifyPropertyChanged)obj).PropertyChanged -= h
@@ -370,7 +347,6 @@ namespace ReactiveGenerator.Internal
                 try
                 {
                     observer.OnNext(_getter());
-                    // Use WeakEventManager to add a weak reference event handler
                     _weakEventManager.AddEventHandler(_source, _handler);
                 }
                 catch (Exception ex)
@@ -416,7 +392,6 @@ namespace ReactiveGenerator.Internal
             {
                 if (!_isDisposed)
                 {
-                    // Remove the event handler from WeakEventManager
                     _weakEventManager.RemoveEventHandler(_source, _handler);
                     foreach (var subscription in _subscriptions.Keys)
                     {
@@ -463,7 +438,6 @@ namespace ReactiveGenerator.Internal
                 }
             }
 
-            // Called internally by the parent when cleaning up
             public void DisposeInternal()
             {
                 Interlocked.Exchange(ref _disposed, 1);
@@ -477,8 +451,7 @@ namespace ReactiveGenerator.Internal
             public void Dispose() { }
         }
     }
-}
-";
+}";
 
     private const string WeakEventManagerSource = @"// <auto-generated/>
 #nullable enable
@@ -489,11 +462,6 @@ using System.Runtime.CompilerServices;
 
 namespace ReactiveGenerator.Internal
 {
-    /// <summary>
-    /// Manages weak event subscriptions to avoid memory leaks, without using reflection.
-    /// Instead, add/remove handler actions are provided.
-    /// </summary>
-    /// <typeparam name=""TDelegate"">The type of the event handler delegate.</typeparam>
     internal sealed class WeakEventManager<TDelegate> where TDelegate : class, Delegate
     {
         private readonly ConditionalWeakTable<object, EventRegistrationList> _registrations =
@@ -516,8 +484,6 @@ namespace ReactiveGenerator.Internal
             var list = _registrations.GetOrCreateValue(source);
             var registration = new WeakEventRegistration(source, handler, _removeHandler);
             list.Add(registration);
-
-            // Actually subscribe to the source event
             _addHandler(source, handler);
         }
 
@@ -582,6 +548,5 @@ namespace ReactiveGenerator.Internal
             }
         }
     }
-}
-";
+}";
 }

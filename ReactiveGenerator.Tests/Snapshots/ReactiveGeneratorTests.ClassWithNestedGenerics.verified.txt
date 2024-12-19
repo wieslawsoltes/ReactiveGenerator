@@ -31,30 +31,15 @@ sealed class ReactiveAttribute : Attribute
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-/// <summary>
-/// A partial class implementation of <see cref="INotifyPropertyChanged"/> for <see cref="TestClass{T}"/>.
-/// </summary>
 public partial class TestClass<T> : INotifyPropertyChanged where T : class
 {
-    /// <summary>
-    /// Occurs when a property value changes.
-    /// </summary>
-    /// <seealso cref="INotifyPropertyChanged"/>
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    /// <summary>
-    /// Raises the <see cref="PropertyChanged"/> event.
-    /// </summary>
-    /// <param name="propertyName">The name of the property that changed.</param>
     protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    /// <summary>
-    /// Raises the <see cref="PropertyChanged"/> event.
-    /// </summary>
-    /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
     protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
     {
         PropertyChanged?.Invoke(this, args);
@@ -79,10 +64,6 @@ public partial class TestClass<T> where T : class
     private static readonly PropertyChangedEventArgs _complexPropChangedEventArgs = new PropertyChangedEventArgs(nameof(ComplexProp));
     private static readonly PropertyChangedEventArgs _nestedPropChangedEventArgs = new PropertyChangedEventArgs(nameof(NestedProp));
 
-    /// <summary>
-    /// Gets or sets a value of type List{Dictionary{string, T}}.
-    /// </summary>
-    /// <value>The value of type List{Dictionary{string, T}}.</value>
     public partial List<Dictionary<string, T>> ComplexProp
     {
         get => field;
@@ -96,10 +77,6 @@ public partial class TestClass<T> where T : class
         }
     }
 
-    /// <summary>
-    /// Gets or sets a value of type Dictionary{int, List{T}}.
-    /// </summary>
-    /// <value>The value of type Dictionary{int, List{T}}.</value>
     public partial Dictionary<int, List<T>> NestedProp
     {
         get => field;

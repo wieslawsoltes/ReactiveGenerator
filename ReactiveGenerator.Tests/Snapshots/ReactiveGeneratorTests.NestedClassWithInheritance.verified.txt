@@ -22,30 +22,15 @@ using System.Runtime.CompilerServices;
 
 public partial class OuterClass
 {
-    /// <summary>
-    /// A partial class implementation of <see cref="INotifyPropertyChanged"/> for <see cref="OuterClass.InnerBase"/>.
-    /// </summary>
     public partial class InnerBase : INotifyPropertyChanged
     {
-        /// <summary>
-        /// Occurs when a property value changes.
-        /// </summary>
-        /// <seealso cref="INotifyPropertyChanged"/>
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        /// <summary>
-        /// Raises the <see cref="PropertyChanged"/> event.
-        /// </summary>
-        /// <param name="propertyName">The name of the property that changed.</param>
         protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        /// <summary>
-        /// Raises the <see cref="PropertyChanged"/> event.
-        /// </summary>
-        /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
         protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
         {
             PropertyChanged?.Invoke(this, args);
@@ -72,10 +57,6 @@ public partial class OuterClass
     {
         private static readonly PropertyChangedEventArgs _basePropChangedEventArgs = new PropertyChangedEventArgs(nameof(BaseProp));
 
-        /// <summary>
-        /// Gets or sets a value of type string.
-        /// </summary>
-        /// <value>The value of type string.</value>
         public partial string BaseProp
         {
             get => field;
@@ -110,10 +91,6 @@ public partial class OuterClass
     {
         private static readonly PropertyChangedEventArgs _derivedPropChangedEventArgs = new PropertyChangedEventArgs(nameof(DerivedProp));
 
-        /// <summary>
-        /// Gets or sets a value of type string.
-        /// </summary>
-        /// <value>The value of type string.</value>
         public partial string DerivedProp
         {
             get => field;

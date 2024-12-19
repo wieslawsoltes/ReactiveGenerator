@@ -10,15 +10,9 @@ using System;
 
 namespace ReactiveGenerator
 {
-    /// <summary>
-    /// Indicates that a property should be implemented as an ObservableAsPropertyHelper instance.
-    /// </summary>
     [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
     public sealed class ObservableAsPropertyAttribute : Attribute
     {
-        /// <summary>
-        /// Initializes a new instance of the ObservableAsPropertyAttribute class.
-        /// </summary>
         public ObservableAsPropertyAttribute() { }
     }
 }
@@ -32,34 +26,17 @@ namespace ReactiveGenerator
 using System;
 using ReactiveUI;
 
-/// <summary>
-/// A partial class implementation with observable property helpers for TestViewModel.
-/// </summary>
 public partial class TestViewModel
 {
-    /// <summary>
-    /// The ObservableAsPropertyHelper instance for the StaticValue property.
-    /// </summary>
-    private readonly ObservableAsPropertyHelper<string?> _staticValueHelper;
+    private ObservableAsPropertyHelper<string?> _staticValueHelper;
 
-    /// <summary>
-    /// Gets the current value of type string from the observable sequence.
-    /// </summary>
-    /// <value>The current value from the observable sequence.</value>
     public partial string? StaticValue
     {
         get => _staticValueHelper.Value;
     }
 
-    /// <summary>
-    /// The ObservableAsPropertyHelper instance for the InstanceValue property.
-    /// </summary>
-    private readonly ObservableAsPropertyHelper<string?> _instanceValueHelper;
+    private ObservableAsPropertyHelper<string?> _instanceValueHelper;
 
-    /// <summary>
-    /// Gets the current value of type string from the observable sequence.
-    /// </summary>
-    /// <value>The current value from the observable sequence.</value>
     public partial string? InstanceValue
     {
         get => _instanceValueHelper.Value;

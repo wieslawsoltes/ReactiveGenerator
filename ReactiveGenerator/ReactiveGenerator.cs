@@ -347,17 +347,6 @@ public class ReactiveGenerator : IIncrementalGenerator
 
     private static string GenerateINPCImplementation(INamedTypeSymbol classSymbol)
     {
-        // Helper method to format type names for XML docs
-        string FormatTypeNameForXmlDoc(ITypeSymbol type)
-        {
-            var minimalFormat = new SymbolDisplayFormat(
-                typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-                genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
-                miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
-
-            return type.ToDisplayString(minimalFormat).Replace("<", "{").Replace(">", "}");
-        }
-
         // Helper method to get containing types chain
         IEnumerable<INamedTypeSymbol> GetContainingTypesChain(INamedTypeSymbol symbol)
         {
@@ -372,21 +361,18 @@ public class ReactiveGenerator : IIncrementalGenerator
             return types;
         }
 
-        // Get namespace and containing types
         var namespaceName = classSymbol.ContainingNamespace.IsGlobalNamespace
             ? null
             : classSymbol.ContainingNamespace.ToDisplayString();
 
         var containingTypes = GetContainingTypesChain(classSymbol).ToList();
 
-        // Add type parameters if the class is generic
         var typeParameters = "";
         var typeConstraints = "";
         if (classSymbol.TypeParameters.Length > 0)
         {
             typeParameters = "<" + string.Join(", ", classSymbol.TypeParameters.Select(tp => tp.Name)) + ">";
 
-            // Add constraints for each type parameter
             var constraints = new List<string>();
             foreach (var typeParam in classSymbol.TypeParameters)
             {
@@ -420,14 +406,12 @@ public class ReactiveGenerator : IIncrementalGenerator
         sb.AppendLine("using System.Runtime.CompilerServices;");
         sb.AppendLine();
 
-        // Add namespace
         if (namespaceName != null)
         {
             sb.AppendLine($"namespace {namespaceName}");
             sb.AppendLine("{");
         }
 
-        // Start containing type declarations
         var indent = namespaceName != null ? "    " : "";
         foreach (var containingType in containingTypes)
         {
@@ -438,38 +422,13 @@ public class ReactiveGenerator : IIncrementalGenerator
         }
 
         var accessibility = classSymbol.DeclaredAccessibility.ToString().ToLowerInvariant();
-
-        // Add XML documentation comment if the class is public
-        if (classSymbol.DeclaredAccessibility == Accessibility.Public)
-        {
-            var xmlClassName = FormatTypeNameForXmlDoc(classSymbol);
-            sb.AppendLine($"{indent}/// <summary>");
-            sb.AppendLine(
-                $"{indent}/// A partial class implementation of <see cref=\"INotifyPropertyChanged\"/> for <see cref=\"{xmlClassName}\"/>.");
-            sb.AppendLine($"{indent}/// </summary>");
-        }
-
         sb.AppendLine(
             $"{indent}{accessibility} partial class {classSymbol.Name}{typeParameters} : INotifyPropertyChanged{typeConstraints}");
         sb.AppendLine($"{indent}{{");
 
-        // Add XML documentation comment for the event if it's public
-        if (classSymbol.DeclaredAccessibility == Accessibility.Public)
-        {
-            sb.AppendLine($"{indent}    /// <summary>");
-            sb.AppendLine($"{indent}    /// Occurs when a property value changes.");
-            sb.AppendLine($"{indent}    /// </summary>");
-            sb.AppendLine($"{indent}    /// <seealso cref=\"INotifyPropertyChanged\"/>");
-        }
-
         sb.AppendLine($"{indent}    public event PropertyChangedEventHandler? PropertyChanged;");
         sb.AppendLine();
 
-        // Add XML documentation comment for OnPropertyChanged method
-        sb.AppendLine($"{indent}    /// <summary>");
-        sb.AppendLine($"{indent}    /// Raises the <see cref=\"PropertyChanged\"/> event.");
-        sb.AppendLine($"{indent}    /// </summary>");
-        sb.AppendLine($"{indent}    /// <param name=\"propertyName\">The name of the property that changed.</param>");
         sb.AppendLine(
             $"{indent}    protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)");
         sb.AppendLine($"{indent}    {{");
@@ -477,25 +436,18 @@ public class ReactiveGenerator : IIncrementalGenerator
         sb.AppendLine($"{indent}    }}");
         sb.AppendLine();
 
-        sb.AppendLine($"{indent}    /// <summary>");
-        sb.AppendLine($"{indent}    /// Raises the <see cref=\"PropertyChanged\"/> event.");
-        sb.AppendLine($"{indent}    /// </summary>");
-        sb.AppendLine(
-            $"{indent}    /// <param name=\"args\">The <see cref=\"PropertyChangedEventArgs\"/> instance containing the event data.</param>");
         sb.AppendLine($"{indent}    protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)");
         sb.AppendLine($"{indent}    {{");
         sb.AppendLine($"{indent}        PropertyChanged?.Invoke(this, args);");
         sb.AppendLine($"{indent}    }}");
         sb.AppendLine($"{indent}}}");
 
-        // Close all containing type declarations
         for (int i = 0; i < containingTypes.Count; i++)
         {
             indent = indent.Substring(0, indent.Length - 4);
             sb.AppendLine($"{indent}}}");
         }
 
-        // Close namespace
         if (namespaceName != null)
         {
             sb.AppendLine("}");
@@ -758,15 +710,6 @@ public class ReactiveGenerator : IIncrementalGenerator
         var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
         var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
 
-        if (property.DeclaredAccessibility == Accessibility.Public)
-        {
-            var xmlPropertyType = FormatTypeNameForXmlDoc(property.Type);
-            sb.AppendLine($"{indent}/// <summary>");
-            sb.AppendLine($"{indent}/// Gets or sets a value of type {xmlPropertyType}.");
-            sb.AppendLine($"{indent}/// </summary>");
-            sb.AppendLine($"{indent}/// <value>The value of type {xmlPropertyType}.</value>");
-        }
-
         sb.AppendLine($"{indent}{propertyAccessibility} partial {propertyType} {propertyName}");
         sb.AppendLine($"{indent}{{");
 
@@ -817,15 +760,6 @@ public class ReactiveGenerator : IIncrementalGenerator
         var propertyType = GetPropertyTypeWithNullability(property);
         var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
         var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
-
-        if (property.DeclaredAccessibility == Accessibility.Public)
-        {
-            var xmlPropertyType = FormatTypeNameForXmlDoc(property.Type);
-            sb.AppendLine($"{indent}/// <summary>");
-            sb.AppendLine($"{indent}/// Gets or sets a value of type {xmlPropertyType}.");
-            sb.AppendLine($"{indent}/// </summary>");
-            sb.AppendLine($"{indent}/// <value>The value of type {xmlPropertyType}.</value>");
-        }
 
         sb.AppendLine($"{indent}{propertyAccessibility} partial {propertyType} {propertyName}");
         sb.AppendLine($"{indent}{{");
