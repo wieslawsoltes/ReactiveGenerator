@@ -159,6 +159,7 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
             types.Insert(0, current);
             current = current.ContainingType;
         }
+
         return types;
     }
 
@@ -178,7 +179,6 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
             ? null
             : classSymbol.ContainingNamespace.ToDisplayString();
 
-        // Get containing types chain for nested classes
         var containingTypes = GetContainingTypesChain(classSymbol).ToList();
 
         if (namespaceName != null)
@@ -189,7 +189,6 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
 
         var indent = namespaceName != null ? "    " : "";
 
-        // Generate containing type declarations
         foreach (var containingType in containingTypes)
         {
             var containingTypeAccessibility = containingType.DeclaredAccessibility.ToString().ToLowerInvariant();
@@ -200,7 +199,6 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
 
         var accessibility = classSymbol.DeclaredAccessibility.ToString().ToLowerInvariant();
 
-        // Format class name with type parameters if generic
         var typeParameters = "";
         var typeConstraints = "";
         if (classSymbol.TypeParameters.Length > 0)
@@ -237,20 +235,9 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
             }
         }
 
-        var xmlClassName = FormatTypeNameForXmlDoc(classSymbol);
-
-        // Add XML documentation for the class
-        if (classSymbol.DeclaredAccessibility == Accessibility.Public)
-        {
-            sb.AppendLine($"{indent}/// <summary>");
-            sb.AppendLine($"{indent}/// A partial class implementation with observable property helpers for {xmlClassName}.");
-            sb.AppendLine($"{indent}/// </summary>");
-        }
-
         sb.AppendLine($"{indent}{accessibility} partial class {classSymbol.Name}{typeParameters}{typeConstraints}");
         sb.AppendLine($"{indent}{{");
 
-        // Generate backing fields and properties
         var lastProperty = properties.Last();
         foreach (var property in properties)
         {
@@ -264,7 +251,6 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
 
         sb.AppendLine($"{indent}}}");
 
-        // Close containing type declarations
         for (int i = 0; i < containingTypes.Count; i++)
         {
             indent = indent.Substring(0, indent.Length - 4);
@@ -284,27 +270,9 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         var nullablePropertyType = GetPropertyTypeWithNullability(property);
         var accessibility = property.DeclaredAccessibility.ToString().ToLowerInvariant();
         var backingFieldName = $"_{char.ToLowerInvariant(property.Name[0])}{property.Name.Substring(1)}Helper";
-        var xmlPropertyType = FormatTypeNameForXmlDoc(property.Type);
-
-        // Add XML documentation for the backing field
-        if (property.DeclaredAccessibility == Accessibility.Public)
-        {
-            sb.AppendLine($"{indent}/// <summary>");
-            sb.AppendLine($"{indent}/// The ObservableAsPropertyHelper instance for the {property.Name} property.");
-            sb.AppendLine($"{indent}/// </summary>");
-        }
 
         sb.AppendLine($"{indent}private ObservableAsPropertyHelper<{nullablePropertyType}> {backingFieldName};");
         sb.AppendLine();
-
-        // Add XML documentation for the property
-        if (property.DeclaredAccessibility == Accessibility.Public)
-        {
-            sb.AppendLine($"{indent}/// <summary>");
-            sb.AppendLine($"{indent}/// Gets the current value of type {xmlPropertyType} from the observable sequence.");
-            sb.AppendLine($"{indent}/// </summary>");
-            sb.AppendLine($"{indent}/// <value>The current value from the observable sequence.</value>");
-        }
 
         sb.AppendLine($"{indent}{accessibility} partial {nullablePropertyType} {property.Name}");
         sb.AppendLine($"{indent}{{");
@@ -319,15 +287,9 @@ using System;
 
 namespace ReactiveGenerator
 {
-    /// <summary>
-    /// Indicates that a property should be implemented as an ObservableAsPropertyHelper instance.
-    /// </summary>
     [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
     public sealed class ObservableAsPropertyAttribute : Attribute
     {
-        /// <summary>
-        /// Initializes a new instance of the ObservableAsPropertyAttribute class.
-        /// </summary>
         public ObservableAsPropertyAttribute() { }
     }
 }";
