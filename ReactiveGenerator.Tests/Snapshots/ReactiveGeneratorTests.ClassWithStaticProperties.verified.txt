@@ -31,30 +31,15 @@ sealed class ReactiveAttribute : Attribute
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-/// <summary>
-/// A partial class implementation of <see cref="INotifyPropertyChanged"/> for <see cref="TestClass"/>.
-/// </summary>
 public partial class TestClass : INotifyPropertyChanged
 {
-    /// <summary>
-    /// Occurs when a property value changes.
-    /// </summary>
-    /// <seealso cref="INotifyPropertyChanged"/>
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    /// <summary>
-    /// Raises the <see cref="PropertyChanged"/> event.
-    /// </summary>
-    /// <param name="propertyName">The name of the property that changed.</param>
     protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    /// <summary>
-    /// Raises the <see cref="PropertyChanged"/> event.
-    /// </summary>
-    /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
     protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
     {
         PropertyChanged?.Invoke(this, args);
@@ -79,10 +64,6 @@ public partial class TestClass
     private static readonly PropertyChangedEventArgs _staticPropChangedEventArgs = new PropertyChangedEventArgs(nameof(StaticProp));
     private static readonly PropertyChangedEventArgs _instancePropChangedEventArgs = new PropertyChangedEventArgs(nameof(InstanceProp));
 
-    /// <summary>
-    /// Gets or sets a value of type string.
-    /// </summary>
-    /// <value>The value of type string.</value>
     public partial string StaticProp
     {
         get => field;
@@ -96,10 +77,6 @@ public partial class TestClass
         }
     }
 
-    /// <summary>
-    /// Gets or sets a value of type string.
-    /// </summary>
-    /// <value>The value of type string.</value>
     public partial string InstanceProp
     {
         get => field;

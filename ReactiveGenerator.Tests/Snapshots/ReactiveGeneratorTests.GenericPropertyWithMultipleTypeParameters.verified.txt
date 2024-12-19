@@ -13,19 +13,11 @@ internal partial class GenericViewModel<T, U> : INotifyPropertyChanged where T :
 {
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    /// <summary>
-    /// Raises the <see cref="PropertyChanged"/> event.
-    /// </summary>
-    /// <param name="propertyName">The name of the property that changed.</param>
     protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    /// <summary>
-    /// Raises the <see cref="PropertyChanged"/> event.
-    /// </summary>
-    /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
     protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
     {
         PropertyChanged?.Invoke(this, args);
@@ -47,10 +39,6 @@ internal partial class GenericViewModel<T, U> where T : class where U : struct
     private static readonly PropertyChangedEventArgs _refValueChangedEventArgs = new PropertyChangedEventArgs(nameof(RefValue));
     private static readonly PropertyChangedEventArgs _valueTypeChangedEventArgs = new PropertyChangedEventArgs(nameof(ValueType));
 
-    /// <summary>
-    /// Gets or sets a value of type T.
-    /// </summary>
-    /// <value>The value of type T.</value>
     public partial T? RefValue
     {
         get => field;
@@ -64,10 +52,6 @@ internal partial class GenericViewModel<T, U> where T : class where U : struct
         }
     }
 
-    /// <summary>
-    /// Gets or sets a value of type U.
-    /// </summary>
-    /// <value>The value of type U.</value>
     public partial U ValueType
     {
         get => field;

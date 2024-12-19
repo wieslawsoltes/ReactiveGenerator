@@ -31,30 +31,15 @@ sealed class ReactiveAttribute : Attribute
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-/// <summary>
-/// A partial class implementation of <see cref="INotifyPropertyChanged"/> for <see cref="TestClass{T}"/>.
-/// </summary>
 public partial class TestClass<T> : INotifyPropertyChanged
 {
-    /// <summary>
-    /// Occurs when a property value changes.
-    /// </summary>
-    /// <seealso cref="INotifyPropertyChanged"/>
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    /// <summary>
-    /// Raises the <see cref="PropertyChanged"/> event.
-    /// </summary>
-    /// <param name="propertyName">The name of the property that changed.</param>
     protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    /// <summary>
-    /// Raises the <see cref="PropertyChanged"/> event.
-    /// </summary>
-    /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
     protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
     {
         PropertyChanged?.Invoke(this, args);
@@ -80,10 +65,6 @@ public partial class TestClass<T>
     private static readonly PropertyChangedEventArgs _typedListPropChangedEventArgs = new PropertyChangedEventArgs(nameof(TypedListProp));
     private static readonly PropertyChangedEventArgs _typedDictPropChangedEventArgs = new PropertyChangedEventArgs(nameof(TypedDictProp));
 
-    /// <summary>
-    /// Gets or sets a value of type T.
-    /// </summary>
-    /// <value>The value of type T.</value>
     public partial T TypedProp
     {
         get => field;
@@ -97,10 +78,6 @@ public partial class TestClass<T>
         }
     }
 
-    /// <summary>
-    /// Gets or sets a value of type List{T}.
-    /// </summary>
-    /// <value>The value of type List{T}.</value>
     public partial List<T> TypedListProp
     {
         get => field;
@@ -114,10 +91,6 @@ public partial class TestClass<T>
         }
     }
 
-    /// <summary>
-    /// Gets or sets a value of type Dictionary{string, T}.
-    /// </summary>
-    /// <value>The value of type Dictionary{string, T}.</value>
     public partial Dictionary<string, T> TypedDictProp
     {
         get => field;

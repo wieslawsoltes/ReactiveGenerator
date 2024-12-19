@@ -17,19 +17,11 @@ public partial class Container
         {
             public event PropertyChangedEventHandler? PropertyChanged;
 
-            /// <summary>
-            /// Raises the <see cref="PropertyChanged"/> event.
-            /// </summary>
-            /// <param name="propertyName">The name of the property that changed.</param>
             protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
             {
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
             }
 
-            /// <summary>
-            /// Raises the <see cref="PropertyChanged"/> event.
-            /// </summary>
-            /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
             protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
             {
                 PropertyChanged?.Invoke(this, args);
@@ -57,10 +49,6 @@ public partial class Container
             private static readonly PropertyChangedEventArgs _innerRegularPropChangedEventArgs = new PropertyChangedEventArgs(nameof(InnerRegularProp));
             private static readonly PropertyChangedEventArgs _innerInitOnlyPropChangedEventArgs = new PropertyChangedEventArgs(nameof(InnerInitOnlyProp));
 
-            /// <summary>
-            /// Gets or sets a value of type string.
-            /// </summary>
-            /// <value>The value of type string.</value>
             public partial string InnerRegularProp
             {
                 get => field;
@@ -74,10 +62,6 @@ public partial class Container
                 }
             }
 
-            /// <summary>
-            /// Gets or sets a value of type string.
-            /// </summary>
-            /// <value>The value of type string.</value>
             public partial string InnerInitOnlyProp
             {
                 get => field;
@@ -106,30 +90,15 @@ using System.Runtime.CompilerServices;
 
 public partial class Container
 {
-    /// <summary>
-    /// A partial class implementation of <see cref="INotifyPropertyChanged"/> for <see cref="Container.Nested"/>.
-    /// </summary>
     public partial class Nested : INotifyPropertyChanged
     {
-        /// <summary>
-        /// Occurs when a property value changes.
-        /// </summary>
-        /// <seealso cref="INotifyPropertyChanged"/>
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        /// <summary>
-        /// Raises the <see cref="PropertyChanged"/> event.
-        /// </summary>
-        /// <param name="propertyName">The name of the property that changed.</param>
         protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        /// <summary>
-        /// Raises the <see cref="PropertyChanged"/> event.
-        /// </summary>
-        /// <param name="args">The <see cref="PropertyChangedEventArgs"/> instance containing the event data.</param>
         protected virtual void OnPropertyChanged(PropertyChangedEventArgs args)
         {
             PropertyChanged?.Invoke(this, args);
@@ -157,10 +126,6 @@ public partial class Container
         private static readonly PropertyChangedEventArgs _regularPropChangedEventArgs = new PropertyChangedEventArgs(nameof(RegularProp));
         private static readonly PropertyChangedEventArgs _initOnlyPropChangedEventArgs = new PropertyChangedEventArgs(nameof(InitOnlyProp));
 
-        /// <summary>
-        /// Gets or sets a value of type string.
-        /// </summary>
-        /// <value>The value of type string.</value>
         public partial string RegularProp
         {
             get => field;
@@ -174,10 +139,6 @@ public partial class Container
             }
         }
 
-        /// <summary>
-        /// Gets or sets a value of type string.
-        /// </summary>
-        /// <value>The value of type string.</value>
         public partial string InitOnlyProp
         {
             get => field;
