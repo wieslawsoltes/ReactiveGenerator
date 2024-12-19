@@ -294,7 +294,7 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
             sb.AppendLine($"{indent}/// </summary>");
         }
 
-        sb.AppendLine($"{indent}private readonly ObservableAsPropertyHelper<{nullablePropertyType}> {backingFieldName};");
+        sb.AppendLine($"{indent}private ObservableAsPropertyHelper<{nullablePropertyType}> {backingFieldName};");
         sb.AppendLine();
 
         // Add XML documentation for the property
