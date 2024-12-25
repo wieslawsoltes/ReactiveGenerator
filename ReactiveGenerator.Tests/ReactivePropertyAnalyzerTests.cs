@@ -1,5 +1,3 @@
-using Xunit;
-
 namespace ReactiveGenerator.Tests;
 
 public class ReactivePropertyAnalyzerTests

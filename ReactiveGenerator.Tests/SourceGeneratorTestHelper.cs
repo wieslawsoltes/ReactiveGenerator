@@ -3,7 +3,6 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Collections.Immutable;
 
 namespace ReactiveGenerator.Tests;
 

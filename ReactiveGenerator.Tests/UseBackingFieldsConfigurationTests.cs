@@ -1,188 +1,184 @@
-using Xunit;
-using System.Threading.Tasks;
-using System.Collections.Generic;
+namespace ReactiveGenerator.Tests;
 
-namespace ReactiveGenerator.Tests
+public class UseBackingFieldsConfigurationTests
 {
-    public class UseBackingFieldsConfigurationTests
+    [Fact]
+    public Task UseBackingFields_NewFormat()
     {
-        [Fact]
-        public Task UseBackingFields_NewFormat()
-        {
-            var source = @"
+        var source = @"
                 [Reactive]
                 public partial class TestClass
                 {
                     public partial string Name { get; set; }
                 }";
 
-            var analyzerConfigOptions = new Dictionary<string, string> 
-            { 
-                ["build_property.UseBackingFields"] = "true" 
-            };
+        var analyzerConfigOptions = new Dictionary<string, string> 
+        { 
+            ["build_property.UseBackingFields"] = "true" 
+        };
 
-            return TestAndVerify(source, analyzerConfigOptions);
-        }
+        return TestAndVerify(source, analyzerConfigOptions);
+    }
 
-        [Fact]
-        public Task UseBackingFields_LegacyFormat()
-        {
-            var source = @"
+    [Fact]
+    public Task UseBackingFields_LegacyFormat()
+    {
+        var source = @"
                 [Reactive]
                 public partial class TestClass
                 {
                     public partial string Name { get; set; }
                 }";
 
-            var analyzerConfigOptions = new Dictionary<string, string> 
-            { 
-                ["UseBackingFields"] = "true" 
-            };
+        var analyzerConfigOptions = new Dictionary<string, string> 
+        { 
+            ["UseBackingFields"] = "true" 
+        };
 
-            return TestAndVerify(source, analyzerConfigOptions);
-        }
+        return TestAndVerify(source, analyzerConfigOptions);
+    }
 
-        [Fact]
-        public Task UseBackingFields_BothFormats_NewTakesPrecedence()
-        {
-            var source = @"
+    [Fact]
+    public Task UseBackingFields_BothFormats_NewTakesPrecedence()
+    {
+        var source = @"
                 [Reactive]
                 public partial class TestClass
                 {
                     public partial string Name { get; set; }
                 }";
 
-            var analyzerConfigOptions = new Dictionary<string, string> 
-            { 
-                ["build_property.UseBackingFields"] = "true",
-                ["UseBackingFields"] = "false"
-            };
+        var analyzerConfigOptions = new Dictionary<string, string> 
+        { 
+            ["build_property.UseBackingFields"] = "true",
+            ["UseBackingFields"] = "false"
+        };
 
-            return TestAndVerify(source, analyzerConfigOptions);
-        }
+        return TestAndVerify(source, analyzerConfigOptions);
+    }
 
-        [Fact]
-        public Task UseBackingFields_BothFormats_BothTrue()
-        {
-            var source = @"
+    [Fact]
+    public Task UseBackingFields_BothFormats_BothTrue()
+    {
+        var source = @"
                 [Reactive]
                 public partial class TestClass
                 {
                     public partial string Name { get; set; }
                 }";
 
-            var analyzerConfigOptions = new Dictionary<string, string> 
-            { 
-                ["build_property.UseBackingFields"] = "true",
-                ["UseBackingFields"] = "true"
-            };
+        var analyzerConfigOptions = new Dictionary<string, string> 
+        { 
+            ["build_property.UseBackingFields"] = "true",
+            ["UseBackingFields"] = "true"
+        };
 
-            return TestAndVerify(source, analyzerConfigOptions);
-        }
+        return TestAndVerify(source, analyzerConfigOptions);
+    }
 
-        [Fact]
-        public Task UseBackingFields_InvalidValue_DefaultsToFalse()
-        {
-            var source = @"
+    [Fact]
+    public Task UseBackingFields_InvalidValue_DefaultsToFalse()
+    {
+        var source = @"
                 [Reactive]
                 public partial class TestClass
                 {
                     public partial string Name { get; set; }
                 }";
 
-            var analyzerConfigOptions = new Dictionary<string, string> 
-            { 
-                ["build_property.UseBackingFields"] = "invalid_value"
-            };
+        var analyzerConfigOptions = new Dictionary<string, string> 
+        { 
+            ["build_property.UseBackingFields"] = "invalid_value"
+        };
 
-            return TestAndVerify(source, analyzerConfigOptions);
-        }
+        return TestAndVerify(source, analyzerConfigOptions);
+    }
 
-        [Fact]
-        public Task UseBackingFields_EmptyValue_DefaultsToFalse()
-        {
-            var source = @"
+    [Fact]
+    public Task UseBackingFields_EmptyValue_DefaultsToFalse()
+    {
+        var source = @"
                 [Reactive]
                 public partial class TestClass
                 {
                     public partial string Name { get; set; }
                 }";
 
-            var analyzerConfigOptions = new Dictionary<string, string> 
-            { 
-                ["build_property.UseBackingFields"] = ""
-            };
+        var analyzerConfigOptions = new Dictionary<string, string> 
+        { 
+            ["build_property.UseBackingFields"] = ""
+        };
 
-            return TestAndVerify(source, analyzerConfigOptions);
-        }
+        return TestAndVerify(source, analyzerConfigOptions);
+    }
 
-        [Fact]
-        public Task UseBackingFields_NoConfig_DefaultsToFalse()
-        {
-            var source = @"
+    [Fact]
+    public Task UseBackingFields_NoConfig_DefaultsToFalse()
+    {
+        var source = @"
                 [Reactive]
                 public partial class TestClass
                 {
                     public partial string Name { get; set; }
                 }";
 
-            return TestAndVerify(source, null);
-        }
+        return TestAndVerify(source, null);
+    }
 
-        [Fact]
-        public Task UseBackingFields_CrossAssembly_NewFormat()
-        {
-            var externalAssemblySource = @"
+    [Fact]
+    public Task UseBackingFields_CrossAssembly_NewFormat()
+    {
+        var externalAssemblySource = @"
                 [Reactive]
                 public partial class ExternalClass
                 {
                     public partial string ExternalProp { get; set; }
                 }";
 
-            var mainAssemblySource = @"
+        var mainAssemblySource = @"
                 public partial class DerivedClass : ExternalClass
                 {
                     [Reactive]
                     public partial string LocalProp { get; set; }
                 }";
 
-            var analyzerConfigOptions = new Dictionary<string, string> 
-            { 
-                ["build_property.UseBackingFields"] = "true"
-            };
+        var analyzerConfigOptions = new Dictionary<string, string> 
+        { 
+            ["build_property.UseBackingFields"] = "true"
+        };
 
-            return TestCrossAssemblyAndVerify(externalAssemblySource, mainAssemblySource, analyzerConfigOptions);
-        }
+        return TestCrossAssemblyAndVerify(externalAssemblySource, mainAssemblySource, analyzerConfigOptions);
+    }
 
-        [Fact]
-        public Task UseBackingFields_CrossAssembly_LegacyFormat()
-        {
-            var externalAssemblySource = @"
+    [Fact]
+    public Task UseBackingFields_CrossAssembly_LegacyFormat()
+    {
+        var externalAssemblySource = @"
                 [Reactive]
                 public partial class ExternalClass
                 {
                     public partial string ExternalProp { get; set; }
                 }";
 
-            var mainAssemblySource = @"
+        var mainAssemblySource = @"
                 public partial class DerivedClass : ExternalClass
                 {
                     [Reactive]
                     public partial string LocalProp { get; set; }
                 }";
 
-            var analyzerConfigOptions = new Dictionary<string, string> 
-            { 
-                ["UseBackingFields"] = "true"
-            };
+        var analyzerConfigOptions = new Dictionary<string, string> 
+        { 
+            ["UseBackingFields"] = "true"
+        };
 
-            return TestCrossAssemblyAndVerify(externalAssemblySource, mainAssemblySource, analyzerConfigOptions);
-        }
+        return TestCrossAssemblyAndVerify(externalAssemblySource, mainAssemblySource, analyzerConfigOptions);
+    }
 
-        [Fact]
-        public Task UseBackingFields_WithComplexProperties()
-        {
-            var source = @"
+    [Fact]
+    public Task UseBackingFields_WithComplexProperties()
+    {
+        var source = @"
                 [Reactive]
                 public partial class TestClass
                 {
@@ -191,18 +187,18 @@ namespace ReactiveGenerator.Tests
                     internal partial System.Collections.Generic.List<string> Items { get; set; }
                 }";
 
-            var analyzerConfigOptions = new Dictionary<string, string> 
-            { 
-                ["build_property.UseBackingFields"] = "true"
-            };
+        var analyzerConfigOptions = new Dictionary<string, string> 
+        { 
+            ["build_property.UseBackingFields"] = "true"
+        };
 
-            return TestAndVerify(source, analyzerConfigOptions);
-        }
+        return TestAndVerify(source, analyzerConfigOptions);
+    }
 
-        [Fact]
-        public Task UseBackingFields_WithInheritance()
-        {
-            var source = @"
+    [Fact]
+    public Task UseBackingFields_WithInheritance()
+    {
+        var source = @"
                 [Reactive]
                 public partial class BaseClass
                 {
@@ -215,18 +211,18 @@ namespace ReactiveGenerator.Tests
                     public partial string DerivedProp { get; set; }
                 }";
 
-            var analyzerConfigOptions = new Dictionary<string, string> 
-            { 
-                ["build_property.UseBackingFields"] = "true"
-            };
+        var analyzerConfigOptions = new Dictionary<string, string> 
+        { 
+            ["build_property.UseBackingFields"] = "true"
+        };
 
-            return TestAndVerify(source, analyzerConfigOptions);
-        }
+        return TestAndVerify(source, analyzerConfigOptions);
+    }
 
-        [Fact]
-        public Task UseBackingFields_WithReactiveObjectInheritance()
-        {
-            var source = @"
+    [Fact]
+    public Task UseBackingFields_WithReactiveObjectInheritance()
+    {
+        var source = @"
                 using ReactiveUI;
                 
                 [Reactive]
@@ -236,18 +232,18 @@ namespace ReactiveGenerator.Tests
                     public partial int Age { get; set; }
                 }";
 
-            var analyzerConfigOptions = new Dictionary<string, string> 
-            { 
-                ["build_property.UseBackingFields"] = "true"
-            };
+        var analyzerConfigOptions = new Dictionary<string, string> 
+        { 
+            ["build_property.UseBackingFields"] = "true"
+        };
 
-            return TestAndVerify(source, analyzerConfigOptions);
-        }
+        return TestAndVerify(source, analyzerConfigOptions);
+    }
 
-        [Fact]
-        public Task UseBackingFields_WithGenericClass()
-        {
-            var source = @"
+    [Fact]
+    public Task UseBackingFields_WithGenericClass()
+    {
+        var source = @"
                 [Reactive]
                 public partial class TestClass<T> where T : class
                 {
@@ -255,18 +251,18 @@ namespace ReactiveGenerator.Tests
                     public partial System.Collections.Generic.List<T> Items { get; set; }
                 }";
 
-            var analyzerConfigOptions = new Dictionary<string, string> 
-            { 
-                ["build_property.UseBackingFields"] = "true"
-            };
+        var analyzerConfigOptions = new Dictionary<string, string> 
+        { 
+            ["build_property.UseBackingFields"] = "true"
+        };
 
-            return TestAndVerify(source, analyzerConfigOptions);
-        }
+        return TestAndVerify(source, analyzerConfigOptions);
+    }
 
-        [Fact]
-        public Task UseBackingFields_WithNestedClasses()
-        {
-            var source = @"
+    [Fact]
+    public Task UseBackingFields_WithNestedClasses()
+    {
+        var source = @"
                 [Reactive]
                 public partial class OuterClass
                 {
@@ -279,18 +275,18 @@ namespace ReactiveGenerator.Tests
                     }
                 }";
 
-            var analyzerConfigOptions = new Dictionary<string, string> 
-            { 
-                ["build_property.UseBackingFields"] = "true"
-            };
+        var analyzerConfigOptions = new Dictionary<string, string> 
+        { 
+            ["build_property.UseBackingFields"] = "true"
+        };
 
-            return TestAndVerify(source, analyzerConfigOptions);
-        }
+        return TestAndVerify(source, analyzerConfigOptions);
+    }
 
-        [Fact]
-        public Task UseBackingFields_WithOverrideProperties()
-        {
-            var source = @"
+    [Fact]
+    public Task UseBackingFields_WithOverrideProperties()
+    {
+        var source = @"
                 [Reactive]
                 public partial class BaseClass
                 {
@@ -303,29 +299,28 @@ namespace ReactiveGenerator.Tests
                     public override partial string VirtualProp { get; set; }
                 }";
 
-            var analyzerConfigOptions = new Dictionary<string, string> 
-            { 
-                ["build_property.UseBackingFields"] = "true"
-            };
+        var analyzerConfigOptions = new Dictionary<string, string> 
+        { 
+            ["build_property.UseBackingFields"] = "true"
+        };
 
-            return TestAndVerify(source, analyzerConfigOptions);
-        }
+        return TestAndVerify(source, analyzerConfigOptions);
+    }
 
-        private Task TestAndVerify(string source, Dictionary<string, string>? analyzerConfigOptions = null)
-        {
-            return SourceGeneratorTestHelper.TestAndVerify(
-                source,
-                analyzerConfigOptions,
-                generators: new ReactiveGenerator());
-        }
+    private Task TestAndVerify(string source, Dictionary<string, string>? analyzerConfigOptions = null)
+    {
+        return SourceGeneratorTestHelper.TestAndVerify(
+            source,
+            analyzerConfigOptions,
+            generators: new ReactiveGenerator());
+    }
 
-        private Task TestCrossAssemblyAndVerify(string externalSource, string mainSource, Dictionary<string, string>? analyzerConfigOptions = null)
-        {
-            return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
-                externalSource,
-                mainSource,
-                analyzerConfigOptions,
-                new ReactiveGenerator());
-        }
+    private Task TestCrossAssemblyAndVerify(string externalSource, string mainSource, Dictionary<string, string>? analyzerConfigOptions = null)
+    {
+        return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
+            externalSource,
+            mainSource,
+            analyzerConfigOptions,
+            new ReactiveGenerator());
     }
 }

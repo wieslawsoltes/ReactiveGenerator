@@ -1,19 +1,15 @@
-using Xunit;
-using System.Threading.Tasks;
-using System.Collections.Generic;
+namespace ReactiveGenerator.Tests;
 
-namespace ReactiveGenerator.Tests
+public class CrossAssemblyTests
 {
-    public class CrossAssemblyTests
+    /// <summary>
+    /// 1) External assembly: [Reactive] base class physically gets INPC from the generator
+    ///    Main assembly: derived class sees that the base already has INPC => no second partial generated.
+    /// </summary>
+    [Fact]
+    public Task ExternalBaseHasReactiveClass_ThenNoDoubleINPCInDerived()
     {
-        /// <summary>
-        /// 1) External assembly: [Reactive] base class physically gets INPC from the generator
-        ///    Main assembly: derived class sees that the base already has INPC => no second partial generated.
-        /// </summary>
-        [Fact]
-        public Task ExternalBaseHasReactiveClass_ThenNoDoubleINPCInDerived()
-        {
-            var externalAssemblySource = @"
+        var externalAssemblySource = @"
 using System;
 
 namespace ExternalLib
@@ -25,7 +21,7 @@ namespace ExternalLib
     }
 }
 ";
-            var mainAssemblySource = @"
+        var mainAssemblySource = @"
 using ExternalLib;
 
 namespace MainLib
@@ -40,24 +36,24 @@ namespace MainLib
 }
 ";
 
-            return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
-                externalAssemblySource,
-                mainAssemblySource,
-                // optional config:
-                // new Dictionary<string, string> { ["build_property.UseBackingFields"] = "true" },
-                null,
-                new ReactiveGenerator()
-            );
-        }
+        return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
+            externalAssemblySource,
+            mainAssemblySource,
+            // optional config:
+            // new Dictionary<string, string> { ["build_property.UseBackingFields"] = "true" },
+            null,
+            new ReactiveGenerator()
+        );
+    }
 
-        /// <summary>
-        /// 2) External assembly: base class has [Reactive], plus [IgnoreReactive] on some property.
-        ///    Main assembly: derived class => we confirm no double INPC, and ignored property remains ignored.
-        /// </summary>
-        [Fact]
-        public Task ExternalBaseHasIgnoreReactive_ThenDerivedIgnoresItToo()
-        {
-            var externalAssemblySource = @"
+    /// <summary>
+    /// 2) External assembly: base class has [Reactive], plus [IgnoreReactive] on some property.
+    ///    Main assembly: derived class => we confirm no double INPC, and ignored property remains ignored.
+    /// </summary>
+    [Fact]
+    public Task ExternalBaseHasIgnoreReactive_ThenDerivedIgnoresItToo()
+    {
+        var externalAssemblySource = @"
 using System;
 
 namespace ExternalLib
@@ -72,7 +68,7 @@ namespace ExternalLib
     }
 }
 ";
-            var mainAssemblySource = @"
+        var mainAssemblySource = @"
 using ExternalLib;
 
 namespace MainLib
@@ -87,18 +83,18 @@ namespace MainLib
 }
 ";
 
-            return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
-                externalAssemblySource,
-                mainAssemblySource,
-                null, // or new Dictionary<string, string> { ... },
-                new ReactiveGenerator()
-            );
-        }
+        return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
+            externalAssemblySource,
+            mainAssemblySource,
+            null, // or new Dictionary<string, string> { ... },
+            new ReactiveGenerator()
+        );
+    }
 
-        [Fact]
-        public Task ExternalBaseHasPropertyLevelReactive_ThenNoExtraINPCInDerived()
-        {
-            var externalAssemblySource = @"
+    [Fact]
+    public Task ExternalBaseHasPropertyLevelReactive_ThenNoExtraINPCInDerived()
+    {
+        var externalAssemblySource = @"
 using System;
 
 namespace ExternalLib
@@ -112,7 +108,7 @@ namespace ExternalLib
     }
 }";
 
-            var mainAssemblySource = @"
+        var mainAssemblySource = @"
 using ExternalLib;
 
 namespace MainLib
@@ -123,23 +119,23 @@ namespace MainLib
         public partial int LocalReactiveProp { get; set; }
     }
 }";
-            return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
-                externalAssemblySource,
-                mainAssemblySource,
-                null,
-                new ReactiveGenerator());
-        }
+        return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
+            externalAssemblySource,
+            mainAssemblySource,
+            null,
+            new ReactiveGenerator());
+    }
 
-        /// <summary>
-        /// 4) External assembly: class inherits from ReactiveObject (assuming we have ReactiveUI available).
-        ///    So it already physically has INPC => main assembly sees that and won't generate again.
-        /// </summary>
-        [Fact]
-        public Task ExternalBaseDerivedFromReactiveObject_ThenNoDoubleINPCInDerived()
-        {
-            // For this test to run, you'd typically need a ref to ReactiveUI or a mock ReactiveObject in the test references.
-            // If you don't have ReactiveObject, just remove this example.
-            var externalAssemblySource = @"
+    /// <summary>
+    /// 4) External assembly: class inherits from ReactiveObject (assuming we have ReactiveUI available).
+    ///    So it already physically has INPC => main assembly sees that and won't generate again.
+    /// </summary>
+    [Fact]
+    public Task ExternalBaseDerivedFromReactiveObject_ThenNoDoubleINPCInDerived()
+    {
+        // For this test to run, you'd typically need a ref to ReactiveUI or a mock ReactiveObject in the test references.
+        // If you don't have ReactiveObject, just remove this example.
+        var externalAssemblySource = @"
 using System;
 using ReactiveUI;
 
@@ -152,7 +148,7 @@ namespace ExternalLib
     }
 }
 ";
-            var mainAssemblySource = @"
+        var mainAssemblySource = @"
 using ExternalLib;
 
 namespace MainLib
@@ -165,21 +161,21 @@ namespace MainLib
 }
 ";
 
-            return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
-                externalAssemblySource,
-                mainAssemblySource,
-                null,
-                new ReactiveGenerator()
-            );
-        }
+        return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
+            externalAssemblySource,
+            mainAssemblySource,
+            null,
+            new ReactiveGenerator()
+        );
+    }
         
-        /// <summary>
-        /// External base has [Reactive], derived has no attributes
-        /// </summary>
-        [Fact]
-        public Task BaseHasReactive_DerivedHasNoAttributes()
-        {
-            var externalAssemblySource = @"
+    /// <summary>
+    /// External base has [Reactive], derived has no attributes
+    /// </summary>
+    [Fact]
+    public Task BaseHasReactive_DerivedHasNoAttributes()
+    {
+        var externalAssemblySource = @"
 namespace ExternalLib
 {
     [Reactive]
@@ -189,7 +185,7 @@ namespace ExternalLib
     }
 }";
 
-            var mainAssemblySource = @"
+        var mainAssemblySource = @"
 using ExternalLib;
 
 namespace MainLib
@@ -201,20 +197,20 @@ namespace MainLib
     }
 }";
 
-            return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
-                externalAssemblySource,
-                mainAssemblySource,
-                null,
-                new ReactiveGenerator());
-        }
+        return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
+            externalAssemblySource,
+            mainAssemblySource,
+            null,
+            new ReactiveGenerator());
+    }
 
-        /// <summary>
-        /// External base has no attributes, derived has [Reactive]
-        /// </summary>
-        [Fact]
-        public Task BaseHasNoAttributes_DerivedHasReactive()
-        {
-            var externalAssemblySource = @"
+    /// <summary>
+    /// External base has no attributes, derived has [Reactive]
+    /// </summary>
+    [Fact]
+    public Task BaseHasNoAttributes_DerivedHasReactive()
+    {
+        var externalAssemblySource = @"
 namespace ExternalLib
 {
     public partial class BaseClass
@@ -223,7 +219,7 @@ namespace ExternalLib
     }
 }";
 
-            var mainAssemblySource = @"
+        var mainAssemblySource = @"
 using ExternalLib;
 
 namespace MainLib
@@ -235,20 +231,20 @@ namespace MainLib
     }
 }";
 
-            return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
-                externalAssemblySource,
-                mainAssemblySource,
-                null,
-                new ReactiveGenerator());
-        }
+        return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
+            externalAssemblySource,
+            mainAssemblySource,
+            null,
+            new ReactiveGenerator());
+    }
 
-        /// <summary>
-        /// External base has property-level [Reactive], derived has no attributes
-        /// </summary>
-        [Fact]
-        public Task BaseHasPropertyReactive_DerivedHasNoAttributes()
-        {
-            var externalAssemblySource = @"
+    /// <summary>
+    /// External base has property-level [Reactive], derived has no attributes
+    /// </summary>
+    [Fact]
+    public Task BaseHasPropertyReactive_DerivedHasNoAttributes()
+    {
+        var externalAssemblySource = @"
 namespace ExternalLib
 {
     public partial class BaseClass
@@ -259,7 +255,7 @@ namespace ExternalLib
     }
 }";
 
-            var mainAssemblySource = @"
+        var mainAssemblySource = @"
 using ExternalLib;
 
 namespace MainLib
@@ -270,20 +266,20 @@ namespace MainLib
     }
 }";
 
-            return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
-                externalAssemblySource,
-                mainAssemblySource,
-                null,
-                new ReactiveGenerator());
-        }
+        return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
+            externalAssemblySource,
+            mainAssemblySource,
+            null,
+            new ReactiveGenerator());
+    }
 
-        /// <summary>
-        /// External base has no attributes, derived has property-level [Reactive]
-        /// </summary>
-        [Fact]
-        public Task BaseHasNoAttributes_DerivedHasPropertyReactive()
-        {
-            var externalAssemblySource = @"
+    /// <summary>
+    /// External base has no attributes, derived has property-level [Reactive]
+    /// </summary>
+    [Fact]
+    public Task BaseHasNoAttributes_DerivedHasPropertyReactive()
+    {
+        var externalAssemblySource = @"
 namespace ExternalLib
 {
     public partial class BaseClass
@@ -292,7 +288,7 @@ namespace ExternalLib
     }
 }";
 
-            var mainAssemblySource = @"
+        var mainAssemblySource = @"
 using ExternalLib;
 
 namespace MainLib
@@ -305,20 +301,20 @@ namespace MainLib
     }
 }";
 
-            return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
-                externalAssemblySource,
-                mainAssemblySource,
-                null,
-                new ReactiveGenerator());
-        }
+        return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
+            externalAssemblySource,
+            mainAssemblySource,
+            null,
+            new ReactiveGenerator());
+    }
 
-        /// <summary>
-        /// External base has [Reactive], derived has [IgnoreReactive]
-        /// </summary>
-        [Fact]
-        public Task BaseHasReactive_DerivedHasIgnoreReactive()
-        {
-            var externalAssemblySource = @"
+    /// <summary>
+    /// External base has [Reactive], derived has [IgnoreReactive]
+    /// </summary>
+    [Fact]
+    public Task BaseHasReactive_DerivedHasIgnoreReactive()
+    {
+        var externalAssemblySource = @"
 namespace ExternalLib
 {
     [Reactive]
@@ -328,7 +324,7 @@ namespace ExternalLib
     }
 }";
 
-            var mainAssemblySource = @"
+        var mainAssemblySource = @"
 using ExternalLib;
 
 namespace MainLib
@@ -340,20 +336,20 @@ namespace MainLib
     }
 }";
 
-            return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
-                externalAssemblySource,
-                mainAssemblySource,
-                null,
-                new ReactiveGenerator());
-        }
+        return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
+            externalAssemblySource,
+            mainAssemblySource,
+            null,
+            new ReactiveGenerator());
+    }
 
-        /// <summary>
-        /// External base has [Reactive], derived has mixed property-level attributes
-        /// </summary>
-        [Fact]
-        public Task BaseHasReactive_DerivedHasMixedPropertyAttributes()
-        {
-            var externalAssemblySource = @"
+    /// <summary>
+    /// External base has [Reactive], derived has mixed property-level attributes
+    /// </summary>
+    [Fact]
+    public Task BaseHasReactive_DerivedHasMixedPropertyAttributes()
+    {
+        var externalAssemblySource = @"
 namespace ExternalLib
 {
     [Reactive]
@@ -365,7 +361,7 @@ namespace ExternalLib
     }
 }";
 
-            var mainAssemblySource = @"
+        var mainAssemblySource = @"
 using ExternalLib;
 
 namespace MainLib
@@ -385,20 +381,20 @@ namespace MainLib
     }
 }";
 
-            return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
-                externalAssemblySource,
-                mainAssemblySource,
-                null,
-                new ReactiveGenerator());
-        }
+        return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
+            externalAssemblySource,
+            mainAssemblySource,
+            null,
+            new ReactiveGenerator());
+    }
 
-        /// <summary>
-        /// Multiple inheritance levels with mixed reactive attributes
-        /// </summary>
-        [Fact]
-        public Task MultipleInheritanceLevels_MixedReactiveAttributes()
-        {
-            var externalAssemblySource = @"
+    /// <summary>
+    /// Multiple inheritance levels with mixed reactive attributes
+    /// </summary>
+    [Fact]
+    public Task MultipleInheritanceLevels_MixedReactiveAttributes()
+    {
+        var externalAssemblySource = @"
 namespace ExternalLib
 {
     [Reactive]
@@ -416,7 +412,7 @@ namespace ExternalLib
     }
 }";
 
-            var mainAssemblySource = @"
+        var mainAssemblySource = @"
 using ExternalLib;
 
 namespace MainLib
@@ -438,20 +434,20 @@ namespace MainLib
     }
 }";
 
-            return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
-                externalAssemblySource,
-                mainAssemblySource,
-                null,
-                new ReactiveGenerator());
-        }
+        return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
+            externalAssemblySource,
+            mainAssemblySource,
+            null,
+            new ReactiveGenerator());
+    }
 
-        /// <summary>
-        /// External base has partial [Reactive] implementation, derived extends it
-        /// </summary>
-        [Fact]
-        public Task BaseHasPartialReactive_DerivedExtends()
-        {
-            var externalAssemblySource = @"
+    /// <summary>
+    /// External base has partial [Reactive] implementation, derived extends it
+    /// </summary>
+    [Fact]
+    public Task BaseHasPartialReactive_DerivedExtends()
+    {
+        var externalAssemblySource = @"
 namespace ExternalLib
 {
     [Reactive]
@@ -463,7 +459,7 @@ namespace ExternalLib
     }
 }";
 
-            var mainAssemblySource = @"
+        var mainAssemblySource = @"
 using ExternalLib;
 
 namespace MainLib
@@ -481,11 +477,10 @@ namespace MainLib
     }
 }";
 
-            return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
-                externalAssemblySource,
-                mainAssemblySource,
-                null,
-                new ReactiveGenerator());
-        }
+        return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
+            externalAssemblySource,
+            mainAssemblySource,
+            null,
+            new ReactiveGenerator());
     }
 }
