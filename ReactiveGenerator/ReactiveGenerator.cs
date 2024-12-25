@@ -11,11 +11,26 @@ namespace ReactiveGenerator;
 [Generator]
 public class ReactiveGenerator : IIncrementalGenerator
 {
-     private record PropertyInfo(
+    private record PropertyInfo(
         IPropertySymbol Property,
         bool HasReactiveAttribute,
         bool HasIgnoreAttribute,
-        bool HasImplementation);
+        bool HasImplementation)
+    {
+        public string GetPropertyModifiers()
+        {
+            var modifiers = new List<string>();
+            
+            if (Property.IsOverride)
+                modifiers.Add("override");
+            else if (Property.IsVirtual)
+                modifiers.Add("virtual");
+            else if (Property.IsAbstract)
+                modifiers.Add("abstract");
+                
+            return string.Join(" ", modifiers);
+        }
+    }
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -342,33 +357,37 @@ public class ReactiveGenerator : IIncrementalGenerator
             processedTypes.Add(type);
         }
     }
-
-    private static bool HasINPCImplementation(Compilation compilation, INamedTypeSymbol typeSymbol,
-        HashSet<INamedTypeSymbol> processedTypes)
+  
+    private static bool HasINPCImplementation(Compilation compilation, INamedTypeSymbol typeSymbol, HashSet<INamedTypeSymbol> processedTypes)
     {
         var inpcType = compilation.GetTypeByMetadataName("System.ComponentModel.INotifyPropertyChanged");
         if (inpcType is null)
             return false;
 
-        // First check if current type implements INPC directly
-        if (typeSymbol.AllInterfaces.Contains(inpcType, SymbolEqualityComparer.Default))
-            return true;
-
-        // Check if current type is in processedTypes (will have INPC implemented)
-        if (processedTypes.Contains(typeSymbol))
+        // First check if current type implements INPC directly or is in processedTypes
+        if (typeSymbol.AllInterfaces.Contains(inpcType, SymbolEqualityComparer.Default) ||
+            processedTypes.Contains(typeSymbol))
             return true;
 
         // Check base types recursively
         var current = typeSymbol.BaseType;
         while (current is not null)
         {
-            // Check if base type implements INPC directly
-            if (current.AllInterfaces.Contains(inpcType, SymbolEqualityComparer.Default))
-                return true;
-
-            // Check if base type is in processedTypes
-            if (processedTypes.Contains(current))
-                return true;
+            // If base type is in same assembly
+            if (current.ContainingAssembly == typeSymbol.ContainingAssembly)
+            {
+                // Check for INPC implementation or presence in processedTypes
+                if (current.AllInterfaces.Contains(inpcType, SymbolEqualityComparer.Default) ||
+                    processedTypes.Contains(current))
+                    return true;
+            }
+            // If base type is in different assembly
+            else
+            {
+                // For external types, only check for actual INPC implementation
+                if (current.AllInterfaces.Contains(inpcType, SymbolEqualityComparer.Default))
+                    return true;
+            }
 
             current = current.BaseType;
         }
@@ -767,7 +786,15 @@ public class ReactiveGenerator : IIncrementalGenerator
         var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
         var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
 
-        sb.AppendLine($"{indent}{propertyAccessibility} partial {propertyType} {propertyName}");
+        var propInfo = new PropertyInfo(property, false, false, false);
+        var modifiers = propInfo.GetPropertyModifiers();
+    
+        var declarationModifiers = new List<string> { propertyAccessibility };
+        if (!string.IsNullOrEmpty(modifiers))
+            declarationModifiers.Add(modifiers);
+        declarationModifiers.Add("partial");
+
+        sb.AppendLine($"{indent}{string.Join(" ", declarationModifiers)} {propertyType} {propertyName}");
         sb.AppendLine($"{indent}{{");
 
         if (isReactiveObject)
@@ -817,8 +844,18 @@ public class ReactiveGenerator : IIncrementalGenerator
         var propertyType = GetPropertyTypeWithNullability(property);
         var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
         var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
-
-        sb.AppendLine($"{indent}{propertyAccessibility} partial {propertyType} {propertyName}");
+        
+        // Create PropertyInfo to get modifiers
+        var propInfo = new PropertyInfo(property, false, false, false);
+        var modifiers = propInfo.GetPropertyModifiers();
+        
+        // Combine modifiers with accessibility and partial
+        var declarationModifiers = new List<string> { propertyAccessibility };
+        if (!string.IsNullOrEmpty(modifiers))
+            declarationModifiers.Add(modifiers);
+        declarationModifiers.Add("partial");
+        
+        sb.AppendLine($"{indent}{string.Join(" ", declarationModifiers)} {propertyType} {propertyName}");
         sb.AppendLine($"{indent}{{");
 
         if (isReactiveObject)

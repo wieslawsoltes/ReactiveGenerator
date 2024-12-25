@@ -46,7 +46,7 @@ public partial class Container
     {
         private static readonly PropertyChangedEventArgs _virtualPropChangedEventArgs = new PropertyChangedEventArgs(nameof(VirtualProp));
 
-        public partial string VirtualProp
+        public virtual partial string VirtualProp
         {
             get => field;
             set
@@ -81,7 +81,7 @@ public partial class Container
         private static readonly PropertyChangedEventArgs _virtualPropChangedEventArgs = new PropertyChangedEventArgs(nameof(VirtualProp));
         private static readonly PropertyChangedEventArgs _regularPropChangedEventArgs = new PropertyChangedEventArgs(nameof(RegularProp));
 
-        public partial string VirtualProp
+        public override partial string VirtualProp
         {
             get => field;
             set

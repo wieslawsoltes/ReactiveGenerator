@@ -64,7 +64,7 @@ public partial class TestClass
     private static readonly PropertyChangedEventArgs _virtualPropChangedEventArgs = new PropertyChangedEventArgs(nameof(VirtualProp));
     private static readonly PropertyChangedEventArgs _nonVirtualPropChangedEventArgs = new PropertyChangedEventArgs(nameof(NonVirtualProp));
 
-    public partial string VirtualProp
+    public virtual partial string VirtualProp
     {
         get => field;
         set

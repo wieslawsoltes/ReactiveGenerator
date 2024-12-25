@@ -30,7 +30,7 @@ namespace MainLib
         private static readonly PropertyChangedEventArgs _virtualPropChangedEventArgs = new PropertyChangedEventArgs(nameof(VirtualProp));
         private static readonly PropertyChangedEventArgs _derivedPropChangedEventArgs = new PropertyChangedEventArgs(nameof(DerivedProp));
 
-        public partial string VirtualProp
+        public override partial string VirtualProp
         {
             get => field;
             set
