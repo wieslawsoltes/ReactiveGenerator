@@ -172,5 +172,320 @@ namespace MainLib
                 new ReactiveGenerator()
             );
         }
+        
+        /// <summary>
+        /// External base has [Reactive], derived has no attributes
+        /// </summary>
+        [Fact]
+        public Task BaseHasReactive_DerivedHasNoAttributes()
+        {
+            var externalAssemblySource = @"
+namespace ExternalLib
+{
+    [Reactive]
+    public partial class BaseClass
+    {
+        public partial string BaseProp { get; set; }
+    }
+}";
+
+            var mainAssemblySource = @"
+using ExternalLib;
+
+namespace MainLib
+{
+    // No [Reactive] here, should inherit from base
+    public partial class DerivedClass : BaseClass
+    {
+        public partial string DerivedProp { get; set; }
+    }
+}";
+
+            return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
+                externalAssemblySource,
+                mainAssemblySource,
+                null,
+                new ReactiveGenerator());
+        }
+
+        /// <summary>
+        /// External base has no attributes, derived has [Reactive]
+        /// </summary>
+        [Fact]
+        public Task BaseHasNoAttributes_DerivedHasReactive()
+        {
+            var externalAssemblySource = @"
+namespace ExternalLib
+{
+    public partial class BaseClass
+    {
+        public partial string BaseProp { get; set; }
+    }
+}";
+
+            var mainAssemblySource = @"
+using ExternalLib;
+
+namespace MainLib
+{
+    [Reactive]
+    public partial class DerivedClass : BaseClass
+    {
+        public partial string DerivedProp { get; set; }
+    }
+}";
+
+            return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
+                externalAssemblySource,
+                mainAssemblySource,
+                null,
+                new ReactiveGenerator());
+        }
+
+        /// <summary>
+        /// External base has property-level [Reactive], derived has no attributes
+        /// </summary>
+        [Fact]
+        public Task BaseHasPropertyReactive_DerivedHasNoAttributes()
+        {
+            var externalAssemblySource = @"
+namespace ExternalLib
+{
+    public partial class BaseClass
+    {
+        [Reactive]
+        public partial string ReactiveProp { get; set; }
+        public partial string NonReactiveProp { get; set; }
+    }
+}";
+
+            var mainAssemblySource = @"
+using ExternalLib;
+
+namespace MainLib
+{
+    public partial class DerivedClass : BaseClass
+    {
+        public partial string DerivedProp { get; set; }
+    }
+}";
+
+            return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
+                externalAssemblySource,
+                mainAssemblySource,
+                null,
+                new ReactiveGenerator());
+        }
+
+        /// <summary>
+        /// External base has no attributes, derived has property-level [Reactive]
+        /// </summary>
+        [Fact]
+        public Task BaseHasNoAttributes_DerivedHasPropertyReactive()
+        {
+            var externalAssemblySource = @"
+namespace ExternalLib
+{
+    public partial class BaseClass
+    {
+        public partial string BaseProp { get; set; }
+    }
+}";
+
+            var mainAssemblySource = @"
+using ExternalLib;
+
+namespace MainLib
+{
+    public partial class DerivedClass : BaseClass
+    {
+        [Reactive]
+        public partial string ReactiveProp { get; set; }
+        public partial string NonReactiveProp { get; set; }
+    }
+}";
+
+            return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
+                externalAssemblySource,
+                mainAssemblySource,
+                null,
+                new ReactiveGenerator());
+        }
+
+        /// <summary>
+        /// External base has [Reactive], derived has [IgnoreReactive]
+        /// </summary>
+        [Fact]
+        public Task BaseHasReactive_DerivedHasIgnoreReactive()
+        {
+            var externalAssemblySource = @"
+namespace ExternalLib
+{
+    [Reactive]
+    public partial class BaseClass
+    {
+        public partial string BaseProp { get; set; }
+    }
+}";
+
+            var mainAssemblySource = @"
+using ExternalLib;
+
+namespace MainLib
+{
+    [IgnoreReactive]
+    public partial class DerivedClass : BaseClass
+    {
+        public partial string DerivedProp { get; set; }
+    }
+}";
+
+            return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
+                externalAssemblySource,
+                mainAssemblySource,
+                null,
+                new ReactiveGenerator());
+        }
+
+        /// <summary>
+        /// External base has [Reactive], derived has mixed property-level attributes
+        /// </summary>
+        [Fact]
+        public Task BaseHasReactive_DerivedHasMixedPropertyAttributes()
+        {
+            var externalAssemblySource = @"
+namespace ExternalLib
+{
+    [Reactive]
+    public partial class BaseClass
+    {
+        public partial string BaseProp { get; set; }
+        [IgnoreReactive]
+        public partial string IgnoredBaseProp { get; set; }
+    }
+}";
+
+            var mainAssemblySource = @"
+using ExternalLib;
+
+namespace MainLib
+{
+    public partial class DerivedClass : BaseClass
+    {
+        // Should be reactive due to base class
+        public partial string InheritedReactiveProp { get; set; }
+        
+        // Should be ignored
+        [IgnoreReactive]
+        public partial string IgnoredProp { get; set; }
+        
+        // Should be reactive due to explicit attribute
+        [Reactive]
+        public partial string ExplicitReactiveProp { get; set; }
+    }
+}";
+
+            return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
+                externalAssemblySource,
+                mainAssemblySource,
+                null,
+                new ReactiveGenerator());
+        }
+
+        /// <summary>
+        /// Multiple inheritance levels with mixed reactive attributes
+        /// </summary>
+        [Fact]
+        public Task MultipleInheritanceLevels_MixedReactiveAttributes()
+        {
+            var externalAssemblySource = @"
+namespace ExternalLib
+{
+    [Reactive]
+    public partial class GrandparentClass
+    {
+        public partial string GrandparentProp { get; set; }
+    }
+
+    // No attributes here
+    public partial class ParentClass : GrandparentClass
+    {
+        public partial string ParentProp { get; set; }
+        [Reactive]
+        public partial string ReactiveParentProp { get; set; }
+    }
+}";
+
+            var mainAssemblySource = @"
+using ExternalLib;
+
+namespace MainLib
+{
+    // No class-level reactive
+    public partial class ChildClass : ParentClass
+    {
+        public partial string ChildProp { get; set; }
+        [Reactive]
+        public partial string ReactiveChildProp { get; set; }
+    }
+
+    [IgnoreReactive]
+    public partial class GrandchildClass : ChildClass
+    {
+        public partial string GrandchildProp { get; set; }
+        [Reactive]
+        public partial string ReactiveGrandchildProp { get; set; }
+    }
+}";
+
+            return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
+                externalAssemblySource,
+                mainAssemblySource,
+                null,
+                new ReactiveGenerator());
+        }
+
+        /// <summary>
+        /// External base has partial [Reactive] implementation, derived extends it
+        /// </summary>
+        [Fact]
+        public Task BaseHasPartialReactive_DerivedExtends()
+        {
+            var externalAssemblySource = @"
+namespace ExternalLib
+{
+    [Reactive]
+    public abstract partial class BaseClass
+    {
+        public partial string BaseProp { get; set; }
+        public abstract string AbstractProp { get; set; }
+        public virtual partial string VirtualProp { get; set; }
+    }
+}";
+
+            var mainAssemblySource = @"
+using ExternalLib;
+
+namespace MainLib
+{
+    public partial class DerivedClass : BaseClass
+    {
+        // Implementing abstract prop
+        public override string AbstractProp { get; set; }
+        
+        // Overriding virtual prop
+        public override partial string VirtualProp { get; set; }
+        
+        // New prop
+        public partial string DerivedProp { get; set; }
+    }
+}";
+
+            return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
+                externalAssemblySource,
+                mainAssemblySource,
+                null,
+                new ReactiveGenerator());
+        }
     }
 }

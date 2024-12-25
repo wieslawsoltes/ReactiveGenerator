@@ -1,0 +1,27 @@
+﻿{
+  Sources: [
+    {
+      FileName: IgnoreReactiveAttribute.g.cs,
+      Source:
+using System;
+
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+sealed class IgnoreReactiveAttribute : Attribute
+{
+    public IgnoreReactiveAttribute() { }
+}
+    },
+    {
+      FileName: ReactiveAttribute.g.cs,
+      Source:
+using System;
+
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
+sealed class ReactiveAttribute : Attribute
+{
+    public ReactiveAttribute() { }
+}
+    }
+  ],
+  Diagnostics: null
+}
