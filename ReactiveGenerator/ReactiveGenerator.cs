@@ -20,34 +20,47 @@ public class ReactiveGenerator : IIncrementalGenerator
         public string GetPropertyModifiers()
         {
             var modifiers = new List<string>();
-            
+
             if (Property.IsOverride)
                 modifiers.Add("override");
             else if (Property.IsVirtual)
                 modifiers.Add("virtual");
             else if (Property.IsAbstract)
                 modifiers.Add("abstract");
-                
+
             return string.Join(" ", modifiers);
         }
     }
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // Register both attributes
+        // Register attributes
         context.RegisterPostInitializationOutput(ctx =>
         {
             ctx.AddSource("ReactiveAttribute.g.cs", SourceText.From(AttributeSource, Encoding.UTF8));
             ctx.AddSource("IgnoreReactiveAttribute.g.cs", SourceText.From(IgnoreAttributeSource, Encoding.UTF8));
         });
 
-        // Get MSBuild property for enabling legacy mode
+        // Enhanced configuration handling
         var useLegacyMode = context.AnalyzerConfigOptionsProvider
-            .Select((provider, _) => bool.TryParse(
-                provider.GlobalOptions.TryGetValue("build_property.UseBackingFields", out var value)
-                    ? value
-                    : "false",
-                out var result) && result);
+            .Select((provider, _) =>
+            {
+                // Check new format first
+                if (provider.GlobalOptions.TryGetValue("build_property.UseBackingFields", out var value))
+                {
+                    if (bool.TryParse(value, out var result))
+                        return result;
+                }
+
+                // Then check legacy format
+                if (provider.GlobalOptions.TryGetValue("UseBackingFields", out value))
+                {
+                    if (bool.TryParse(value, out var result))
+                        return result;
+                }
+
+                return false;
+            });
 
         // Get partial class declarations
         var partialClasses = context.SyntaxProvider
@@ -58,7 +71,7 @@ public class ReactiveGenerator : IIncrementalGenerator
                 transform: (ctx, _) => GetClassInfo(ctx))
             .Where(m => m is not null);
 
-        // Get partial properties (both with [Reactive] and from [Reactive] classes)
+        // Get partial properties
         var partialProperties = context.SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: (s, _) => s is PropertyDeclarationSyntax p &&
@@ -104,6 +117,7 @@ public class ReactiveGenerator : IIncrementalGenerator
                 if (attribute.AttributeClass?.Name is "ReactiveAttribute" or "Reactive")
                     return true;
             }
+
             current = current.BaseType;
         }
 
@@ -357,8 +371,9 @@ public class ReactiveGenerator : IIncrementalGenerator
             processedTypes.Add(type);
         }
     }
-  
-    private static bool HasINPCImplementation(Compilation compilation, INamedTypeSymbol typeSymbol, HashSet<INamedTypeSymbol> processedTypes)
+
+    private static bool HasINPCImplementation(Compilation compilation, INamedTypeSymbol typeSymbol,
+        HashSet<INamedTypeSymbol> processedTypes)
     {
         var inpcType = compilation.GetTypeByMetadataName("System.ComponentModel.INotifyPropertyChanged");
         if (inpcType is null)
@@ -788,7 +803,7 @@ public class ReactiveGenerator : IIncrementalGenerator
 
         var propInfo = new PropertyInfo(property, false, false, false);
         var modifiers = propInfo.GetPropertyModifiers();
-    
+
         var declarationModifiers = new List<string> { propertyAccessibility };
         if (!string.IsNullOrEmpty(modifiers))
             declarationModifiers.Add(modifiers);
@@ -844,17 +859,17 @@ public class ReactiveGenerator : IIncrementalGenerator
         var propertyType = GetPropertyTypeWithNullability(property);
         var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
         var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
-        
+
         // Create PropertyInfo to get modifiers
         var propInfo = new PropertyInfo(property, false, false, false);
         var modifiers = propInfo.GetPropertyModifiers();
-        
+
         // Combine modifiers with accessibility and partial
         var declarationModifiers = new List<string> { propertyAccessibility };
         if (!string.IsNullOrEmpty(modifiers))
             declarationModifiers.Add(modifiers);
         declarationModifiers.Add("partial");
-        
+
         sb.AppendLine($"{indent}{string.Join(" ", declarationModifiers)} {propertyType} {propertyName}");
         sb.AppendLine($"{indent}{{");
 
