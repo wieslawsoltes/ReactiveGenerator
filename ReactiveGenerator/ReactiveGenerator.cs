@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
@@ -12,10 +11,7 @@ namespace ReactiveGenerator;
 [Generator]
 public class ReactiveGenerator : IIncrementalGenerator
 {
-    private static INamedTypeSymbol? s_reactiveAttributeSymbol;
-    private static INamedTypeSymbol? s_ignoreReactiveAttributeSymbol;
-    
-    private record PropertyInfo(
+     private record PropertyInfo(
         IPropertySymbol Property,
         bool HasReactiveAttribute,
         bool HasIgnoreAttribute,
@@ -23,23 +19,11 @@ public class ReactiveGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
+        // Register both attributes
         context.RegisterPostInitializationOutput(ctx =>
         {
             ctx.AddSource("ReactiveAttribute.g.cs", SourceText.From(AttributeSource, Encoding.UTF8));
             ctx.AddSource("IgnoreReactiveAttribute.g.cs", SourceText.From(IgnoreAttributeSource, Encoding.UTF8));
-        });
-
-        // Cache known attribute symbols
-        var compilationProvider = context.CompilationProvider.Select((comp, _) =>
-        {
-            s_reactiveAttributeSymbol = comp.GetTypeByMetadataName("ReactiveAttribute");
-            // or if your attribute is in a namespace, e.g. "MyNamespace.ReactiveAttribute", 
-            // use that full name instead:
-            // s_reactiveAttributeSymbol = comp.GetTypeByMetadataName("MyNamespace.ReactiveAttribute");
-
-            s_ignoreReactiveAttributeSymbol = comp.GetTypeByMetadataName("IgnoreReactiveAttribute");
-            // ...
-            return comp;
         });
 
         // Get MSBuild property for enabling legacy mode
@@ -85,36 +69,26 @@ public class ReactiveGenerator : IIncrementalGenerator
 
     private static bool IsTypeReactive(INamedTypeSymbol type)
     {
+        // If type inherits from ReactiveObject, it's already reactive
         if (InheritsFromReactiveObject(type))
             return true;
 
-        // Check for [IgnoreReactive]
+        // First check if the type has [IgnoreReactive]
         foreach (var attribute in type.GetAttributes())
         {
-            if (SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, s_ignoreReactiveAttributeSymbol))
+            if (attribute.AttributeClass?.Name is "IgnoreReactiveAttribute" or "IgnoreReactive")
                 return false;
         }
 
-        // Check for [Reactive]
-        foreach (var attribute in type.GetAttributes())
-        {
-            if (SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, s_reactiveAttributeSymbol))
-                return true;
-        }
-
-        // Finally check base types (excluding ReactiveObject)
-        var current = type.BaseType;
+        // Then check if the type has [Reactive] (including base types)
+        var current = type;
         while (current != null)
         {
-            if (InheritsFromReactiveObject(current))
-                return true;
-
             foreach (var attribute in current.GetAttributes())
             {
                 if (attribute.AttributeClass?.Name is "ReactiveAttribute" or "Reactive")
                     return true;
             }
-
             current = current.BaseType;
         }
 
@@ -144,14 +118,14 @@ public class ReactiveGenerator : IIncrementalGenerator
         if (context.Node is not PropertyDeclarationSyntax propertyDeclaration)
             return null;
 
-        // Get the symbol for the property
         var symbol = context.SemanticModel.GetDeclaredSymbol(propertyDeclaration) as IPropertySymbol;
-        if (symbol is null)
+        if (symbol == null)
             return null;
 
-        // Check property-level attributes for [Reactive] or [IgnoreReactive]
         bool hasReactiveAttribute = false;
         bool hasIgnoreAttribute = false;
+
+        // Check property attributes
         foreach (var attributeList in propertyDeclaration.AttributeLists)
         {
             foreach (var attribute in attributeList.Attributes)
@@ -164,99 +138,23 @@ public class ReactiveGenerator : IIncrementalGenerator
             }
         }
 
-        // Check if containing type is "reactive"
-        var containingType = symbol.ContainingType;
-        bool classHasReactiveAttribute = IsTypeReactive(containingType);
+        // Check if containing type should be reactive
+        bool classHasReactiveAttribute = IsTypeReactive(symbol.ContainingType);
 
-        // Check if user code has a non-trivial implementation
-        // (block body or expression body with real logic)
+        // Check if property has an implementation
         bool hasImplementation = propertyDeclaration.AccessorList?.Accessors.Any(
-            a => a.Body != null || a.ExpressionBody != null
-        ) ?? false;
+            a => a.Body != null || a.ExpressionBody != null) ?? false;
 
-        // If it's only "get => field" / "set => field = value" logic, treat it as no real user implementation
-        if (hasImplementation && IsTrivialFieldImplementation(propertyDeclaration))
-        {
-            hasImplementation = false;
-        }
-
-        // Decide if we should generate code
-        // We do so if:
-        //  1) The property or class is [Reactive], 
-        //  2) There's no [IgnoreReactive],
-        //  3) The property doesn't already have a non-trivial implementation
-        if ((hasReactiveAttribute || (classHasReactiveAttribute && !hasIgnoreAttribute)) && 
-            !hasIgnoreAttribute && 
-            !hasImplementation)
+        // Return property info if it either:
+        // 1. Has [Reactive] attribute directly
+        // 2. Is in a class with [Reactive] attribute and doesn't have [IgnoreReactive]
+        // 3. Has no implementation yet
+        if ((hasReactiveAttribute || (classHasReactiveAttribute && !hasIgnoreAttribute)) && !hasImplementation)
         {
             return new PropertyInfo(symbol, hasReactiveAttribute, hasIgnoreAttribute, hasImplementation);
         }
 
         return null;
-    }
-
-    private static bool IsTrivialFieldImplementation(PropertyDeclarationSyntax propertyDeclaration)
-    {
-        if (propertyDeclaration.AccessorList is null)
-            return false;
-
-        foreach (var accessor in propertyDeclaration.AccessorList.Accessors)
-        {
-            // If there's a block body { ... }, it's definitely not trivial
-            if (accessor.Body != null)
-                return false;
-
-            // Check if it's an expression-bodied accessor
-            // like `get => field;`, `set => field = value;`
-            if (accessor.ExpressionBody != null)
-            {
-                var exprText = accessor.ExpressionBody.Expression.ToString().Trim();
-
-                if (accessor.Keyword.IsKind(SyntaxKind.GetKeyword))
-                {
-                    // Allowed minimal forms:
-                    // - "field"
-                    // - "field ?? something"
-                    // You can expand as you like (e.g. "field ?? string.Empty")
-                    if (!IsAllowedGetExpression(exprText))
-                        return false;
-                }
-                else if (accessor.Keyword.IsKind(SyntaxKind.SetKeyword))
-                {
-                    // Allowed minimal form:
-                    // - "field = value"
-                    // Possibly "field = value ?? something" if you wanted to allow that
-                    if (!IsAllowedSetExpression(exprText))
-                        return false;
-                }
-            }
-        }
-
-        // If we never returned false, it means all accessors are trivial "field" usage
-        return true;
-    }
-
-    private static bool IsAllowedGetExpression(string expr)
-    {
-        // For example: 
-        //   "field"
-        //   "field ?? string.Empty"
-        //   "field ?? \"\""
-        // or anything else you want to treat as "trivial"
-        if (expr == "field")
-            return true;
-
-        if (expr.StartsWith("field ??", StringComparison.Ordinal))
-            return true;
-
-        return false;
-    }
-
-    private static bool IsAllowedSetExpression(string expr)
-    {
-        // For instance, "field = value"
-        // If you want to allow "field = value ?? something", add logic
-        return expr == "field = value";
     }
 
     private static bool InheritsFromReactiveObject(INamedTypeSymbol typeSymbol)
@@ -369,12 +267,12 @@ public class ReactiveGenerator : IIncrementalGenerator
         var processedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
         var allTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
 
-        // Group partial properties by containing type
+        // Group properties by containing type
         var propertyGroups = properties
             .GroupBy(p => p.Property.ContainingType, SymbolEqualityComparer.Default)
             .ToDictionary(g => g.Key, g => g.ToList(), SymbolEqualityComparer.Default);
 
-        // Gather all candidate types from the compilation
+        // Add types that need processing
         foreach (var type in GetAllTypesInCompilation(compilation))
         {
             if (IsTypeMarkedReactive(type) || HasAnyReactiveProperties(type, propertyGroups))
@@ -383,30 +281,22 @@ public class ReactiveGenerator : IIncrementalGenerator
             }
         }
 
-        // Sort types so base classes come before derived
+        // Process types in correct order
         foreach (var type in allTypes.OrderBy(t => GetTypeHierarchyDepth(t)))
         {
             if (processedTypes.Contains(type))
                 continue;
 
-            // If the class or any of its base types physically inherits from ReactiveObject,
-            // we won't generate an INotifyPropertyChanged partial
-            bool isReactiveObjectDerived = InheritsFromReactiveObject(type);
+            var isReactiveObjectDerived = InheritsFromReactiveObject(type);
 
-            // Check if the type or base types physically implement INotifyPropertyChanged,
-            // or if we've already processed them in this compilation
-            bool alreadyHasInpc = isReactiveObjectDerived ||
-                                  HasINPCImplementation(compilation, type, processedTypes);
-
-            // If not already present, create the INPC partial
-            if (!alreadyHasInpc)
+            // Generate INPC implementation if needed
+            if (!isReactiveObjectDerived && !HasINPCImplementation(compilation, type, processedTypes))
             {
                 var inpcSource = GenerateINPCImplementation(type);
                 if (!string.IsNullOrEmpty(inpcSource))
                 {
                     var fullTypeName = type.ToDisplayString(new SymbolDisplayFormat(
-                        typeQualificationStyle: SymbolDisplayTypeQualificationStyle
-                            .NameAndContainingTypesAndNamespaces,
+                        typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
                         genericsOptions: SymbolDisplayGenericsOptions.None,
                         miscellaneousOptions: SymbolDisplayMiscellaneousOptions.None));
 
@@ -415,22 +305,20 @@ public class ReactiveGenerator : IIncrementalGenerator
                 }
             }
 
-            // Generate property partials for [Reactive] or class-level [Reactive] 
-            // (skipping those with [IgnoreReactive], or that have an existing implementation)
+            // Generate property implementations
             if (propertyGroups.TryGetValue(type, out var typeProperties))
             {
-                bool isTypeReactive = IsTypeMarkedReactive(type);
-
+                var isTypeReactive = IsTypeMarkedReactive(type);
                 var reactiveProperties = typeProperties
                     .Where(p => !p.HasImplementation &&
                                 !p.HasIgnoreAttribute &&
-                                (p.HasReactiveAttribute || isTypeReactive))
+                                (p.HasReactiveAttribute || // Include properties marked with [Reactive]
+                                 isTypeReactive)) // Include all properties if class is marked with [Reactive]
                     .Select(p => p.Property)
                     .ToList();
 
                 if (reactiveProperties.Any())
                 {
-                    // We do *not* generate a second INPC block here, just the property expansions
                     var source = GenerateClassSource(
                         type,
                         reactiveProperties,
@@ -455,33 +343,30 @@ public class ReactiveGenerator : IIncrementalGenerator
         }
     }
 
-    private static bool HasINPCImplementation(
-        Compilation compilation,
-        INamedTypeSymbol typeSymbol,
+    private static bool HasINPCImplementation(Compilation compilation, INamedTypeSymbol typeSymbol,
         HashSet<INamedTypeSymbol> processedTypes)
     {
         var inpcType = compilation.GetTypeByMetadataName("System.ComponentModel.INotifyPropertyChanged");
         if (inpcType is null)
             return false;
 
-        // 1. If the type physically implements INPC via AllInterfaces
+        // First check if current type implements INPC directly
         if (typeSymbol.AllInterfaces.Contains(inpcType, SymbolEqualityComparer.Default))
             return true;
 
-        // 2. If the generator has *already* processed this type in this compilation
-        //    (thus added a partial INPC), it effectively has INPC.
+        // Check if current type is in processedTypes (will have INPC implemented)
         if (processedTypes.Contains(typeSymbol))
             return true;
 
-        // 3. Check base types recursively
+        // Check base types recursively
         var current = typeSymbol.BaseType;
         while (current is not null)
         {
-            // If the base physically implements INPC
+            // Check if base type implements INPC directly
             if (current.AllInterfaces.Contains(inpcType, SymbolEqualityComparer.Default))
                 return true;
 
-            // If the base was processed by this generator
+            // Check if base type is in processedTypes
             if (processedTypes.Contains(current))
                 return true;
 
@@ -983,7 +868,7 @@ public class ReactiveGenerator : IIncrementalGenerator
 
     private const string AttributeSource = @"using System;
 
-[AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
 sealed class ReactiveAttribute : Attribute
 {
     public ReactiveAttribute() { }
@@ -991,7 +876,7 @@ sealed class ReactiveAttribute : Attribute
 
     private const string IgnoreAttributeSource = @"using System;
 
-[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
 sealed class IgnoreReactiveAttribute : Attribute
 {
     public IgnoreReactiveAttribute() { }
