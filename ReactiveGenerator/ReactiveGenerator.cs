@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
@@ -143,14 +144,14 @@ public class ReactiveGenerator : IIncrementalGenerator
         if (context.Node is not PropertyDeclarationSyntax propertyDeclaration)
             return null;
 
+        // Get the symbol for the property
         var symbol = context.SemanticModel.GetDeclaredSymbol(propertyDeclaration) as IPropertySymbol;
-        if (symbol == null)
+        if (symbol is null)
             return null;
 
+        // Check property-level attributes for [Reactive] or [IgnoreReactive]
         bool hasReactiveAttribute = false;
         bool hasIgnoreAttribute = false;
-
-        // Check property attributes
         foreach (var attributeList in propertyDeclaration.AttributeLists)
         {
             foreach (var attribute in attributeList.Attributes)
@@ -163,24 +164,99 @@ public class ReactiveGenerator : IIncrementalGenerator
             }
         }
 
+        // Check if containing type is "reactive"
         var containingType = symbol.ContainingType;
-        // Check if containing type should be reactive
         bool classHasReactiveAttribute = IsTypeReactive(containingType);
 
-        // Check if property has an implementation
+        // Check if user code has a non-trivial implementation
+        // (block body or expression body with real logic)
         bool hasImplementation = propertyDeclaration.AccessorList?.Accessors.Any(
-            a => a.Body != null || a.ExpressionBody != null) ?? false;
+            a => a.Body != null || a.ExpressionBody != null
+        ) ?? false;
 
-        // Return property info if it either:
-        // 1. Has [Reactive] attribute directly
-        // 2. Is in a class (or base class) with [Reactive] attribute and doesn't have [IgnoreReactive]
-        // 3. Has no implementation yet
-        if ((hasReactiveAttribute || (classHasReactiveAttribute && !hasIgnoreAttribute)) && !hasImplementation)
+        // If it's only "get => field" / "set => field = value" logic, treat it as no real user implementation
+        if (hasImplementation && IsTrivialFieldImplementation(propertyDeclaration))
+        {
+            hasImplementation = false;
+        }
+
+        // Decide if we should generate code
+        // We do so if:
+        //  1) The property or class is [Reactive], 
+        //  2) There's no [IgnoreReactive],
+        //  3) The property doesn't already have a non-trivial implementation
+        if ((hasReactiveAttribute || (classHasReactiveAttribute && !hasIgnoreAttribute)) && 
+            !hasIgnoreAttribute && 
+            !hasImplementation)
         {
             return new PropertyInfo(symbol, hasReactiveAttribute, hasIgnoreAttribute, hasImplementation);
         }
 
         return null;
+    }
+
+    private static bool IsTrivialFieldImplementation(PropertyDeclarationSyntax propertyDeclaration)
+    {
+        if (propertyDeclaration.AccessorList is null)
+            return false;
+
+        foreach (var accessor in propertyDeclaration.AccessorList.Accessors)
+        {
+            // If there's a block body { ... }, it's definitely not trivial
+            if (accessor.Body != null)
+                return false;
+
+            // Check if it's an expression-bodied accessor
+            // like `get => field;`, `set => field = value;`
+            if (accessor.ExpressionBody != null)
+            {
+                var exprText = accessor.ExpressionBody.Expression.ToString().Trim();
+
+                if (accessor.Keyword.IsKind(SyntaxKind.GetKeyword))
+                {
+                    // Allowed minimal forms:
+                    // - "field"
+                    // - "field ?? something"
+                    // You can expand as you like (e.g. "field ?? string.Empty")
+                    if (!IsAllowedGetExpression(exprText))
+                        return false;
+                }
+                else if (accessor.Keyword.IsKind(SyntaxKind.SetKeyword))
+                {
+                    // Allowed minimal form:
+                    // - "field = value"
+                    // Possibly "field = value ?? something" if you wanted to allow that
+                    if (!IsAllowedSetExpression(exprText))
+                        return false;
+                }
+            }
+        }
+
+        // If we never returned false, it means all accessors are trivial "field" usage
+        return true;
+    }
+
+    private static bool IsAllowedGetExpression(string expr)
+    {
+        // For example: 
+        //   "field"
+        //   "field ?? string.Empty"
+        //   "field ?? \"\""
+        // or anything else you want to treat as "trivial"
+        if (expr == "field")
+            return true;
+
+        if (expr.StartsWith("field ??", StringComparison.Ordinal))
+            return true;
+
+        return false;
+    }
+
+    private static bool IsAllowedSetExpression(string expr)
+    {
+        // For instance, "field = value"
+        // If you want to allow "field = value ?? something", add logic
+        return expr == "field = value";
     }
 
     private static bool InheritsFromReactiveObject(INamedTypeSymbol typeSymbol)
