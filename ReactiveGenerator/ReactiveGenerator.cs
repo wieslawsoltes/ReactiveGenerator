@@ -293,12 +293,12 @@ public class ReactiveGenerator : IIncrementalGenerator
         var processedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
         var allTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
 
-        // Group properties by containing type
+        // Group partial properties by containing type
         var propertyGroups = properties
             .GroupBy(p => p.Property.ContainingType, SymbolEqualityComparer.Default)
             .ToDictionary(g => g.Key, g => g.ToList(), SymbolEqualityComparer.Default);
 
-        // Add types that need processing
+        // Gather all candidate types from the compilation
         foreach (var type in GetAllTypesInCompilation(compilation))
         {
             if (IsTypeMarkedReactive(type) || HasAnyReactiveProperties(type, propertyGroups))
@@ -307,22 +307,30 @@ public class ReactiveGenerator : IIncrementalGenerator
             }
         }
 
-        // Process types in correct order
+        // Sort types so base classes come before derived
         foreach (var type in allTypes.OrderBy(t => GetTypeHierarchyDepth(t)))
         {
             if (processedTypes.Contains(type))
                 continue;
 
-            var isReactiveObjectDerived = InheritsFromReactiveObject(type);
+            // If the class or any of its base types physically inherits from ReactiveObject,
+            // we won't generate an INotifyPropertyChanged partial
+            bool isReactiveObjectDerived = InheritsFromReactiveObject(type);
 
-            // Generate INPC implementation if needed
-            if (!isReactiveObjectDerived && !HasINPCImplementation(compilation, type, processedTypes))
+            // Check if the type or base types physically implement INotifyPropertyChanged,
+            // or if we've already processed them in this compilation
+            bool alreadyHasInpc = isReactiveObjectDerived ||
+                                  HasINPCImplementation(compilation, type, processedTypes);
+
+            // If not already present, create the INPC partial
+            if (!alreadyHasInpc)
             {
                 var inpcSource = GenerateINPCImplementation(type);
                 if (!string.IsNullOrEmpty(inpcSource))
                 {
                     var fullTypeName = type.ToDisplayString(new SymbolDisplayFormat(
-                        typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+                        typeQualificationStyle: SymbolDisplayTypeQualificationStyle
+                            .NameAndContainingTypesAndNamespaces,
                         genericsOptions: SymbolDisplayGenericsOptions.None,
                         miscellaneousOptions: SymbolDisplayMiscellaneousOptions.None));
 
@@ -331,20 +339,22 @@ public class ReactiveGenerator : IIncrementalGenerator
                 }
             }
 
-            // Generate property implementations
+            // Generate property partials for [Reactive] or class-level [Reactive] 
+            // (skipping those with [IgnoreReactive], or that have an existing implementation)
             if (propertyGroups.TryGetValue(type, out var typeProperties))
             {
-                var isTypeReactive = IsTypeMarkedReactive(type);
+                bool isTypeReactive = IsTypeMarkedReactive(type);
+
                 var reactiveProperties = typeProperties
                     .Where(p => !p.HasImplementation &&
                                 !p.HasIgnoreAttribute &&
-                                (p.HasReactiveAttribute || // Include properties marked with [Reactive]
-                                 isTypeReactive)) // Include all properties if class is marked with [Reactive]
+                                (p.HasReactiveAttribute || isTypeReactive))
                     .Select(p => p.Property)
                     .ToList();
 
                 if (reactiveProperties.Any())
                 {
+                    // We do *not* generate a second INPC block here, just the property expansions
                     var source = GenerateClassSource(
                         type,
                         reactiveProperties,
@@ -369,30 +379,33 @@ public class ReactiveGenerator : IIncrementalGenerator
         }
     }
 
-    private static bool HasINPCImplementation(Compilation compilation, INamedTypeSymbol typeSymbol,
+    private static bool HasINPCImplementation(
+        Compilation compilation,
+        INamedTypeSymbol typeSymbol,
         HashSet<INamedTypeSymbol> processedTypes)
     {
         var inpcType = compilation.GetTypeByMetadataName("System.ComponentModel.INotifyPropertyChanged");
         if (inpcType is null)
             return false;
 
-        // First check if current type implements INPC directly
+        // 1. If the type physically implements INPC via AllInterfaces
         if (typeSymbol.AllInterfaces.Contains(inpcType, SymbolEqualityComparer.Default))
             return true;
 
-        // Check if current type is in processedTypes (will have INPC implemented)
+        // 2. If the generator has *already* processed this type in this compilation
+        //    (thus added a partial INPC), it effectively has INPC.
         if (processedTypes.Contains(typeSymbol))
             return true;
 
-        // Check base types recursively
+        // 3. Check base types recursively
         var current = typeSymbol.BaseType;
         while (current is not null)
         {
-            // Check if base type implements INPC directly
+            // If the base physically implements INPC
             if (current.AllInterfaces.Contains(inpcType, SymbolEqualityComparer.Default))
                 return true;
 
-            // Check if base type is in processedTypes
+            // If the base was processed by this generator
             if (processedTypes.Contains(current))
                 return true;
 
