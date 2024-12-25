@@ -11,6 +11,9 @@ namespace ReactiveGenerator;
 [Generator]
 public class ReactiveGenerator : IIncrementalGenerator
 {
+    private static INamedTypeSymbol? s_reactiveAttributeSymbol;
+    private static INamedTypeSymbol? s_ignoreReactiveAttributeSymbol;
+    
     private record PropertyInfo(
         IPropertySymbol Property,
         bool HasReactiveAttribute,
@@ -19,11 +22,23 @@ public class ReactiveGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // Register both attributes
         context.RegisterPostInitializationOutput(ctx =>
         {
             ctx.AddSource("ReactiveAttribute.g.cs", SourceText.From(AttributeSource, Encoding.UTF8));
             ctx.AddSource("IgnoreReactiveAttribute.g.cs", SourceText.From(IgnoreAttributeSource, Encoding.UTF8));
+        });
+
+        // Cache known attribute symbols
+        var compilationProvider = context.CompilationProvider.Select((comp, _) =>
+        {
+            s_reactiveAttributeSymbol = comp.GetTypeByMetadataName("ReactiveAttribute");
+            // or if your attribute is in a namespace, e.g. "MyNamespace.ReactiveAttribute", 
+            // use that full name instead:
+            // s_reactiveAttributeSymbol = comp.GetTypeByMetadataName("MyNamespace.ReactiveAttribute");
+
+            s_ignoreReactiveAttributeSymbol = comp.GetTypeByMetadataName("IgnoreReactiveAttribute");
+            // ...
+            return comp;
         });
 
         // Get MSBuild property for enabling legacy mode
@@ -69,21 +84,20 @@ public class ReactiveGenerator : IIncrementalGenerator
 
     private static bool IsTypeReactive(INamedTypeSymbol type)
     {
-        // If type inherits from ReactiveObject, it's already reactive
         if (InheritsFromReactiveObject(type))
             return true;
 
-        // First check if the type has [IgnoreReactive]
+        // Check for [IgnoreReactive]
         foreach (var attribute in type.GetAttributes())
         {
-            if (attribute.AttributeClass?.Name is "IgnoreReactiveAttribute" or "IgnoreReactive")
+            if (SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, s_ignoreReactiveAttributeSymbol))
                 return false;
         }
 
-        // Then check if the type has [Reactive]
+        // Check for [Reactive]
         foreach (var attribute in type.GetAttributes())
         {
-            if (attribute.AttributeClass?.Name is "ReactiveAttribute" or "Reactive")
+            if (SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, s_reactiveAttributeSymbol))
                 return true;
         }
 
