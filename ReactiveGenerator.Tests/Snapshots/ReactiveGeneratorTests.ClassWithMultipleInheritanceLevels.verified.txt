@@ -36,7 +36,7 @@ public partial class Child
       Source:
 using System;
 
-[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
 sealed class IgnoreReactiveAttribute : Attribute
 {
     public IgnoreReactiveAttribute() { }
@@ -103,7 +103,7 @@ public partial class Parent
       Source:
 using System;
 
-[AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
 sealed class ReactiveAttribute : Attribute
 {
     public ReactiveAttribute() { }

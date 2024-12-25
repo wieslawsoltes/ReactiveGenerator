@@ -11,7 +11,7 @@ namespace ReactiveGenerator;
 [Generator]
 public class ReactiveGenerator : IIncrementalGenerator
 {
-    private record PropertyInfo(
+     private record PropertyInfo(
         IPropertySymbol Property,
         bool HasReactiveAttribute,
         bool HasIgnoreAttribute,
@@ -80,26 +80,15 @@ public class ReactiveGenerator : IIncrementalGenerator
                 return false;
         }
 
-        // Then check if the type has [Reactive]
-        foreach (var attribute in type.GetAttributes())
-        {
-            if (attribute.AttributeClass?.Name is "ReactiveAttribute" or "Reactive")
-                return true;
-        }
-
-        // Finally check base types (excluding ReactiveObject)
-        var current = type.BaseType;
+        // Then check if the type has [Reactive] (including base types)
+        var current = type;
         while (current != null)
         {
-            if (InheritsFromReactiveObject(current))
-                return true;
-
             foreach (var attribute in current.GetAttributes())
             {
                 if (attribute.AttributeClass?.Name is "ReactiveAttribute" or "Reactive")
                     return true;
             }
-
             current = current.BaseType;
         }
 
@@ -149,9 +138,8 @@ public class ReactiveGenerator : IIncrementalGenerator
             }
         }
 
-        var containingType = symbol.ContainingType;
         // Check if containing type should be reactive
-        bool classHasReactiveAttribute = IsTypeReactive(containingType);
+        bool classHasReactiveAttribute = IsTypeReactive(symbol.ContainingType);
 
         // Check if property has an implementation
         bool hasImplementation = propertyDeclaration.AccessorList?.Accessors.Any(
@@ -159,7 +147,7 @@ public class ReactiveGenerator : IIncrementalGenerator
 
         // Return property info if it either:
         // 1. Has [Reactive] attribute directly
-        // 2. Is in a class (or base class) with [Reactive] attribute and doesn't have [IgnoreReactive]
+        // 2. Is in a class with [Reactive] attribute and doesn't have [IgnoreReactive]
         // 3. Has no implementation yet
         if ((hasReactiveAttribute || (classHasReactiveAttribute && !hasIgnoreAttribute)) && !hasImplementation)
         {
@@ -880,7 +868,7 @@ public class ReactiveGenerator : IIncrementalGenerator
 
     private const string AttributeSource = @"using System;
 
-[AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
 sealed class ReactiveAttribute : Attribute
 {
     public ReactiveAttribute() { }
@@ -888,7 +876,7 @@ sealed class ReactiveAttribute : Attribute
 
     private const string IgnoreAttributeSource = @"using System;
 
-[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
 sealed class IgnoreReactiveAttribute : Attribute
 {
     public IgnoreReactiveAttribute() { }

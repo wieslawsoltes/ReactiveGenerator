@@ -61,7 +61,7 @@ public partial class BaseViewModel
       Source:
 using System;
 
-[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
 sealed class IgnoreReactiveAttribute : Attribute
 {
     public IgnoreReactiveAttribute() { }
@@ -103,7 +103,7 @@ public partial class MiddleViewModel
       Source:
 using System;
 
-[AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
 sealed class ReactiveAttribute : Attribute
 {
     public ReactiveAttribute() { }
