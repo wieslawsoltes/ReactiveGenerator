@@ -5,10 +5,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace ReactiveGenerator;
 
-/// <summary>
-/// Helper class for detecting and analyzing reactive properties and types in source code.
-/// </summary>
-internal static class ReactiveDetectionHelper
+internal static class TypeHelper
 {
     /// <summary>
     /// Determines if a class should be treated as reactive.

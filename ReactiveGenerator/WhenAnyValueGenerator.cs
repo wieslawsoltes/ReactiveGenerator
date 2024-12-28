@@ -43,7 +43,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         if (context.Node is not ClassDeclarationSyntax classDeclaration)
             return null;
 
-        return ReactiveDetectionHelper.AnalyzeClassDeclaration(context, classDeclaration);
+        return TypeHelper.AnalyzeClassDeclaration(context, classDeclaration);
     }
 
     private static void Execute(
@@ -56,12 +56,12 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         var processedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
         
         // Process all types that need WhenAnyValue generation
-        foreach (var (typeSymbol, _) in classes.OrderBy(c => ReactiveDetectionHelper.GetTypeHierarchyDepth(c.Symbol)))
+        foreach (var (typeSymbol, _) in classes.OrderBy(c => TypeHelper.GetTypeHierarchyDepth(c.Symbol)))
         {
             if (processedTypes.Contains(typeSymbol))
                 continue;
 
-            var reactiveProperties = ReactiveDetectionHelper.GetReactiveProperties(typeSymbol).ToList();
+            var reactiveProperties = TypeHelper.GetReactiveProperties(typeSymbol).ToList();
             if (reactiveProperties.Any())
             {
                 var source = GenerateExtensionsForClass(typeSymbol, reactiveProperties);
@@ -85,7 +85,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         INamedTypeSymbol classSymbol,
         IEnumerable<IPropertySymbol> properties)
     {
-        if (!ReactiveDetectionHelper.IsTypeAccessible(classSymbol))
+        if (!TypeHelper.IsTypeAccessible(classSymbol))
             return string.Empty;
 
         var sb = new StringBuilder();

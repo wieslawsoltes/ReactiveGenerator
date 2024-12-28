@@ -100,7 +100,7 @@ public class ReactiveGenerator : IIncrementalGenerator
         if (context.Node is not ClassDeclarationSyntax classDeclaration)
             return null;
 
-        return ReactiveDetectionHelper.AnalyzeClassDeclaration(context, classDeclaration);
+        return TypeHelper.AnalyzeClassDeclaration(context, classDeclaration);
     }
 
     private static PropertyInfo? GetPropertyInfo(GeneratorSyntaxContext context)
@@ -113,13 +113,13 @@ public class ReactiveGenerator : IIncrementalGenerator
             return null;
 
         // Check if containing type should be reactive
-        bool classHasReactiveAttribute = ReactiveDetectionHelper.IsTypeReactive(symbol.ContainingType);
+        bool classHasReactiveAttribute = TypeHelper.IsTypeReactive(symbol.ContainingType);
 
         // Check if property has an implementation
         bool hasImplementation = propertyDeclaration.AccessorList?.Accessors.Any(
             a => a.Body != null || a.ExpressionBody != null) ?? false;
 
-        if (ReactiveDetectionHelper.IsPropertyReactive(symbol, classHasReactiveAttribute) && !hasImplementation)
+        if (TypeHelper.IsPropertyReactive(symbol, classHasReactiveAttribute) && !hasImplementation)
         {
             bool hasReactiveAttribute = symbol.GetAttributes()
                 .Any(a => a.AttributeClass?.Name is "ReactiveAttribute" or "Reactive");
@@ -134,7 +134,7 @@ public class ReactiveGenerator : IIncrementalGenerator
 
     private static bool InheritsFromReactiveObject(INamedTypeSymbol typeSymbol)
     {
-        return ReactiveDetectionHelper.InheritsFromReactiveObject(typeSymbol);
+        return TypeHelper.InheritsFromReactiveObject(typeSymbol);
     }
 
     private static bool IsTypeMarkedReactive(INamedTypeSymbol type)
@@ -192,7 +192,7 @@ public class ReactiveGenerator : IIncrementalGenerator
             .ToDictionary(g => g.Key, g => g.ToList(), SymbolEqualityComparer.Default);
 
         // Add types that need processing
-        foreach (var type in ReactiveDetectionHelper.GetAllTypesInCompilation(compilation))
+        foreach (var type in TypeHelper.GetAllTypesInCompilation(compilation))
         {
             if (IsTypeMarkedReactive(type) || HasAnyReactiveProperties(type, propertyGroups))
             {
@@ -201,7 +201,7 @@ public class ReactiveGenerator : IIncrementalGenerator
         }
 
         // Process types in correct order
-        foreach (var type in allTypes.OrderBy(t => ReactiveDetectionHelper.GetTypeHierarchyDepth(t)))
+        foreach (var type in allTypes.OrderBy(t => TypeHelper.GetTypeHierarchyDepth(t)))
         {
             if (processedTypes.Contains(type))
                 continue;
@@ -518,7 +518,7 @@ public class ReactiveGenerator : IIncrementalGenerator
         // Add XML documentation comment if the class is public
         if (classSymbol.DeclaredAccessibility == Accessibility.Public)
         {
-            var xmlClassName = ReactiveDetectionHelper.FormatTypeNameForXmlDoc(classSymbol);
+            var xmlClassName = TypeHelper.FormatTypeNameForXmlDoc(classSymbol);
             sb.AppendLine($"{indent}/// <summary>");
             sb.AppendLine($"{indent}/// A partial class implementation for {xmlClassName}.");
             sb.AppendLine($"{indent}/// </summary>");
@@ -534,7 +534,7 @@ public class ReactiveGenerator : IIncrementalGenerator
         {
             foreach (var property in typeProperties)
             {
-                var propertyType = ReactiveDetectionHelper.GetPropertyTypeWithNullability(property);
+                var propertyType = TypeHelper.GetPropertyTypeWithNullability(property);
                 var backingFieldName = GetBackingFieldName(property.Name);
                 sb.AppendLine($"{indent}private {propertyType} {backingFieldName};");
             }
@@ -648,9 +648,9 @@ public class ReactiveGenerator : IIncrementalGenerator
         string indent)
     {
         var propertyName = property.Name;
-        var propertyType = ReactiveDetectionHelper.GetPropertyTypeWithNullability(property);
-        var getterAccessibility = ReactiveDetectionHelper.GetAccessorAccessibility(property.GetMethod);
-        var setterAccessibility = ReactiveDetectionHelper.GetAccessorAccessibility(property.SetMethod);
+        var propertyType = TypeHelper.GetPropertyTypeWithNullability(property);
+        var getterAccessibility = TypeHelper.GetAccessorAccessibility(property.GetMethod);
+        var setterAccessibility = TypeHelper.GetAccessorAccessibility(property.SetMethod);
 
         var propInfo = new PropertyInfo(property, false, false, false);
         var modifiers = propInfo.GetPropertyModifiers();
@@ -707,9 +707,9 @@ public class ReactiveGenerator : IIncrementalGenerator
         string indent)
     {
         var propertyName = property.Name;
-        var propertyType = ReactiveDetectionHelper.GetPropertyTypeWithNullability(property);
-        var getterAccessibility = ReactiveDetectionHelper.GetAccessorAccessibility(property.GetMethod);
-        var setterAccessibility = ReactiveDetectionHelper.GetAccessorAccessibility(property.SetMethod);
+        var propertyType = TypeHelper.GetPropertyTypeWithNullability(property);
+        var getterAccessibility = TypeHelper.GetAccessorAccessibility(property.GetMethod);
+        var setterAccessibility = TypeHelper.GetAccessorAccessibility(property.SetMethod);
 
         // Create PropertyInfo to get modifiers
         var propInfo = new PropertyInfo(property, false, false, false);
