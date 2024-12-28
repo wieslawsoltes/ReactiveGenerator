@@ -15,7 +15,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
     {
         var classDeclarations = context.SyntaxProvider
             .CreateSyntaxProvider(
-                predicate: (s, _) => IsCandidateClass(s),
+                predicate: (s, _) => s is ClassDeclarationSyntax c && c.Modifiers.Any(m => m.ValueText == "partial"),
                 transform: (ctx, _) => GetClassInfo(ctx))
             .Where(c => c is not null);
 
@@ -38,27 +38,31 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
                 source.Right.Cast<(INamedTypeSymbol Symbol, Location Location)>().ToList(), spc));
     }
 
-    private static bool IsCandidateClass(SyntaxNode node)
-    {
-        return ReactiveDetectionHelper.IsCandidateClass(node);
-    }
-
     private static (INamedTypeSymbol Symbol, Location Location)? GetClassInfo(GeneratorSyntaxContext context)
     {
         if (context.Node is not ClassDeclarationSyntax classDeclaration)
             return null;
 
-        var symbol = context.SemanticModel.GetDeclaredSymbol(classDeclaration);
-        return symbol != null ? (symbol, classDeclaration.GetLocation()) : null;
+        var symbol = (INamedTypeSymbol?)context.SemanticModel.GetDeclaredSymbol(classDeclaration);
+        if (symbol == null)
+            return null;
+
+        var isTypeReactive = ReactiveDetectionHelper.IsTypeReactive(symbol);
+        if (isTypeReactive)
+        {
+            return (symbol, classDeclaration.GetLocation());
+        }
+
+        // Check if any properties are marked with [Reactive]
+        var hasReactiveProperties = ReactiveDetectionHelper.GetReactiveProperties(symbol).Any();
+        if (hasReactiveProperties)
+        {
+            return (symbol, classDeclaration.GetLocation());
+        }
+
+        return null;
     }
 
-    private static IEnumerable<IPropertySymbol> GetReactiveProperties(
-        INamedTypeSymbol typeSymbol,
-        HashSet<INamedTypeSymbol> reactiveClasses)
-    {
-        return ReactiveDetectionHelper.GetReactiveProperties(typeSymbol);
-    }
-    
     private static void Execute(
         Compilation compilation,
         List<(INamedTypeSymbol Symbol, Location Location)> classes,
@@ -67,26 +71,19 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         if (classes.Count == 0) return;
 
         var processedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-        var reactiveClasses = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-
-        // Identify classes with [Reactive] attribute
-        foreach (var (typeSymbol, _) in classes)
+        
+        // Process all types that need WhenAnyValue generation
+        foreach (var (typeSymbol, _) in classes.OrderBy(c => GetTypeHierarchyDepth(c.Symbol)))
         {
-            if (typeSymbol.GetAttributes().Any(attr =>
-                    attr.AttributeClass?.Name is "ReactiveAttribute" or "Reactive"))
-            {
-                reactiveClasses.Add(typeSymbol);
-            }
-        }
+            if (processedTypes.Contains(typeSymbol))
+                continue;
 
-        foreach (var (typeSymbol, _) in classes)
-        {
-            if (processedTypes.Add(typeSymbol))
+            var reactiveProperties = ReactiveDetectionHelper.GetReactiveProperties(typeSymbol).ToList();
+            if (reactiveProperties.Any())
             {
-                var properties = GetReactiveProperties(typeSymbol, reactiveClasses);
-                if (properties.Any())
+                var source = GenerateExtensionsForClass(typeSymbol, reactiveProperties);
+                if (!string.IsNullOrEmpty(source))
                 {
-                    var source = GenerateExtensionsForClass(typeSymbol, properties);
                     var fullTypeName = typeSymbol.ToDisplayString(new SymbolDisplayFormat(
                         typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
                         genericsOptions: SymbolDisplayGenericsOptions.None,
@@ -96,9 +93,23 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
                     context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
                 }
             }
+
+            processedTypes.Add(typeSymbol);
         }
     }
-
+    
+    private static int GetTypeHierarchyDepth(INamedTypeSymbol type)
+    {
+        int depth = 0;
+        var current = type.BaseType;
+        while (current != null)
+        {
+            depth++;
+            current = current.BaseType;
+        }
+        return depth;
+    }
+    
     private static bool IsTypeAccessible(INamedTypeSymbol typeSymbol)
     {
         var current = typeSymbol;

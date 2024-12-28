@@ -213,4 +213,230 @@ public class WhenAnyValueGeneratorTests
 
         return TestAndVerify(source);
     }
+    
+    [Fact]
+    public Task InheritedReactiveAttribute()
+    {
+        var source = @"
+            [Reactive]
+            public abstract partial class BaseViewModel
+            {
+                public partial string BaseProp { get; set; }
+            }
+
+            public partial class ViewModel : BaseViewModel
+            {
+                public partial string ViewModelProp { get; set; }
+            }
+
+            [IgnoreReactive]
+            public partial class NonReactiveViewModel : BaseViewModel
+            {
+                public partial string IgnoredProp { get; set; }
+            }
+
+            public partial class DerivedViewModel : ViewModel
+            {
+                public partial string DerivedProp { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task MultiLevelInheritanceWithMixedReactiveAttributes()
+    {
+        var source = @"
+            [Reactive]
+            public abstract partial class BaseViewModel
+            {
+                public partial string BaseProp { get; set; }
+            }
+
+            public partial class MiddleViewModel : BaseViewModel
+            {
+                public partial string MiddleProp { get; set; }
+                
+                [IgnoreReactive]
+                public partial string IgnoredMiddleProp { get; set; }
+            }
+
+            [IgnoreReactive]
+            public partial class NonReactiveViewModel : MiddleViewModel
+            {
+                public partial string NonReactiveProp { get; set; }
+                
+                [Reactive]
+                public partial string StillReactiveProp { get; set; }
+            }
+
+            [Reactive]
+            public partial class ReactiveDerivedViewModel : NonReactiveViewModel
+            {
+                public partial string ReactiveProp { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task CrossAssemblyInheritanceTest()
+    {
+        var baseSource = @"
+            namespace ExternalLib
+            {
+                [Reactive]
+                public partial class ExternalBase
+                {
+                    public partial string ExternalProp { get; set; }
+                }
+            }";
+
+        var derivedSource = @"
+            using ExternalLib;
+
+            namespace MainLib
+            {
+                public partial class DerivedClass : ExternalBase
+                {
+                    [Reactive]
+                    public partial string LocalProp { get; set; }
+                }
+
+                [IgnoreReactive]
+                public partial class NonReactiveDerived : ExternalBase
+                {
+                    public partial string IgnoredProp { get; set; }
+                    
+                    [Reactive]
+                    public partial string StillReactiveProp { get; set; }
+                }
+            }";
+
+        return SourceGeneratorTestHelper.TestCrossAssemblyAndVerifyWithExternalGen(
+            baseSource,
+            derivedSource,
+            null,
+            new WhenAnyValueGenerator());
+    }
+
+    [Fact]
+    public Task GenericInheritanceWithReactiveAttribute()
+    {
+        var source = @"
+            [Reactive]
+            public abstract partial class BaseViewModel<T>
+                where T : class
+            {
+                public partial T? Value { get; set; }
+            }
+
+            public partial class StringViewModel : BaseViewModel<string>
+            {
+                public partial string AdditionalProp { get; set; }
+            }
+
+            [IgnoreReactive]
+            public partial class NonReactiveViewModel<T> : BaseViewModel<T>
+                where T : class
+            {
+                public partial string IgnoredProp { get; set; }
+                
+                [Reactive]
+                public partial T? StillReactiveProp { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task NestedInheritanceWithReactiveAttribute()
+    {
+        var source = @"
+            public partial class Container
+            {
+                [Reactive]
+                public abstract partial class NestedBase
+                {
+                    public partial string BaseProp { get; set; }
+                }
+
+                public partial class NestedDerived : NestedBase
+                {
+                    public partial string DerivedProp { get; set; }
+                }
+
+                [IgnoreReactive]
+                public partial class NonReactiveNested : NestedBase
+                {
+                    public partial string IgnoredProp { get; set; }
+                    
+                    [Reactive]
+                    public partial string StillReactiveProp { get; set; }
+                }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task InterfaceImplementationWithReactiveAttribute()
+    {
+        var source = @"
+            public interface IHasValue<T>
+            {
+                T Value { get; set; }
+            }
+
+            [Reactive]
+            public abstract partial class ReactiveBase<T> : IHasValue<T>
+            {
+                public partial T Value { get; set; }
+            }
+
+            public partial class Implementation : ReactiveBase<string>
+            {
+                public partial string ExtraProp { get; set; }
+            }
+
+            [IgnoreReactive]
+            public partial class NonReactiveImpl : ReactiveBase<int>
+            {
+                public partial string IgnoredProp { get; set; }
+                
+                [Reactive]
+                public partial int ExtraValue { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task MixedPropertyAndClassLevelReactiveInheritance()
+    {
+        var source = @"
+            public partial class BaseClass
+            {
+                [Reactive]
+                public partial string ReactiveBaseProp { get; set; }
+            }
+
+            [Reactive]
+            public partial class DerivedClass : BaseClass
+            {
+                public partial string DerivedProp { get; set; }
+                
+                [IgnoreReactive]
+                public partial string IgnoredProp { get; set; }
+            }
+
+            public partial class GrandChild : DerivedClass
+            {
+                [Reactive]
+                public partial string ExplicitReactiveProp { get; set; }
+                public partial string InheritedReactiveProp { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
 }
