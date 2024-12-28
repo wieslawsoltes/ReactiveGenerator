@@ -28,16 +28,16 @@ using ReactiveUI;
 
 public partial class TestViewModel
 {
-    private ObservableAsPropertyHelper<string?> _staticValueHelper;
+    private ObservableAsPropertyHelper<string> _staticValueHelper;
 
-    public partial string? StaticValue
+    public partial string StaticValue
     {
         get => _staticValueHelper.Value;
     }
 
-    private ObservableAsPropertyHelper<string?> _instanceValueHelper;
+    private ObservableAsPropertyHelper<string> _instanceValueHelper;
 
-    public partial string? InstanceValue
+    public partial string InstanceValue
     {
         get => _instanceValueHelper.Value;
     }

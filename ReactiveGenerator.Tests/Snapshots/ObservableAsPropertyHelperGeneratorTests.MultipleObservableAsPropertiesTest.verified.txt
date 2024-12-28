@@ -28,9 +28,9 @@ using ReactiveUI;
 
 public partial class TestViewModel
 {
-    private ObservableAsPropertyHelper<string?> _firstValueHelper;
+    private ObservableAsPropertyHelper<string> _firstValueHelper;
 
-    public partial string? FirstValue
+    public partial string FirstValue
     {
         get => _firstValueHelper.Value;
     }

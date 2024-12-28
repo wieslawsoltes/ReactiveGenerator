@@ -13,9 +13,9 @@ public partial class Container
 {
     public partial class NestedViewModel
     {
-        private ObservableAsPropertyHelper<string?> _valueHelper;
+        private ObservableAsPropertyHelper<string> _valueHelper;
 
-        public partial string? Value
+        public partial string Value
         {
             get => _valueHelper.Value;
         }

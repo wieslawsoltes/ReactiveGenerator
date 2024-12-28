@@ -11,9 +11,9 @@ using ReactiveUI;
 
 public partial class ChildViewModel
 {
-    private ObservableAsPropertyHelper<string?> _childValueHelper;
+    private ObservableAsPropertyHelper<string> _childValueHelper;
 
-    public partial string? ChildValue
+    public partial string ChildValue
     {
         get => _childValueHelper.Value;
     }
@@ -31,9 +31,9 @@ using ReactiveUI;
 
 public partial class GrandParentViewModel
 {
-    private ObservableAsPropertyHelper<string?> _grandParentValueHelper;
+    private ObservableAsPropertyHelper<string> _grandParentValueHelper;
 
-    public partial string? GrandParentValue
+    public partial string GrandParentValue
     {
         get => _grandParentValueHelper.Value;
     }
@@ -68,9 +68,9 @@ using ReactiveUI;
 
 public partial class ParentViewModel
 {
-    private ObservableAsPropertyHelper<string?> _parentValueHelper;
+    private ObservableAsPropertyHelper<string> _parentValueHelper;
 
-    public partial string? ParentValue
+    public partial string ParentValue
     {
         get => _parentValueHelper.Value;
     }

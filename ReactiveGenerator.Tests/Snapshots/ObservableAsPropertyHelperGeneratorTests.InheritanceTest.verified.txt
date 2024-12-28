@@ -11,9 +11,9 @@ using ReactiveUI;
 
 public partial class BaseViewModel
 {
-    private ObservableAsPropertyHelper<string?> _baseValueHelper;
+    private ObservableAsPropertyHelper<string> _baseValueHelper;
 
-    public partial string? BaseValue
+    public partial string BaseValue
     {
         get => _baseValueHelper.Value;
     }
@@ -31,9 +31,9 @@ using ReactiveUI;
 
 public partial class DerivedViewModel
 {
-    private ObservableAsPropertyHelper<string?> _derivedValueHelper;
+    private ObservableAsPropertyHelper<string> _derivedValueHelper;
 
-    public partial string? DerivedValue
+    public partial string DerivedValue
     {
         get => _derivedValueHelper.Value;
     }

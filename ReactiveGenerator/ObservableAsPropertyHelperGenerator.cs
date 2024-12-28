@@ -1,8 +1,8 @@
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 
@@ -56,7 +56,6 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
                 SourceText.From(ObservableAsPropertyAttributeSource, Encoding.UTF8));
         });
 
-        // Find property declarations with [ObservableAsProperty] attribute
         IncrementalValuesProvider<PropertyInfo> propertyDeclarations = context.SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: (s, _) => IsCandidateProperty(s),
@@ -79,11 +78,9 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         if (node is not PropertyDeclarationSyntax propertyDeclaration)
             return false;
 
-        // Must be partial
         if (!propertyDeclaration.Modifiers.Any(m => m.ValueText == "partial"))
             return false;
 
-        // Must have [ObservableAsProperty] attribute
         return propertyDeclaration.AttributeLists.Any(al =>
             al.Attributes.Any(a => a.Name.ToString() is "ObservableAsProperty" or "ObservableAsPropertyAttribute"));
     }
@@ -101,6 +98,9 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         if (containingType == null)
             return null;
 
+        if (!ReactiveDetectionHelper.InheritsFromReactiveObject(containingType))
+            return null;
+
         return new PropertyInfo(propertySymbol, containingType, propertyDeclaration.GetLocation());
     }
 
@@ -111,7 +111,6 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
     {
         if (properties.Count == 0) return;
 
-        // Group properties by containing type with explicit type parameters
         var propertyGroups = properties
             .GroupBy<PropertyInfo, INamedTypeSymbol>(
                 p => p.ContainingType,
@@ -120,6 +119,9 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         foreach (var group in propertyGroups)
         {
             var typeSymbol = group.Key;
+            if (!ReactiveDetectionHelper.IsTypeReactive(typeSymbol))
+                continue;
+
             var source = GenerateHelperProperties(typeSymbol, group.ToList());
 
             var fullTypeName = typeSymbol.ToDisplayString(new SymbolDisplayFormat(
@@ -130,37 +132,6 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
             var fileName = $"{fullTypeName}.ObservableAsProperty.g.cs";
             context.AddSource(fileName, SourceText.From(source, Encoding.UTF8));
         }
-    }
-
-    private static string GetPropertyTypeWithNullability(IPropertySymbol property)
-    {
-        var propertyType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        return property.NullableAnnotation == NullableAnnotation.NotAnnotated
-            ? propertyType
-            : $"{propertyType}?";
-    }
-
-    private static string FormatTypeNameForXmlDoc(ITypeSymbol type)
-    {
-        var format = new SymbolDisplayFormat(
-            typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-            genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
-            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
-
-        return type.ToDisplayString(format).Replace("<", "{").Replace(">", "}");
-    }
-
-    private static IEnumerable<INamedTypeSymbol> GetContainingTypesChain(INamedTypeSymbol symbol)
-    {
-        var types = new List<INamedTypeSymbol>();
-        var current = symbol.ContainingType;
-        while (current != null)
-        {
-            types.Insert(0, current);
-            current = current.ContainingType;
-        }
-
-        return types;
     }
 
     private static string GenerateHelperProperties(
@@ -204,35 +175,7 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         if (classSymbol.TypeParameters.Length > 0)
         {
             typeParameters = "<" + string.Join(", ", classSymbol.TypeParameters.Select(tp => tp.Name)) + ">";
-
-            var constraints = new List<string>();
-            foreach (var typeParam in classSymbol.TypeParameters)
-            {
-                var paramConstraints = new List<string>();
-
-                if (typeParam.HasReferenceTypeConstraint)
-                    paramConstraints.Add("class");
-                else if (typeParam.HasValueTypeConstraint)
-                    paramConstraints.Add("struct");
-
-                foreach (var constraintType in typeParam.ConstraintTypes)
-                {
-                    paramConstraints.Add(constraintType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
-                }
-
-                if (typeParam.HasConstructorConstraint)
-                    paramConstraints.Add("new()");
-
-                if (paramConstraints.Count > 0)
-                {
-                    constraints.Add($"where {typeParam.Name} : {string.Join(", ", paramConstraints)}");
-                }
-            }
-
-            if (constraints.Count > 0)
-            {
-                typeConstraints = " " + string.Join(" ", constraints);
-            }
+            typeConstraints = GenerateTypeConstraints(classSymbol.TypeParameters);
         }
 
         sb.AppendLine($"{indent}{accessibility} partial class {classSymbol.Name}{typeParameters}{typeConstraints}");
@@ -265,6 +208,35 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         return sb.ToString();
     }
 
+    private static string GenerateTypeConstraints(ImmutableArray<ITypeParameterSymbol> typeParameters)
+    {
+        var constraints = new List<string>();
+        foreach (var typeParam in typeParameters)
+        {
+            var paramConstraints = new List<string>();
+
+            if (typeParam.HasReferenceTypeConstraint)
+                paramConstraints.Add("class");
+            else if (typeParam.HasValueTypeConstraint)
+                paramConstraints.Add("struct");
+
+            foreach (var constraintType in typeParam.ConstraintTypes)
+            {
+                paramConstraints.Add(constraintType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+            }
+
+            if (typeParam.HasConstructorConstraint)
+                paramConstraints.Add("new()");
+
+            if (paramConstraints.Count > 0)
+            {
+                constraints.Add($"where {typeParam.Name} : {string.Join(", ", paramConstraints)}");
+            }
+        }
+
+        return constraints.Count > 0 ? " " + string.Join(" ", constraints) : "";
+    }
+
     private static void GenerateObservableAsPropertyHelper(StringBuilder sb, IPropertySymbol property, string indent)
     {
         var nullablePropertyType = GetPropertyTypeWithNullability(property);
@@ -278,6 +250,32 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         sb.AppendLine($"{indent}{{");
         sb.AppendLine($"{indent}    get => {backingFieldName}.Value;");
         sb.AppendLine($"{indent}}}");
+    }
+
+    private static string GetPropertyTypeWithNullability(IPropertySymbol property)
+    {
+        var nullableAnnotation = property.NullableAnnotation;
+        var baseType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+        if (nullableAnnotation == NullableAnnotation.Annotated && !property.Type.IsValueType)
+        {
+            return baseType + "?";
+        }
+
+        return baseType;
+    }
+
+    private static IEnumerable<INamedTypeSymbol> GetContainingTypesChain(INamedTypeSymbol symbol)
+    {
+        var types = new List<INamedTypeSymbol>();
+        var current = symbol.ContainingType;
+        while (current != null)
+        {
+            types.Insert(0, current);
+            current = current.ContainingType;
+        }
+
+        return types;
     }
 
     private const string ObservableAsPropertyAttributeSource = @"// <auto-generated/>

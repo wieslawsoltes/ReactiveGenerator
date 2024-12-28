@@ -28,16 +28,16 @@ using ReactiveUI;
 
 public partial class TestViewModel
 {
-    private ObservableAsPropertyHelper<global::System.Collections.Generic.List<string>?> _stringListHelper;
+    private ObservableAsPropertyHelper<global::System.Collections.Generic.List<string>> _stringListHelper;
 
-    public partial global::System.Collections.Generic.List<string>? StringList
+    public partial global::System.Collections.Generic.List<string> StringList
     {
         get => _stringListHelper.Value;
     }
 
-    private ObservableAsPropertyHelper<global::System.Collections.Generic.Dictionary<int, string>?> _intStringMapHelper;
+    private ObservableAsPropertyHelper<global::System.Collections.Generic.Dictionary<int, string>> _intStringMapHelper;
 
-    public partial global::System.Collections.Generic.Dictionary<int, string>? IntStringMap
+    public partial global::System.Collections.Generic.Dictionary<int, string> IntStringMap
     {
         get => _intStringMapHelper.Value;
     }
