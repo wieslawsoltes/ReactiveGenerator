@@ -28,30 +28,30 @@ using ReactiveUI;
 
 public partial class TestViewModel
 {
-    private ObservableAsPropertyHelper<string?> _publicValueHelper;
+    private ObservableAsPropertyHelper<string> _publicValueHelper;
 
-    public partial string? PublicValue
+    public partial string PublicValue
     {
         get => _publicValueHelper.Value;
     }
 
-    private ObservableAsPropertyHelper<string?> _protectedValueHelper;
+    private ObservableAsPropertyHelper<string> _protectedValueHelper;
 
-    protected partial string? ProtectedValue
+    protected partial string ProtectedValue
     {
         get => _protectedValueHelper.Value;
     }
 
-    private ObservableAsPropertyHelper<string?> _privateValueHelper;
+    private ObservableAsPropertyHelper<string> _privateValueHelper;
 
-    private partial string? PrivateValue
+    private partial string PrivateValue
     {
         get => _privateValueHelper.Value;
     }
 
-    private ObservableAsPropertyHelper<string?> _internalValueHelper;
+    private ObservableAsPropertyHelper<string> _internalValueHelper;
 
-    internal partial string? InternalValue
+    internal partial string InternalValue
     {
         get => _internalValueHelper.Value;
     }

@@ -13,9 +13,9 @@ namespace First
 {
     public partial class TestViewModel
     {
-        private ObservableAsPropertyHelper<string?> _valueHelper;
+        private ObservableAsPropertyHelper<string> _valueHelper;
 
-        public partial string? Value
+        public partial string Value
         {
             get => _valueHelper.Value;
         }
@@ -53,9 +53,9 @@ namespace Second
 {
     public partial class TestViewModel
     {
-        private ObservableAsPropertyHelper<string?> _valueHelper;
+        private ObservableAsPropertyHelper<string> _valueHelper;
 
-        public partial string? Value
+        public partial string Value
         {
             get => _valueHelper.Value;
         }

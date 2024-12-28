@@ -28,16 +28,16 @@ using ReactiveUI;
 
 public partial class TestViewModel<T> where T : class
 {
-    private ObservableAsPropertyHelper<global::System.Collections.Generic.List<global::System.Collections.Generic.Dictionary<string, T>>?> _complexPropertyHelper;
+    private ObservableAsPropertyHelper<global::System.Collections.Generic.List<global::System.Collections.Generic.Dictionary<string, T>>> _complexPropertyHelper;
 
-    public partial global::System.Collections.Generic.List<global::System.Collections.Generic.Dictionary<string, T>>? ComplexProperty
+    public partial global::System.Collections.Generic.List<global::System.Collections.Generic.Dictionary<string, T>> ComplexProperty
     {
         get => _complexPropertyHelper.Value;
     }
 
-    private ObservableAsPropertyHelper<global::System.Collections.Generic.Dictionary<int, global::System.Collections.Generic.List<T>>?> _nestedPropertyHelper;
+    private ObservableAsPropertyHelper<global::System.Collections.Generic.Dictionary<int, global::System.Collections.Generic.List<T>>> _nestedPropertyHelper;
 
-    public partial global::System.Collections.Generic.Dictionary<int, global::System.Collections.Generic.List<T>>? NestedProperty
+    public partial global::System.Collections.Generic.Dictionary<int, global::System.Collections.Generic.List<T>> NestedProperty
     {
         get => _nestedPropertyHelper.Value;
     }

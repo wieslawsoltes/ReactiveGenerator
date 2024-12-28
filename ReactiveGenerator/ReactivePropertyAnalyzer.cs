@@ -49,7 +49,7 @@ public class ReactivePropertyAnalyzer : DiagnosticAnalyzer
 
         // Check if containing type is ReactiveObject
         var containingType = semanticModel.GetDeclaredSymbol(propertyDeclaration)?.ContainingType;
-        if (containingType == null || !InheritsFromReactiveObject(containingType))
+        if (containingType == null || !ReactiveDetectionHelper.InheritsFromReactiveObject(containingType))
             return;
 
         // Report diagnostic on the entire property declaration
@@ -59,18 +59,6 @@ public class ReactivePropertyAnalyzer : DiagnosticAnalyzer
             propertyDeclaration.Identifier.Text);
 
         context.ReportDiagnostic(diagnostic);
-    }
-
-    private bool InheritsFromReactiveObject(INamedTypeSymbol typeSymbol)
-    {
-        var current = typeSymbol;
-        while (current != null)
-        {
-            if (current.Name == "ReactiveObject")
-                return true;
-            current = current.BaseType;
-        }
-        return false;
     }
 
     private bool HasGetterAndSetter(PropertyDeclarationSyntax property)

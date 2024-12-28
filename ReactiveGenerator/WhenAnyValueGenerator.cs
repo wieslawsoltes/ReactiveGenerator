@@ -40,34 +40,25 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
 
     private static bool IsCandidateClass(SyntaxNode node)
     {
-        if (node is not ClassDeclarationSyntax classDeclaration)
-            return false;
-
-        // Must be partial
-        if (!classDeclaration.Modifiers.Any(m => m.ValueText == "partial"))
-            return false;
-
-        // Has class-level [Reactive] attribute
-        if (classDeclaration.AttributeLists.Any(al =>
-                al.Attributes.Any(a => a.Name.ToString() is "Reactive" or "ReactiveAttribute")))
-            return true;
-
-        // Or any property has [Reactive] attribute
-        return classDeclaration.Members
-            .OfType<PropertyDeclarationSyntax>()
-            .Any(p => p.AttributeLists.Count > 0 &&
-                      p.AttributeLists.Any(al =>
-                          al.Attributes.Any(a =>
-                              a.Name.ToString() is "Reactive" or "ReactiveAttribute")));
+        return ReactiveDetectionHelper.IsCandidateClass(node);
     }
 
     private static (INamedTypeSymbol Symbol, Location Location)? GetClassInfo(GeneratorSyntaxContext context)
     {
-        var classDeclaration = (ClassDeclarationSyntax)context.Node;
+        if (context.Node is not ClassDeclarationSyntax classDeclaration)
+            return null;
+
         var symbol = context.SemanticModel.GetDeclaredSymbol(classDeclaration);
         return symbol != null ? (symbol, classDeclaration.GetLocation()) : null;
     }
 
+    private static IEnumerable<IPropertySymbol> GetReactiveProperties(
+        INamedTypeSymbol typeSymbol,
+        HashSet<INamedTypeSymbol> reactiveClasses)
+    {
+        return ReactiveDetectionHelper.GetReactiveProperties(typeSymbol);
+    }
+    
     private static void Execute(
         Compilation compilation,
         List<(INamedTypeSymbol Symbol, Location Location)> classes,
@@ -108,27 +99,6 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         }
     }
 
-    private static IEnumerable<IPropertySymbol> GetReactiveProperties(
-        INamedTypeSymbol typeSymbol,
-        HashSet<INamedTypeSymbol> reactiveClasses)
-    {
-        var isReactiveClass = reactiveClasses.Contains(typeSymbol);
-
-        return typeSymbol.GetMembers()
-            .OfType<IPropertySymbol>()
-            .Where(p =>
-            {
-                var hasIgnoreAttribute = p.GetAttributes()
-                    .Any(a => a.AttributeClass?.Name is "IgnoreReactiveAttribute" or "IgnoreReactive");
-                if (hasIgnoreAttribute)
-                    return false;
-
-                var hasReactiveAttribute = p.GetAttributes()
-                    .Any(a => a.AttributeClass?.Name is "ReactiveAttribute" or "Reactive");
-                return hasReactiveAttribute || isReactiveClass;
-            });
-    }
-
     private static bool IsTypeAccessible(INamedTypeSymbol typeSymbol)
     {
         var current = typeSymbol;
@@ -140,15 +110,6 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         }
 
         return true;
-    }
-
-    private static string FormatTypeNameForXmlDoc(ITypeSymbol type)
-    {
-        var format = new SymbolDisplayFormat(
-            typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-            genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
-            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
-        return type.ToDisplayString(format).Replace("<", "{").Replace(">", "}");
     }
 
     private static string GenerateExtensionsForClass(

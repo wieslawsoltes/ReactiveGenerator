@@ -95,35 +95,6 @@ public class ReactiveGenerator : IIncrementalGenerator
                 spc));
     }
 
-    private static bool IsTypeReactive(INamedTypeSymbol type)
-    {
-        // If type inherits from ReactiveObject, it's already reactive
-        if (InheritsFromReactiveObject(type))
-            return true;
-
-        // First check if the type has [IgnoreReactive]
-        foreach (var attribute in type.GetAttributes())
-        {
-            if (attribute.AttributeClass?.Name is "IgnoreReactiveAttribute" or "IgnoreReactive")
-                return false;
-        }
-
-        // Then check if the type has [Reactive] (including base types)
-        var current = type;
-        while (current != null)
-        {
-            foreach (var attribute in current.GetAttributes())
-            {
-                if (attribute.AttributeClass?.Name is "ReactiveAttribute" or "Reactive")
-                    return true;
-            }
-
-            current = current.BaseType;
-        }
-
-        return false;
-    }
-
     private static (INamedTypeSymbol Type, Location Location)? GetClassInfo(GeneratorSyntaxContext context)
     {
         if (context.Node is not ClassDeclarationSyntax classDeclaration)
@@ -134,7 +105,7 @@ public class ReactiveGenerator : IIncrementalGenerator
             return null;
 
         // Check if this type should be reactive
-        if (IsTypeReactive(symbol))
+        if (ReactiveDetectionHelper.IsTypeReactive(symbol))
         {
             return (symbol, classDeclaration.GetLocation());
         }
@@ -151,35 +122,20 @@ public class ReactiveGenerator : IIncrementalGenerator
         if (symbol == null)
             return null;
 
-        bool hasReactiveAttribute = false;
-        bool hasIgnoreAttribute = false;
-
-        // Check property attributes
-        foreach (var attributeList in propertyDeclaration.AttributeLists)
-        {
-            foreach (var attribute in attributeList.Attributes)
-            {
-                var name = attribute.Name.ToString();
-                if (name is "Reactive" or "ReactiveAttribute")
-                    hasReactiveAttribute = true;
-                else if (name is "IgnoreReactive" or "IgnoreReactiveAttribute")
-                    hasIgnoreAttribute = true;
-            }
-        }
-
         // Check if containing type should be reactive
-        bool classHasReactiveAttribute = IsTypeReactive(symbol.ContainingType);
+        bool classHasReactiveAttribute = ReactiveDetectionHelper.IsTypeReactive(symbol.ContainingType);
 
         // Check if property has an implementation
         bool hasImplementation = propertyDeclaration.AccessorList?.Accessors.Any(
             a => a.Body != null || a.ExpressionBody != null) ?? false;
 
-        // Return property info if it either:
-        // 1. Has [Reactive] attribute directly
-        // 2. Is in a class with [Reactive] attribute and doesn't have [IgnoreReactive]
-        // 3. Has no implementation yet
-        if ((hasReactiveAttribute || (classHasReactiveAttribute && !hasIgnoreAttribute)) && !hasImplementation)
+        if (ReactiveDetectionHelper.IsPropertyReactive(symbol, classHasReactiveAttribute) && !hasImplementation)
         {
+            bool hasReactiveAttribute = symbol.GetAttributes()
+                .Any(a => a.AttributeClass?.Name is "ReactiveAttribute" or "Reactive");
+            bool hasIgnoreAttribute = symbol.GetAttributes()
+                .Any(a => a.AttributeClass?.Name is "IgnoreReactiveAttribute" or "IgnoreReactive");
+
             return new PropertyInfo(symbol, hasReactiveAttribute, hasIgnoreAttribute, hasImplementation);
         }
 
@@ -188,21 +144,7 @@ public class ReactiveGenerator : IIncrementalGenerator
 
     private static bool InheritsFromReactiveObject(INamedTypeSymbol typeSymbol)
     {
-        var current = typeSymbol;
-        while (current is not null)
-        {
-            if (current.Name == "ReactiveObject" ||
-                current.ToString() == "ReactiveUI.ReactiveObject" ||
-                current.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ==
-                "global::ReactiveUI.ReactiveObject")
-            {
-                return true;
-            }
-
-            current = current.BaseType;
-        }
-
-        return false;
+        return ReactiveDetectionHelper.InheritsFromReactiveObject(typeSymbol);
     }
 
     private static int GetTypeHierarchyDepth(INamedTypeSymbol type)

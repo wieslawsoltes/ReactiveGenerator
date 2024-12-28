@@ -35,9 +35,9 @@ public partial class TestViewModel
         get => _nullableStringHelper.Value;
     }
 
-    private ObservableAsPropertyHelper<int??> _nullableIntHelper;
+    private ObservableAsPropertyHelper<int?> _nullableIntHelper;
 
-    public partial int?? NullableInt
+    public partial int? NullableInt
     {
         get => _nullableIntHelper.Value;
     }
