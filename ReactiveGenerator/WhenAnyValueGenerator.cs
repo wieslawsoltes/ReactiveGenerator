@@ -43,24 +43,7 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         if (context.Node is not ClassDeclarationSyntax classDeclaration)
             return null;
 
-        var symbol = (INamedTypeSymbol?)context.SemanticModel.GetDeclaredSymbol(classDeclaration);
-        if (symbol == null)
-            return null;
-
-        var isTypeReactive = ReactiveDetectionHelper.IsTypeReactive(symbol);
-        if (isTypeReactive)
-        {
-            return (symbol, classDeclaration.GetLocation());
-        }
-
-        // Check if any properties are marked with [Reactive]
-        var hasReactiveProperties = ReactiveDetectionHelper.GetReactiveProperties(symbol).Any();
-        if (hasReactiveProperties)
-        {
-            return (symbol, classDeclaration.GetLocation());
-        }
-
-        return null;
+        return TypeHelper.AnalyzeClassDeclaration(context, classDeclaration);
     }
 
     private static void Execute(
@@ -73,12 +56,12 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
         var processedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
         
         // Process all types that need WhenAnyValue generation
-        foreach (var (typeSymbol, _) in classes.OrderBy(c => GetTypeHierarchyDepth(c.Symbol)))
+        foreach (var (typeSymbol, _) in classes.OrderBy(c => TypeHelper.GetTypeHierarchyDepth(c.Symbol)))
         {
             if (processedTypes.Contains(typeSymbol))
                 continue;
 
-            var reactiveProperties = ReactiveDetectionHelper.GetReactiveProperties(typeSymbol).ToList();
+            var reactiveProperties = TypeHelper.GetReactiveProperties(typeSymbol).ToList();
             if (reactiveProperties.Any())
             {
                 var source = GenerateExtensionsForClass(typeSymbol, reactiveProperties);
@@ -97,37 +80,12 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
             processedTypes.Add(typeSymbol);
         }
     }
-    
-    private static int GetTypeHierarchyDepth(INamedTypeSymbol type)
-    {
-        int depth = 0;
-        var current = type.BaseType;
-        while (current != null)
-        {
-            depth++;
-            current = current.BaseType;
-        }
-        return depth;
-    }
-    
-    private static bool IsTypeAccessible(INamedTypeSymbol typeSymbol)
-    {
-        var current = typeSymbol;
-        while (current != null)
-        {
-            if (current.DeclaredAccessibility == Accessibility.Private)
-                return false;
-            current = current.ContainingType;
-        }
-
-        return true;
-    }
 
     private static string GenerateExtensionsForClass(
         INamedTypeSymbol classSymbol,
         IEnumerable<IPropertySymbol> properties)
     {
-        if (!IsTypeAccessible(classSymbol))
+        if (!TypeHelper.IsTypeAccessible(classSymbol))
             return string.Empty;
 
         var sb = new StringBuilder();

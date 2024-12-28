@@ -98,7 +98,7 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         if (containingType == null)
             return null;
 
-        if (!ReactiveDetectionHelper.InheritsFromReactiveObject(containingType))
+        if (!TypeHelper.InheritsFromReactiveObject(containingType))
             return null;
 
         return new PropertyInfo(propertySymbol, containingType, propertyDeclaration.GetLocation());
@@ -119,7 +119,7 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         foreach (var group in propertyGroups)
         {
             var typeSymbol = group.Key;
-            if (!ReactiveDetectionHelper.IsTypeReactive(typeSymbol))
+            if (!TypeHelper.IsTypeReactive(typeSymbol))
                 continue;
 
             var source = GenerateHelperProperties(typeSymbol, group.ToList());

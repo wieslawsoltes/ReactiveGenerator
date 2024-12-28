@@ -49,7 +49,7 @@ public class ReactivePropertyAnalyzer : DiagnosticAnalyzer
 
         // Check if containing type is ReactiveObject
         var containingType = semanticModel.GetDeclaredSymbol(propertyDeclaration)?.ContainingType;
-        if (containingType == null || !ReactiveDetectionHelper.InheritsFromReactiveObject(containingType))
+        if (containingType == null || !TypeHelper.InheritsFromReactiveObject(containingType))
             return;
 
         // Report diagnostic on the entire property declaration

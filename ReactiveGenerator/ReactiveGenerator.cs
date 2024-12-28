@@ -95,22 +95,12 @@ public class ReactiveGenerator : IIncrementalGenerator
                 spc));
     }
 
-    private static (INamedTypeSymbol Type, Location Location)? GetClassInfo(GeneratorSyntaxContext context)
+    private static (INamedTypeSymbol Symbol, Location Location)? GetClassInfo(GeneratorSyntaxContext context)
     {
         if (context.Node is not ClassDeclarationSyntax classDeclaration)
             return null;
 
-        var symbol = (INamedTypeSymbol?)context.SemanticModel.GetDeclaredSymbol(classDeclaration);
-        if (symbol == null)
-            return null;
-
-        // Check if this type should be reactive
-        if (ReactiveDetectionHelper.IsTypeReactive(symbol))
-        {
-            return (symbol, classDeclaration.GetLocation());
-        }
-
-        return null;
+        return TypeHelper.AnalyzeClassDeclaration(context, classDeclaration);
     }
 
     private static PropertyInfo? GetPropertyInfo(GeneratorSyntaxContext context)
@@ -123,13 +113,13 @@ public class ReactiveGenerator : IIncrementalGenerator
             return null;
 
         // Check if containing type should be reactive
-        bool classHasReactiveAttribute = ReactiveDetectionHelper.IsTypeReactive(symbol.ContainingType);
+        bool classHasReactiveAttribute = TypeHelper.IsTypeReactive(symbol.ContainingType);
 
         // Check if property has an implementation
         bool hasImplementation = propertyDeclaration.AccessorList?.Accessors.Any(
             a => a.Body != null || a.ExpressionBody != null) ?? false;
 
-        if (ReactiveDetectionHelper.IsPropertyReactive(symbol, classHasReactiveAttribute) && !hasImplementation)
+        if (TypeHelper.IsPropertyReactive(symbol, classHasReactiveAttribute) && !hasImplementation)
         {
             bool hasReactiveAttribute = symbol.GetAttributes()
                 .Any(a => a.AttributeClass?.Name is "ReactiveAttribute" or "Reactive");
@@ -144,49 +134,7 @@ public class ReactiveGenerator : IIncrementalGenerator
 
     private static bool InheritsFromReactiveObject(INamedTypeSymbol typeSymbol)
     {
-        return ReactiveDetectionHelper.InheritsFromReactiveObject(typeSymbol);
-    }
-
-    private static int GetTypeHierarchyDepth(INamedTypeSymbol type)
-    {
-        int depth = 0;
-        var current = type.BaseType;
-        while (current != null)
-        {
-            depth++;
-            current = current.BaseType;
-        }
-
-        return depth;
-    }
-
-    private static IEnumerable<INamedTypeSymbol> GetAllTypesInCompilation(Compilation compilation)
-    {
-        var result = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-
-        void ProcessNamespaceTypes(INamespaceSymbol ns)
-        {
-            foreach (var member in ns.GetMembers())
-            {
-                switch (member)
-                {
-                    case INamespaceSymbol nestedNs:
-                        ProcessNamespaceTypes(nestedNs);
-                        break;
-                    case INamedTypeSymbol type:
-                        result.Add(type);
-                        foreach (var nestedType in type.GetTypeMembers())
-                        {
-                            result.Add(nestedType);
-                        }
-
-                        break;
-                }
-            }
-        }
-
-        ProcessNamespaceTypes(compilation.GlobalNamespace);
-        return result;
+        return TypeHelper.InheritsFromReactiveObject(typeSymbol);
     }
 
     private static bool IsTypeMarkedReactive(INamedTypeSymbol type)
@@ -244,7 +192,7 @@ public class ReactiveGenerator : IIncrementalGenerator
             .ToDictionary(g => g.Key, g => g.ToList(), SymbolEqualityComparer.Default);
 
         // Add types that need processing
-        foreach (var type in GetAllTypesInCompilation(compilation))
+        foreach (var type in TypeHelper.GetAllTypesInCompilation(compilation))
         {
             if (IsTypeMarkedReactive(type) || HasAnyReactiveProperties(type, propertyGroups))
             {
@@ -253,7 +201,7 @@ public class ReactiveGenerator : IIncrementalGenerator
         }
 
         // Process types in correct order
-        foreach (var type in allTypes.OrderBy(t => GetTypeHierarchyDepth(t)))
+        foreach (var type in allTypes.OrderBy(t => TypeHelper.GetTypeHierarchyDepth(t)))
         {
             if (processedTypes.Contains(type))
                 continue;
@@ -350,32 +298,6 @@ public class ReactiveGenerator : IIncrementalGenerator
         }
 
         return false;
-    }
-
-    private static string GetAccessorAccessibility(IMethodSymbol? accessor)
-    {
-        if (accessor is null)
-            return "private";
-
-        return accessor.DeclaredAccessibility switch
-        {
-            Accessibility.Private => "private",
-            Accessibility.Protected => "protected",
-            Accessibility.Internal => "internal",
-            Accessibility.ProtectedOrInternal => "protected internal",
-            Accessibility.ProtectedAndInternal => "private protected",
-            _ => accessor.DeclaredAccessibility.ToString().ToLowerInvariant()
-        };
-    }
-
-    private static string FormatTypeNameForXmlDoc(ITypeSymbol type)
-    {
-        var format = new SymbolDisplayFormat(
-            typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-            genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
-            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
-
-        return type.ToDisplayString(format).Replace("<", "{").Replace(">", "}");
     }
 
     private static string GenerateINPCImplementation(INamedTypeSymbol classSymbol)
@@ -596,7 +518,7 @@ public class ReactiveGenerator : IIncrementalGenerator
         // Add XML documentation comment if the class is public
         if (classSymbol.DeclaredAccessibility == Accessibility.Public)
         {
-            var xmlClassName = FormatTypeNameForXmlDoc(classSymbol);
+            var xmlClassName = TypeHelper.FormatTypeNameForXmlDoc(classSymbol);
             sb.AppendLine($"{indent}/// <summary>");
             sb.AppendLine($"{indent}/// A partial class implementation for {xmlClassName}.");
             sb.AppendLine($"{indent}/// </summary>");
@@ -612,7 +534,7 @@ public class ReactiveGenerator : IIncrementalGenerator
         {
             foreach (var property in typeProperties)
             {
-                var propertyType = GetPropertyTypeWithNullability(property);
+                var propertyType = TypeHelper.GetPropertyTypeWithNullability(property);
                 var backingFieldName = GetBackingFieldName(property.Name);
                 sb.AppendLine($"{indent}private {propertyType} {backingFieldName};");
             }
@@ -717,19 +639,6 @@ public class ReactiveGenerator : IIncrementalGenerator
         return sb.ToString();
     }
 
-    private static string GetPropertyTypeWithNullability(IPropertySymbol property)
-    {
-        var nullableAnnotation = property.NullableAnnotation;
-        var baseType = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-        if (nullableAnnotation == NullableAnnotation.Annotated && !property.Type.IsValueType)
-        {
-            return baseType + "?";
-        }
-
-        return baseType;
-    }
-
     private static void GenerateLegacyProperty(
         StringBuilder sb,
         IPropertySymbol property,
@@ -739,9 +648,9 @@ public class ReactiveGenerator : IIncrementalGenerator
         string indent)
     {
         var propertyName = property.Name;
-        var propertyType = GetPropertyTypeWithNullability(property);
-        var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
-        var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
+        var propertyType = TypeHelper.GetPropertyTypeWithNullability(property);
+        var getterAccessibility = TypeHelper.GetAccessorAccessibility(property.GetMethod);
+        var setterAccessibility = TypeHelper.GetAccessorAccessibility(property.SetMethod);
 
         var propInfo = new PropertyInfo(property, false, false, false);
         var modifiers = propInfo.GetPropertyModifiers();
@@ -798,9 +707,9 @@ public class ReactiveGenerator : IIncrementalGenerator
         string indent)
     {
         var propertyName = property.Name;
-        var propertyType = GetPropertyTypeWithNullability(property);
-        var getterAccessibility = GetAccessorAccessibility(property.GetMethod);
-        var setterAccessibility = GetAccessorAccessibility(property.SetMethod);
+        var propertyType = TypeHelper.GetPropertyTypeWithNullability(property);
+        var getterAccessibility = TypeHelper.GetAccessorAccessibility(property.GetMethod);
+        var setterAccessibility = TypeHelper.GetAccessorAccessibility(property.SetMethod);
 
         // Create PropertyInfo to get modifiers
         var propInfo = new PropertyInfo(property, false, false, false);
