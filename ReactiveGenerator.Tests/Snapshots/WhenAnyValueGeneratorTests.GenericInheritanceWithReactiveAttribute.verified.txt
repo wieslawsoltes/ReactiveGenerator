@@ -11,8 +11,22 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
+/// <summary>
+/// Provides extension methods for observing property changes on BaseViewModel instances.
+/// </summary>
 public static class BaseViewModelExtensions
 {
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the Value property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the Value property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the Value property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<T?> WhenAnyValue<T>(
         this global::BaseViewModel<T> source) where T : class
     {
@@ -37,8 +51,22 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
+/// <summary>
+/// Provides extension methods for observing property changes on NonReactiveViewModel instances.
+/// </summary>
 public static class NonReactiveViewModelExtensions
 {
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the StillReactiveProp property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the StillReactiveProp property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the StillReactiveProp property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<T?> WhenAnyStillReactiveProp<T>(
         this global::NonReactiveViewModel<T> source) where T : class
     {
@@ -229,8 +257,22 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
+/// <summary>
+/// Provides extension methods for observing property changes on StringViewModel instances.
+/// </summary>
 public static class StringViewModelExtensions
 {
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the AdditionalProp property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the AdditionalProp property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the AdditionalProp property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<string?> WhenAnyAdditionalProp(
         this global::StringViewModel source)
     {

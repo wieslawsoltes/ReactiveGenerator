@@ -11,8 +11,22 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
+/// <summary>
+/// Provides extension methods for observing property changes on BaseViewModel instances.
+/// </summary>
 public static class BaseViewModelExtensions
 {
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the BaseProp property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the BaseProp property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the BaseProp property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<string?> WhenAnyBaseProp(
         this global::BaseViewModel source)
     {
@@ -37,8 +51,22 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
+/// <summary>
+/// Provides extension methods for observing property changes on DerivedViewModel instances.
+/// </summary>
 public static class DerivedViewModelExtensions
 {
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the DerivedProp property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the DerivedProp property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the DerivedProp property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<string?> WhenAnyDerivedProp(
         this global::DerivedViewModel source)
     {
@@ -229,8 +257,22 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
+/// <summary>
+/// Provides extension methods for observing property changes on ViewModel instances.
+/// </summary>
 public static class ViewModelExtensions
 {
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the ViewModelProp property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the ViewModelProp property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the ViewModelProp property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<string?> WhenAnyViewModelProp(
         this global::ViewModel source)
     {

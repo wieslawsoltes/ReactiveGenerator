@@ -11,8 +11,22 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
+/// <summary>
+/// Provides extension methods for observing property changes on NestedBase instances.
+/// </summary>
 public static class Container_NestedBaseExtensions
 {
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the BaseProp property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the BaseProp property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the BaseProp property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<string?> WhenAnyBaseProp(
         this global::Container.NestedBase source)
     {
@@ -37,8 +51,22 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
+/// <summary>
+/// Provides extension methods for observing property changes on NestedDerived instances.
+/// </summary>
 public static class Container_NestedDerivedExtensions
 {
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the DerivedProp property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the DerivedProp property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the DerivedProp property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<string?> WhenAnyDerivedProp(
         this global::Container.NestedDerived source)
     {
@@ -63,8 +91,22 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
+/// <summary>
+/// Provides extension methods for observing property changes on NonReactiveNested instances.
+/// </summary>
 public static class Container_NonReactiveNestedExtensions
 {
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the StillReactiveProp property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the StillReactiveProp property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the StillReactiveProp property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<string?> WhenAnyStillReactiveProp(
         this global::Container.NonReactiveNested source)
     {

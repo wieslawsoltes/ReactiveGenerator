@@ -177,8 +177,22 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
+/// <summary>
+/// Provides extension methods for observing property changes on TestClass instances.
+/// </summary>
 public static class TestClassExtensions
 {
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the StringList property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the StringList property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the StringList property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<global::System.Collections.Generic.List<string>?> WhenAnyStringList(
         this global::TestClass source)
     {
@@ -190,6 +204,17 @@ public static class TestClassExtensions
             () => source.StringList);
     }
 
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the IntStringMap property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the IntStringMap property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the IntStringMap property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<global::System.Collections.Generic.Dictionary<int, string>?> WhenAnyIntStringMap(
         this global::TestClass source)
     {
@@ -201,6 +226,17 @@ public static class TestClassExtensions
             () => source.IntStringMap);
     }
 
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the PersonInfo property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the PersonInfo property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the PersonInfo property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<(string Name, int Age)> WhenAnyPersonInfo(
         this global::TestClass source)
     {

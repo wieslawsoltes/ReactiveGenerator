@@ -13,8 +13,22 @@ using ReactiveGenerator.Internal;
 
 namespace MainLib
 {
+    /// <summary>
+    /// Provides extension methods for observing property changes on DerivedClass instances.
+    /// </summary>
     public static class MainLib_DerivedClassExtensions
     {
+        /// <summary>
+        /// Creates an observable sequence that tracks changes of the LocalProp property.
+        /// </summary>
+        /// <param name="source">The source object to track changes on.</param>
+        /// <returns>An observable sequence tracking changes of the LocalProp property.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+        /// <remarks>
+        /// This method creates a subscription to the PropertyChanged event of the source object
+        /// and notifies observers whenever the LocalProp property value changes.
+        /// The subscription is automatically cleaned up when all observers are unsubscribed.
+        /// </remarks>
         public static IObservable<string?> WhenAnyLocalProp(
             this global::MainLib.DerivedClass source)
         {
@@ -42,8 +56,22 @@ using ReactiveGenerator.Internal;
 
 namespace MainLib
 {
+    /// <summary>
+    /// Provides extension methods for observing property changes on NonReactiveDerived instances.
+    /// </summary>
     public static class MainLib_NonReactiveDerivedExtensions
     {
+        /// <summary>
+        /// Creates an observable sequence that tracks changes of the StillReactiveProp property.
+        /// </summary>
+        /// <param name="source">The source object to track changes on.</param>
+        /// <returns>An observable sequence tracking changes of the StillReactiveProp property.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+        /// <remarks>
+        /// This method creates a subscription to the PropertyChanged event of the source object
+        /// and notifies observers whenever the StillReactiveProp property value changes.
+        /// The subscription is automatically cleaned up when all observers are unsubscribed.
+        /// </remarks>
         public static IObservable<string?> WhenAnyStillReactiveProp(
             this global::MainLib.NonReactiveDerived source)
         {

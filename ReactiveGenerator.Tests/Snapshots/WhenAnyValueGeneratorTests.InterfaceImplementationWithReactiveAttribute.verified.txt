@@ -11,8 +11,22 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
+/// <summary>
+/// Provides extension methods for observing property changes on Implementation instances.
+/// </summary>
 public static class ImplementationExtensions
 {
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the ExtraProp property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the ExtraProp property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the ExtraProp property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<string?> WhenAnyExtraProp(
         this global::Implementation source)
     {
@@ -37,8 +51,22 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
+/// <summary>
+/// Provides extension methods for observing property changes on NonReactiveImpl instances.
+/// </summary>
 public static class NonReactiveImplExtensions
 {
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the ExtraValue property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the ExtraValue property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the ExtraValue property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<int> WhenAnyExtraValue(
         this global::NonReactiveImpl source)
     {
@@ -229,8 +257,22 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
+/// <summary>
+/// Provides extension methods for observing property changes on ReactiveBase instances.
+/// </summary>
 public static class ReactiveBaseExtensions
 {
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the Value property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the Value property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the Value property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<T?> WhenAnyValue<T>(
         this global::ReactiveBase<T> source)
     {

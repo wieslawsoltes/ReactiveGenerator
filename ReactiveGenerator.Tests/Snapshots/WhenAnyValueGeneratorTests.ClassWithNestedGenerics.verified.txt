@@ -177,8 +177,22 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
+/// <summary>
+/// Provides extension methods for observing property changes on TestClass instances.
+/// </summary>
 public static class TestClassExtensions
 {
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the ComplexProp property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the ComplexProp property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the ComplexProp property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<List<Dictionary<string, T>>?> WhenAnyComplexProp<T>(
         this global::TestClass<T> source) where T : class
     {
@@ -190,6 +204,17 @@ public static class TestClassExtensions
             () => source.ComplexProp);
     }
 
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the NestedProp property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the NestedProp property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the NestedProp property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<Dictionary<int, List<T>>?> WhenAnyNestedProp<T>(
         this global::TestClass<T> source) where T : class
     {

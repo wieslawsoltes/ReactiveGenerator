@@ -177,8 +177,22 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
+/// <summary>
+/// Provides extension methods for observing property changes on TestClass instances.
+/// </summary>
 public static class TestClassExtensions
 {
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the Reference property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the Reference property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the Reference property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<T?> WhenAnyReference<T, U>(
         this global::TestClass<T, U> source) where T : class, new() where U : struct
     {
@@ -190,6 +204,17 @@ public static class TestClassExtensions
             () => source.Reference);
     }
 
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the Value property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the Value property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the Value property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<U> WhenAnyValue<T, U>(
         this global::TestClass<T, U> source) where T : class, new() where U : struct
     {

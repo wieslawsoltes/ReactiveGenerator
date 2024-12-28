@@ -117,6 +117,11 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
             .Replace(".", "_") + "Extensions";
 
         var accessibility = classSymbol.DeclaredAccessibility == Accessibility.Internal ? "internal" : "public";
+        
+        // Add class-level XML documentation
+        sb.AppendLine($"{indent}/// <summary>");
+        sb.AppendLine($"{indent}/// Provides extension methods for observing property changes on {classSymbol.Name} instances.");
+        sb.AppendLine($"{indent}/// </summary>");
         sb.AppendLine($"{indent}{accessibility} static class {extensionClassName}");
         sb.AppendLine($"{indent}{{");
 
@@ -195,6 +200,19 @@ public class WhenAnyValueGenerator : IIncrementalGenerator
                 : $"{propertyType}?");
 
         var methodAccessibility = classSymbol.DeclaredAccessibility == Accessibility.Internal ? "internal" : "public";
+
+        // Add XML documentation for the extension method
+        sb.AppendLine($"{indent}/// <summary>");
+        sb.AppendLine($"{indent}/// Creates an observable sequence that tracks changes of the {property.Name} property.");
+        sb.AppendLine($"{indent}/// </summary>");
+        sb.AppendLine($"{indent}/// <param name=\"source\">The source object to track changes on.</param>");
+        sb.AppendLine($"{indent}/// <returns>An observable sequence tracking changes of the {property.Name} property.</returns>");
+        sb.AppendLine($"{indent}/// <exception cref=\"ArgumentNullException\">Thrown when <paramref name=\"source\"/> is null.</exception>");
+        sb.AppendLine($"{indent}/// <remarks>");
+        sb.AppendLine($"{indent}/// This method creates a subscription to the PropertyChanged event of the source object");
+        sb.AppendLine($"{indent}/// and notifies observers whenever the {property.Name} property value changes.");
+        sb.AppendLine($"{indent}/// The subscription is automatically cleaned up when all observers are unsubscribed.");
+        sb.AppendLine($"{indent}/// </remarks>");
 
         if (!string.IsNullOrEmpty(typeParameters))
         {
