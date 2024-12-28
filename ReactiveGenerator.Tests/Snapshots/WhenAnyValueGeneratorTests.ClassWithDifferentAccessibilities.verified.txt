@@ -177,8 +177,22 @@ using System.ComponentModel;
 using System.Threading;
 using ReactiveGenerator.Internal;
 
+/// <summary>
+/// Provides extension methods for observing property changes on TestClass instances.
+/// </summary>
 public static class TestClassExtensions
 {
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the PublicProp property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the PublicProp property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the PublicProp property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<string?> WhenAnyPublicProp(
         this global::TestClass source)
     {
@@ -190,6 +204,17 @@ public static class TestClassExtensions
             () => source.PublicProp);
     }
 
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the ProtectedProp property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the ProtectedProp property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the ProtectedProp property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<string?> WhenAnyProtectedProp(
         this global::TestClass source)
     {
@@ -201,6 +226,17 @@ public static class TestClassExtensions
             () => source.ProtectedProp);
     }
 
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the InternalProp property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the InternalProp property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the InternalProp property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<string?> WhenAnyInternalProp(
         this global::TestClass source)
     {
@@ -212,6 +248,17 @@ public static class TestClassExtensions
             () => source.InternalProp);
     }
 
+    /// <summary>
+    /// Creates an observable sequence that tracks changes of the PrivateProp property.
+    /// </summary>
+    /// <param name="source">The source object to track changes on.</param>
+    /// <returns>An observable sequence tracking changes of the PrivateProp property.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+    /// <remarks>
+    /// This method creates a subscription to the PropertyChanged event of the source object
+    /// and notifies observers whenever the PrivateProp property value changes.
+    /// The subscription is automatically cleaned up when all observers are unsubscribed.
+    /// </remarks>
     public static IObservable<string?> WhenAnyPrivateProp(
         this global::TestClass source)
     {

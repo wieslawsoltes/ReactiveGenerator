@@ -13,8 +13,22 @@ using ReactiveGenerator.Internal;
 
 namespace First
 {
+    /// <summary>
+    /// Provides extension methods for observing property changes on TestClass instances.
+    /// </summary>
     public static class First_TestClassExtensions
     {
+        /// <summary>
+        /// Creates an observable sequence that tracks changes of the Name property.
+        /// </summary>
+        /// <param name="source">The source object to track changes on.</param>
+        /// <returns>An observable sequence tracking changes of the Name property.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+        /// <remarks>
+        /// This method creates a subscription to the PropertyChanged event of the source object
+        /// and notifies observers whenever the Name property value changes.
+        /// The subscription is automatically cleaned up when all observers are unsubscribed.
+        /// </remarks>
         public static IObservable<string?> WhenAnyName(
             this global::First.TestClass source)
         {
@@ -208,8 +222,22 @@ using ReactiveGenerator.Internal;
 
 namespace Second
 {
+    /// <summary>
+    /// Provides extension methods for observing property changes on TestClass instances.
+    /// </summary>
     public static class Second_TestClassExtensions
     {
+        /// <summary>
+        /// Creates an observable sequence that tracks changes of the Name property.
+        /// </summary>
+        /// <param name="source">The source object to track changes on.</param>
+        /// <returns>An observable sequence tracking changes of the Name property.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
+        /// <remarks>
+        /// This method creates a subscription to the PropertyChanged event of the source object
+        /// and notifies observers whenever the Name property value changes.
+        /// The subscription is automatically cleaned up when all observers are unsubscribed.
+        /// </remarks>
         public static IObservable<string?> WhenAnyName(
             this global::Second.TestClass source)
         {
