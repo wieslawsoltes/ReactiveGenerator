@@ -60,32 +60,6 @@ internal static class ReactiveDetectionHelper
     }
 
     /// <summary>
-    /// Checks if syntax node is a candidate for reactive processing.
-    /// </summary>
-    public static bool IsCandidateClass(SyntaxNode node)
-    {
-        if (node is not ClassDeclarationSyntax classDeclaration)
-            return false;
-
-        // Must be partial
-        if (!classDeclaration.Modifiers.Any(m => m.ValueText == "partial"))
-            return false;
-
-        // Has class-level [Reactive] attribute
-        if (classDeclaration.AttributeLists.Any(al =>
-                al.Attributes.Any(a => a.Name.ToString() is "Reactive" or "ReactiveAttribute")))
-            return true;
-
-        // Or any property has [Reactive] attribute
-        return classDeclaration.Members
-            .OfType<PropertyDeclarationSyntax>()
-            .Any(p => p.AttributeLists.Count > 0 &&
-                     p.AttributeLists.Any(al =>
-                         al.Attributes.Any(a =>
-                             a.Name.ToString() is "Reactive" or "ReactiveAttribute")));
-    }
-
-    /// <summary>
     /// Checks if a type inherits from ReactiveObject.
     /// </summary>
     public static bool InheritsFromReactiveObject(INamedTypeSymbol typeSymbol)
