@@ -281,11 +281,32 @@ public partial class ViewModel : ReactiveObject
 }
 ```
 
+### Implementation Details
+
+#### Event Management
+- Uses `WeakEventManager<TDelegate>` for efficient memory management
+- Thread-safe event handling with concurrent collections
+- Automatic cleanup of unused subscriptions
+- Proper handling of generated `PropertyChangedEventArgs` instances
+
+#### Type Resolution
+- Cross-assembly type inheritance support
+- Full generic type constraint validation
+- Proper handling of nullable reference types
+- Support for nested type hierarchies
+
+#### Code Generation
+- Deterministic output for reliable builds
+- Support for source link and debugging
+- Efficient handling of large type hierarchies
+- Proper XML documentation generation
+
 ### Known Limitations
 - Properties must be declared as `partial`
 - Classes must be declared as `partial`
 - Custom implementations require `[IgnoreReactive]` attribute
 - Base class implementations must be compatible with `INotifyPropertyChanged`
+- Generic type constraints must be valid at declaration site
 
 ## Contributing
 
