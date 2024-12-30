@@ -111,43 +111,22 @@ public class ReactiveCommandGenerator : IIncrementalGenerator
             sb.AppendLine("{");
         }
 
-        // Open containing type declarations
+        // Open any containing (nested) types
         foreach (var ct in containingTypes)
         {
             sb.AppendLine($"partial {ct.Declaration}");
             sb.AppendLine("{");
         }
 
-        sb.AppendLine($"partial {typeDeclaration} {typeConstraints}");
+        // We explicitly enforce "public partial class" here. 
+        // If you want to respect the original accessibility, you could adapt accordingly.
+        sb.AppendLine($"public partial {typeDeclaration} {typeConstraints}");
         sb.AppendLine("{");
 
-        // We’ll generate a partial constructor or partial method to init commands
-        // Option A: partial constructor
-        // Option B: partial void InitializeCommands()
-        // Here we go with a partial constructor approach for clarity
-        var constructorName = typeSymbol.Name;
-        sb.AppendLine($"    public partial {constructorName}()");
-        sb.AppendLine("    {");
-        sb.AppendLine("        InitializeGeneratedCommands();");
-        sb.AppendLine("    }");
-        sb.AppendLine();
-
-        sb.AppendLine("    private void InitializeGeneratedCommands()");
-        sb.AppendLine("    {");
-
+        // Generate the command properties with inline initialization
         foreach (var methodSymbol in methods)
         {
-            var cmdSetup = GenerateCommandForMethod(compilation, methodSymbol);
-            sb.AppendLine(cmdSetup);
-        }
-
-        sb.AppendLine("    }"); // End InitializeGeneratedCommands
-        sb.AppendLine();
-
-        // Generate properties
-        foreach (var methodSymbol in methods)
-        {
-            var propertyDecl = GenerateCommandPropertyDeclaration(methodSymbol);
+            var propertyDecl = GenerateCommandPropertyDeclaration(compilation, methodSymbol);
             sb.AppendLine(propertyDecl);
         }
 
@@ -167,137 +146,96 @@ public class ReactiveCommandGenerator : IIncrementalGenerator
         return sb.ToString();
     }
 
-    private static string GenerateCommandPropertyDeclaration(IMethodSymbol methodSymbol)
+    private static string GenerateCommandPropertyDeclaration(Compilation compilation, IMethodSymbol methodSymbol)
     {
         var attrData = methodSymbol.GetAttributes()
             .First(ad => ad.AttributeClass?.Name == "GenerateCommandAttribute");
-
         var commandName = GetCommandPropertyName(methodSymbol, attrData);
 
-        // Determine <TParam, TResult> from method signature
-        // - If method has exactly 1 parameter and returns Task or void, TParam = param type, TResult = Unit
-        // - If method returns Task<T>, TParam = param type (or Unit if none), TResult = T
-        // - If method returns IObservable<T>, TParam = param type (or Unit), TResult = T
-        // etc.
-
-        InferCommandTypes(methodSymbol, attrData, out var paramType, out var resultType);
-        return
-            $@"    public ReactiveCommand<{paramType}, {resultType}> {commandName} {{ get; private set; }}";
-    }
-
-    private static string GenerateCommandForMethod(Compilation compilation, IMethodSymbol methodSymbol)
-    {
-        var attrData = methodSymbol.GetAttributes()
-            .First(ad => ad.AttributeClass?.Name == "GenerateCommandAttribute");
-
-        var commandName = GetCommandPropertyName(methodSymbol, attrData);
-
-        // Figure out can-execute observable or property
+        // Figure out the can-execute expression
         var canExecuteExpr = BuildCanExecuteExpression(methodSymbol.ContainingType, attrData, compilation);
 
-        // Command creation logic
-        // We either do:
-        // 1. ReactiveCommand.Create(...)         for void method
-        // 2. ReactiveCommand.CreateFromTask(...) for Task method
-        // 3. ReactiveCommand.CreateFromObservable(...) for IObservable method
-        // We also handle param methods if needed (methodSymbol.Parameters)
-
+        // Infer <TParam, TResult> from method signature
         InferCommandTypes(methodSymbol, attrData, out var paramType, out var resultType);
 
-        var commandExpression = BuildReactiveCommandCreationExpression(
+        // Build the ReactiveCommand creation expression
+        var creationExpr = BuildReactiveCommandCreationExpression(
             methodSymbol, paramType, resultType, canExecuteExpr);
 
-        return
-            $@"        this.{commandName} = {commandExpression};";
+        // Example:
+        // public ReactiveCommand<ParamType, ResultType> MyCommand { get; } =
+        //     ReactiveCommand.Create...(...);
+        var propertyCode = $@"
+    public ReactiveCommand<{paramType}, {resultType}> {commandName} {{ get; }} 
+        = {creationExpr};";
+
+        return propertyCode;
     }
 
-    private static string BuildReactiveCommandCreationExpression(
-        IMethodSymbol methodSymbol,
-        string paramType,
-        string resultType,
-        string canExecuteExpr)
+private static string BuildReactiveCommandCreationExpression(
+    IMethodSymbol methodSymbol,
+    string paramType,         // e.g. "Unit"
+    string resultType,        // e.g. "Unit"
+    string canExecuteExpr)
+{
+    var returnType = methodSymbol.ReturnType;
+    var methodName = methodSymbol.Name;
+
+    bool isAsync = IsTaskLikeType(returnType);
+    bool isObservable = IsIObservableType(returnType);
+
+    // If there's a can-execute expression, we’ll add it last
+    string commaCanExec = string.IsNullOrEmpty(canExecuteExpr) ? "" : $", {canExecuteExpr}";
+
+    // ### 1) Method has 0 parameters?
+    if (methodSymbol.Parameters.Length == 0)
     {
-        // If method is void or returns a non-async type, we can do ReactiveCommand.Create(...)
-        // If method returns Task or Task<T>, do CreateFromTask
-        // If returns IObservable<T>, do CreateFromObservable
-
-        var returnType = methodSymbol.ReturnType;
-        var methodName = methodSymbol.Name;
-        var paramSignature = string.Join(", ",
-            methodSymbol.Parameters.Select(p => p.Name));
-
-        // If methodSymbol.Parameters.Count == 0 => no param
-        // Otherwise we pass the param: x => methodSymbolName(x)
-
-        var isAsync = IsTaskLikeType(returnType);
-        var isObservable = IsIObservableType(returnType);
-
-        // Build the lambda
-        // For a method with no parameters, we do () => Method() or () => MethodAsync()
-        // For a method with 1 parameter, we do x => Method(x)
-        // For multiple parameters, we'd need a custom strategy, but let's keep it simpler here.
-        string execLambda;
-        if (methodSymbol.Parameters.Length == 0)
+        // Synchronous
+        if (!isAsync && !isObservable)
         {
-            if (isAsync)
-            {
-                // async
-                // CreateFromTask(() => methodSymbol())
-                execLambda = $"() => {methodName}()";
-            }
-            else if (isObservable)
-            {
-                // CreateFromObservable(() => methodSymbol())
-                execLambda = $"() => {methodName}()";
-            }
-            else
-            {
-                // synchronous
-                execLambda = $"() => {methodName}()";
-            }
+            // => ReactiveCommand.Create(() => MyMethod(), canExecute);
+            return $"ReactiveCommand.Create(() => {methodName}(){commaCanExec})";
         }
-        else if (methodSymbol.Parameters.Length == 1)
+        // Async => Task or Task<T>
+        else if (isAsync)
         {
-            var paramName = methodSymbol.Parameters[0].Name;
-            // e.g. x => methodName(x)
-            // if async => CreateFromTask((x) => methodSymbol(x))
-            // if observable => CreateFromObservable((x) => methodSymbol(x))
-            // synchronous => Create((x) => methodSymbol(x))
-            execLambda = $"{paramName} => {methodName}({paramName})";
+            // => ReactiveCommand.CreateFromTask(() => MyAsyncMethod(), canExecute);
+            return $"ReactiveCommand.CreateFromTask(() => {methodName}(){commaCanExec})";
         }
+        // IObservable
         else
         {
-            // For demonstration, we’ll just handle up to 1 param. 
-            // If you want to handle multiple, you'd create a small record or tuple
-            // or generate an aggregator. That is more advanced.
-            // We'll produce an error expression or comment for now.
-            return "// ERROR: More than one parameter not handled automatically by the generator.\n" +
-                   "ReactiveCommand.Create(() => { })";
-        }
-
-        // Build the actual call
-        // Synchronous: Create<TParam, TResult>(execLambda, canExecuteExpr)
-        // Async: CreateFromTask<TParam, TResult>(execLambda, canExecuteExpr)
-        // Observable: CreateFromObservable<TParam, TResult>(execLambda, canExecuteExpr)
-
-        var paramResult = $"<{paramType}, {resultType}>";
-        if (isAsync)
-        {
-            return
-                $"ReactiveCommand.CreateFromTask{paramResult}({execLambda}{(string.IsNullOrEmpty(canExecuteExpr) ? "" : ", " + canExecuteExpr)})";
-        }
-        else if (isObservable)
-        {
-            return
-                $"ReactiveCommand.CreateFromObservable{paramResult}({execLambda}{(string.IsNullOrEmpty(canExecuteExpr) ? "" : ", " + canExecuteExpr)})";
-        }
-        else
-        {
-            // synchronous
-            return
-                $"ReactiveCommand.Create{paramResult}({execLambda}{(string.IsNullOrEmpty(canExecuteExpr) ? "" : ", " + canExecuteExpr)})";
+            // => ReactiveCommand.CreateFromObservable(() => MyObservableMethod(), canExecute);
+            return $"ReactiveCommand.CreateFromObservable(() => {methodName}(){commaCanExec})";
         }
     }
+
+    // ### 2) Method has exactly 1 parameter?
+    else if (methodSymbol.Parameters.Length == 1)
+    {
+        string paramName = methodSymbol.Parameters[0].Name; // e.g. x => MyMethod(x)
+
+        if (!isAsync && !isObservable)
+        {
+            // => ReactiveCommand.Create<TParam, Unit>(x => {methodName}(x), canExecute);
+            return $"ReactiveCommand.Create<{paramType}, {resultType}>({paramName} => {methodName}({paramName}){commaCanExec})";
+        }
+        else if (isAsync)
+        {
+            // => ReactiveCommand.CreateFromTask<TParam, TResult>(x => MyMethodAsync(x), canExecute);
+            return $"ReactiveCommand.CreateFromTask<{paramType}, {resultType}>({paramName} => {methodName}({paramName}){commaCanExec})";
+        }
+        else
+        {
+            // => ReactiveCommand.CreateFromObservable<TParam, TResult>(x => MyObservableMethod(x), canExecute);
+            return $"ReactiveCommand.CreateFromObservable<{paramType}, {resultType}>({paramName} => {methodName}({paramName}){commaCanExec})";
+        }
+    }
+
+    // ### 3) More than 1 parameter => out of scope, or you handle via aggregator, etc.
+    return "// TODO: More than 1 param not currently supported.";
+}
+
 
     private static string BuildCanExecuteExpression(
         INamedTypeSymbol containingType,
@@ -305,17 +243,12 @@ public class ReactiveCommandGenerator : IIncrementalGenerator
         Compilation compilation)
     {
         // If CanExecuteProperty is a bool property => use: this.WhenAnyValue(x => x.CanExecuteProperty)
-        // If it's an IObservable<bool>, we can use that directly: e.g. someObservableBool
+        // If it's an IObservable<bool>, we can use that directly
         // If not provided, return ""
+
         var canExecuteProperty = GetNamedArg<string>(attrData, "CanExecuteProperty");
         if (string.IsNullOrEmpty(canExecuteProperty))
             return "";
-
-        // We check if there's a member with that name. 
-        // If it's a property of type bool, let's do: 
-        //    this.WhenAnyValue(x => x.CanExecuteProperty)
-        // If it's a property or field of type IObservable<bool>, we use it directly.
-        // If we can't find it or it's not recognized, we fallback or throw.
 
         var members = containingType.GetMembers(canExecuteProperty);
         if (members.Length > 0)
@@ -324,34 +257,24 @@ public class ReactiveCommandGenerator : IIncrementalGenerator
             switch (member)
             {
                 case IPropertySymbol propSymbol:
-                {
-                    // If it's bool => WhenAnyValue
-                    // If it's IObservable<bool> => direct
                     if (propSymbol.Type.SpecialType == SpecialType.System_Boolean)
                         return $"this.WhenAnyValue(x => x.{canExecuteProperty})";
                     if (IsIObservableOfBool(propSymbol.Type))
-                        return canExecuteProperty; // assume it's used directly
+                        return canExecuteProperty; 
                     break;
-                }
                 case IFieldSymbol fieldSymbol:
-                {
-                    // If it's IObservable<bool>, use directly
                     if (IsIObservableOfBool(fieldSymbol.Type))
                         return canExecuteProperty;
-                    // If it's bool => we do the same approach as property, but might want to do a WhenAnyValue if it's public
+                    // If it's bool -> typically we do WhenAnyValue, but that only works if it's properly raising changes.
                     break;
-                }
                 case IMethodSymbol methodSym:
-                {
-                    // If method returns IObservable<bool>, use it directly
                     if (IsIObservableOfBool(methodSym.ReturnType))
                         return $"{canExecuteProperty}()";
                     break;
-                }
             }
         }
 
-        // fallback or none
+        // fallback
         return "";
     }
 
@@ -396,7 +319,9 @@ public class ReactiveCommandGenerator : IIncrementalGenerator
         {
             // If it's Task<T>, result = T
             // If it's Task (no T), result = Unit
-            if (methodSymbol.ReturnType is INamedTypeSymbol named && named.IsGenericType && named.Name == "Task")
+            if (methodSymbol.ReturnType is INamedTypeSymbol named && 
+                named.IsGenericType && 
+                named.Name == "Task")
             {
                 var tArg = named.TypeArguments[0];
                 resultType = tArg.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -405,8 +330,9 @@ public class ReactiveCommandGenerator : IIncrementalGenerator
         else if (IsIObservableType(methodSymbol.ReturnType))
         {
             // If it's IObservable<T>, result = T
-            // If it's IObservable with no T -> object
-            if (methodSymbol.ReturnType is INamedTypeSymbol named && named.IsGenericType && named.Name == "IObservable")
+            if (methodSymbol.ReturnType is INamedTypeSymbol named && 
+                named.IsGenericType && 
+                named.Name == "IObservable")
             {
                 var tArg = named.TypeArguments[0];
                 resultType = tArg.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -421,14 +347,12 @@ public class ReactiveCommandGenerator : IIncrementalGenerator
     private static bool IsTaskLikeType(ITypeSymbol typeSymbol)
     {
         if (typeSymbol == null) return false;
-        // Check if it's Task or Task<T>
         return typeSymbol.Name == "Task" && typeSymbol.ContainingNamespace.ToString() == "System.Threading.Tasks";
     }
 
     private static bool IsIObservableType(ITypeSymbol typeSymbol)
     {
         if (typeSymbol == null) return false;
-        // check if it's IObservable<T> or IObservable
         return typeSymbol.Name == "IObservable";
     }
 
@@ -450,27 +374,30 @@ public class ReactiveCommandGenerator : IIncrementalGenerator
         if (!string.IsNullOrEmpty(commandName))
             return commandName;
 
-        // fallback to MethodName + "Command"
+        // fallback => <MethodName>Command
         return methodSymbol.Name + "Command";
     }
 
-    // Helper: Construct partial type declaration from symbol
     private static string GetTypeDeclarationString(INamedTypeSymbol typeSymbol, out string constraints)
     {
         // e.g. "class MyViewModel<T>" plus constraints
+        // We explicitly do 'public partial class' here:
         var typeParams = typeSymbol.TypeParameters;
+        var className = typeSymbol.Name;
+        var partialDecl = $"class {className}";
+
         if (typeParams.Length == 0)
         {
             constraints = string.Empty;
-            return $"{GetAccessibility(typeSymbol)} class {typeSymbol.Name}";
+            return partialDecl;
         }
 
+        // If there are generic type parameters
         var tpList = "<" + string.Join(", ", typeParams.Select(tp => tp.Name)) + ">";
         var sbConstraints = new StringBuilder();
         foreach (var tp in typeParams)
         {
             var constraintClauses = new List<string>();
-            // generic constraints
             if (tp.HasReferenceTypeConstraint)
                 constraintClauses.Add("class");
             if (tp.HasUnmanagedTypeConstraint)
@@ -486,28 +413,22 @@ public class ReactiveCommandGenerator : IIncrementalGenerator
             }
             if (constraintClauses.Count > 0)
             {
-                sbConstraints.AppendLine($" where {tp.Name} : {string.Join(", ", constraintClauses)}");
+                sbConstraints.AppendLine($"    where {tp.Name} : {string.Join(", ", constraintClauses)}");
             }
         }
+
         constraints = sbConstraints.ToString();
-        return $"{GetAccessibility(typeSymbol)} class {typeSymbol.Name}{tpList}";
+        return partialDecl + tpList;
     }
 
-    private static string GetAccessibility(INamedTypeSymbol typeSymbol)
-    {
-        return typeSymbol.DeclaredAccessibility.ToString().ToLower();
-    }
-
-    // For nested types, gather chain outward to get partial signatures
     private static List<(string Declaration, INamedTypeSymbol Symbol)> GetContainingTypes(INamedTypeSymbol typeSymbol)
     {
+        // For any nesting...
         var result = new List<(string Declaration, INamedTypeSymbol Symbol)>();
         var current = typeSymbol.ContainingType;
         while (current != null)
         {
-            // build partial class or struct or record, etc.
-            // for simplicity, assume partial class
-            var dec = $"{GetAccessibility(current)} partial class {current.Name}";
+            var dec = $"partial class {current.Name}";
             result.Add((dec, current));
             current = current.ContainingType;
         }
@@ -517,7 +438,6 @@ public class ReactiveCommandGenerator : IIncrementalGenerator
 
     private static string GetSafeFileName(string name)
     {
-        // remove invalid chars
         var invalid = System.IO.Path.GetInvalidFileNameChars();
         foreach (var c in invalid)
         {
