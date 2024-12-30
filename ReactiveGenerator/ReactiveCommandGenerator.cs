@@ -63,6 +63,7 @@ public class ReactiveCommandGenerator : IIncrementalGenerator
                 .SelectMany(a => a.Attributes)
                 .Any(a => a.Name.ToString().Contains("GenerateCommand"));
         }
+
         return false;
     }
 
@@ -87,13 +88,11 @@ public class ReactiveCommandGenerator : IIncrementalGenerator
         INamedTypeSymbol typeSymbol,
         List<IMethodSymbol> methods)
     {
-        // We'll build everything in a single partial class
         var sb = new StringBuilder();
         var namespaceName = typeSymbol.ContainingNamespace.IsGlobalNamespace
             ? null
             : typeSymbol.ContainingNamespace.ToString();
 
-        // Prepare partial class signature
         var containingTypes = GetContainingTypes(typeSymbol);
         var typeDeclaration = GetTypeDeclarationString(typeSymbol, out var typeConstraints);
 
@@ -111,26 +110,82 @@ public class ReactiveCommandGenerator : IIncrementalGenerator
             sb.AppendLine("{");
         }
 
-        // Open any containing (nested) types
         foreach (var ct in containingTypes)
         {
             sb.AppendLine($"partial {ct.Declaration}");
             sb.AppendLine("{");
         }
 
-        // We explicitly enforce "public partial class" here. 
-        // If you want to respect the original accessibility, you could adapt accordingly.
         sb.AppendLine($"public partial {typeDeclaration} {typeConstraints}");
         sb.AppendLine("{");
 
-        // Generate the command properties with inline initialization
+        // Generate private backing fields for commands
+        var processedCommands = new HashSet<string>();
         foreach (var methodSymbol in methods)
         {
-            var propertyDecl = GenerateCommandPropertyDeclaration(compilation, methodSymbol);
-            sb.AppendLine(propertyDecl);
+            var commandName = GetCommandPropertyName(methodSymbol,
+                methodSymbol.GetAttributes().First(ad => ad.AttributeClass?.Name == "GenerateCommandAttribute"));
+
+            if (!processedCommands.Add(commandName))
+                continue;
+
+            InferCommandTypes(methodSymbol,
+                methodSymbol.GetAttributes().First(ad => ad.AttributeClass?.Name == "GenerateCommandAttribute"),
+                out var paramType, out var resultType);
+
+            sb.AppendLine(
+                $"    private ReactiveCommand<{paramType}, {resultType}> _{char.ToLowerInvariant(commandName[0])}{commandName.Substring(1)};");
         }
 
-        sb.AppendLine("}"); // close the partial class
+        sb.AppendLine();
+
+        // Generate public properties
+        processedCommands.Clear();
+        foreach (var methodSymbol in methods)
+        {
+            var commandName = GetCommandPropertyName(methodSymbol,
+                methodSymbol.GetAttributes().First(ad => ad.AttributeClass?.Name == "GenerateCommandAttribute"));
+
+            if (!processedCommands.Add(commandName))
+                continue;
+
+            InferCommandTypes(methodSymbol,
+                methodSymbol.GetAttributes().First(ad => ad.AttributeClass?.Name == "GenerateCommandAttribute"),
+                out var paramType, out var resultType);
+
+            sb.AppendLine($@"    public ReactiveCommand<{paramType}, {resultType}> {commandName} => 
+        _{char.ToLowerInvariant(commandName[0])}{commandName.Substring(1)};");
+        }
+
+        sb.AppendLine();
+
+        // Generate constructor
+        sb.AppendLine($"    public {typeSymbol.Name}()");
+        sb.AppendLine("    {");
+
+        // Initialize each command
+        processedCommands.Clear();
+        foreach (var methodSymbol in methods)
+        {
+            var attrData = methodSymbol.GetAttributes()
+                .First(ad => ad.AttributeClass?.Name == "GenerateCommandAttribute");
+            var commandName = GetCommandPropertyName(methodSymbol, attrData);
+
+            if (!processedCommands.Add(commandName))
+                continue;
+
+            var canExecuteExpr = BuildCanExecuteExpression(methodSymbol.ContainingType, attrData, compilation);
+            InferCommandTypes(methodSymbol, attrData, out var paramType, out var resultType);
+            var creationExpr =
+                BuildReactiveCommandCreationExpression(methodSymbol, paramType, resultType, canExecuteExpr);
+
+            sb.AppendLine(
+                $"        _{char.ToLowerInvariant(commandName[0])}{commandName.Substring(1)} = {creationExpr};");
+        }
+
+        sb.AppendLine("    }");
+
+        sb.AppendLine("}"); // close partial class
 
         // Close containing types
         for (int i = containingTypes.Count - 1; i >= 0; i--)
@@ -146,95 +201,72 @@ public class ReactiveCommandGenerator : IIncrementalGenerator
         return sb.ToString();
     }
 
-    private static string GenerateCommandPropertyDeclaration(Compilation compilation, IMethodSymbol methodSymbol)
+    private static string BuildReactiveCommandCreationExpression(
+        IMethodSymbol methodSymbol,
+        string paramType, // e.g. "Unit"
+        string resultType, // e.g. "Unit"
+        string canExecuteExpr)
     {
-        var attrData = methodSymbol.GetAttributes()
-            .First(ad => ad.AttributeClass?.Name == "GenerateCommandAttribute");
-        var commandName = GetCommandPropertyName(methodSymbol, attrData);
+        var returnType = methodSymbol.ReturnType;
+        var methodName = methodSymbol.Name;
 
-        // Figure out the can-execute expression
-        var canExecuteExpr = BuildCanExecuteExpression(methodSymbol.ContainingType, attrData, compilation);
+        bool isAsync = IsTaskLikeType(returnType);
+        bool isObservable = IsIObservableType(returnType);
 
-        // Infer <TParam, TResult> from method signature
-        InferCommandTypes(methodSymbol, attrData, out var paramType, out var resultType);
+        // If there's a can-execute expression, we’ll add it last
+        string commaCanExec = string.IsNullOrEmpty(canExecuteExpr) ? "" : $", {canExecuteExpr}";
 
-        // Build the ReactiveCommand creation expression
-        var creationExpr = BuildReactiveCommandCreationExpression(
-            methodSymbol, paramType, resultType, canExecuteExpr);
+        // ### 1) Method has 0 parameters?
+        if (methodSymbol.Parameters.Length == 0)
+        {
+            // Synchronous
+            if (!isAsync && !isObservable)
+            {
+                // => ReactiveCommand.Create(() => MyMethod(), canExecute);
+                return $"ReactiveCommand.Create(() => {methodName}(){commaCanExec})";
+            }
+            // Async => Task or Task<T>
+            else if (isAsync)
+            {
+                // => ReactiveCommand.CreateFromTask(() => MyAsyncMethod(), canExecute);
+                return $"ReactiveCommand.CreateFromTask(() => {methodName}(){commaCanExec})";
+            }
+            // IObservable
+            else
+            {
+                // => ReactiveCommand.CreateFromObservable(() => MyObservableMethod(), canExecute);
+                return $"ReactiveCommand.CreateFromObservable(() => {methodName}(){commaCanExec})";
+            }
+        }
 
-        // Example:
-        // public ReactiveCommand<ParamType, ResultType> MyCommand { get; } =
-        //     ReactiveCommand.Create...(...);
-        var propertyCode = $@"
-    public ReactiveCommand<{paramType}, {resultType}> {commandName} {{ get; }} 
-        = {creationExpr};";
+        // ### 2) Method has exactly 1 parameter?
+        else if (methodSymbol.Parameters.Length == 1)
+        {
+            string paramName = methodSymbol.Parameters[0].Name; // e.g. x => MyMethod(x)
 
-        return propertyCode;
+            if (!isAsync && !isObservable)
+            {
+                // => ReactiveCommand.Create<TParam, Unit>(x => {methodName}(x), canExecute);
+                return
+                    $"ReactiveCommand.Create<{paramType}, {resultType}>({paramName} => {methodName}({paramName}){commaCanExec})";
+            }
+            else if (isAsync)
+            {
+                // => ReactiveCommand.CreateFromTask<TParam, TResult>(x => MyMethodAsync(x), canExecute);
+                return
+                    $"ReactiveCommand.CreateFromTask<{paramType}, {resultType}>({paramName} => {methodName}({paramName}){commaCanExec})";
+            }
+            else
+            {
+                // => ReactiveCommand.CreateFromObservable<TParam, TResult>(x => MyObservableMethod(x), canExecute);
+                return
+                    $"ReactiveCommand.CreateFromObservable<{paramType}, {resultType}>({paramName} => {methodName}({paramName}){commaCanExec})";
+            }
+        }
+
+        // ### 3) More than 1 parameter => out of scope, or you handle via aggregator, etc.
+        return "// TODO: More than 1 param not currently supported.";
     }
-
-private static string BuildReactiveCommandCreationExpression(
-    IMethodSymbol methodSymbol,
-    string paramType,         // e.g. "Unit"
-    string resultType,        // e.g. "Unit"
-    string canExecuteExpr)
-{
-    var returnType = methodSymbol.ReturnType;
-    var methodName = methodSymbol.Name;
-
-    bool isAsync = IsTaskLikeType(returnType);
-    bool isObservable = IsIObservableType(returnType);
-
-    // If there's a can-execute expression, we’ll add it last
-    string commaCanExec = string.IsNullOrEmpty(canExecuteExpr) ? "" : $", {canExecuteExpr}";
-
-    // ### 1) Method has 0 parameters?
-    if (methodSymbol.Parameters.Length == 0)
-    {
-        // Synchronous
-        if (!isAsync && !isObservable)
-        {
-            // => ReactiveCommand.Create(() => MyMethod(), canExecute);
-            return $"ReactiveCommand.Create(() => {methodName}(){commaCanExec})";
-        }
-        // Async => Task or Task<T>
-        else if (isAsync)
-        {
-            // => ReactiveCommand.CreateFromTask(() => MyAsyncMethod(), canExecute);
-            return $"ReactiveCommand.CreateFromTask(() => {methodName}(){commaCanExec})";
-        }
-        // IObservable
-        else
-        {
-            // => ReactiveCommand.CreateFromObservable(() => MyObservableMethod(), canExecute);
-            return $"ReactiveCommand.CreateFromObservable(() => {methodName}(){commaCanExec})";
-        }
-    }
-
-    // ### 2) Method has exactly 1 parameter?
-    else if (methodSymbol.Parameters.Length == 1)
-    {
-        string paramName = methodSymbol.Parameters[0].Name; // e.g. x => MyMethod(x)
-
-        if (!isAsync && !isObservable)
-        {
-            // => ReactiveCommand.Create<TParam, Unit>(x => {methodName}(x), canExecute);
-            return $"ReactiveCommand.Create<{paramType}, {resultType}>({paramName} => {methodName}({paramName}){commaCanExec})";
-        }
-        else if (isAsync)
-        {
-            // => ReactiveCommand.CreateFromTask<TParam, TResult>(x => MyMethodAsync(x), canExecute);
-            return $"ReactiveCommand.CreateFromTask<{paramType}, {resultType}>({paramName} => {methodName}({paramName}){commaCanExec})";
-        }
-        else
-        {
-            // => ReactiveCommand.CreateFromObservable<TParam, TResult>(x => MyObservableMethod(x), canExecute);
-            return $"ReactiveCommand.CreateFromObservable<{paramType}, {resultType}>({paramName} => {methodName}({paramName}){commaCanExec})";
-        }
-    }
-
-    // ### 3) More than 1 parameter => out of scope, or you handle via aggregator, etc.
-    return "// TODO: More than 1 param not currently supported.";
-}
 
 
     private static string BuildCanExecuteExpression(
@@ -260,7 +292,7 @@ private static string BuildReactiveCommandCreationExpression(
                     if (propSymbol.Type.SpecialType == SpecialType.System_Boolean)
                         return $"this.WhenAnyValue(x => x.{canExecuteProperty})";
                     if (IsIObservableOfBool(propSymbol.Type))
-                        return canExecuteProperty; 
+                        return canExecuteProperty;
                     break;
                 case IFieldSymbol fieldSymbol:
                     if (IsIObservableOfBool(fieldSymbol.Type))
@@ -288,6 +320,7 @@ private static string BuildReactiveCommandCreationExpression(
             var arg = namedType.TypeArguments[0];
             return arg.SpecialType == SpecialType.System_Boolean;
         }
+
         return false;
     }
 
@@ -319,8 +352,8 @@ private static string BuildReactiveCommandCreationExpression(
         {
             // If it's Task<T>, result = T
             // If it's Task (no T), result = Unit
-            if (methodSymbol.ReturnType is INamedTypeSymbol named && 
-                named.IsGenericType && 
+            if (methodSymbol.ReturnType is INamedTypeSymbol named &&
+                named.IsGenericType &&
                 named.Name == "Task")
             {
                 var tArg = named.TypeArguments[0];
@@ -330,8 +363,8 @@ private static string BuildReactiveCommandCreationExpression(
         else if (IsIObservableType(methodSymbol.ReturnType))
         {
             // If it's IObservable<T>, result = T
-            if (methodSymbol.ReturnType is INamedTypeSymbol named && 
-                named.IsGenericType && 
+            if (methodSymbol.ReturnType is INamedTypeSymbol named &&
+                named.IsGenericType &&
                 named.Name == "IObservable")
             {
                 var tArg = named.TypeArguments[0];
@@ -411,6 +444,7 @@ private static string BuildReactiveCommandCreationExpression(
             {
                 constraintClauses.Add(t.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
             }
+
             if (constraintClauses.Count > 0)
             {
                 sbConstraints.AppendLine($"    where {tp.Name} : {string.Join(", ", constraintClauses)}");
@@ -432,6 +466,7 @@ private static string BuildReactiveCommandCreationExpression(
             result.Add((dec, current));
             current = current.ContainingType;
         }
+
         result.Reverse();
         return result;
     }
@@ -443,6 +478,7 @@ private static string BuildReactiveCommandCreationExpression(
         {
             name = name.Replace(c, '_');
         }
+
         return name;
     }
 
