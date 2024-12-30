@@ -15,6 +15,6 @@ public partial class TestViewModel
     [GenerateCommand]
     private async Task DoSomethingAsync()
     {
-        Console.WriteLine("Hello World");
+        await Task.Delay(10);
     }
 }
