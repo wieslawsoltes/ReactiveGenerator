@@ -6,6 +6,76 @@
 
 ReactiveGenerator is a modern C# source generator that automates property change notification implementation, supporting both standard `INotifyPropertyChanged` and ReactiveUI patterns. It provides a robust, type-safe solution for generating reactive properties with comprehensive design-time support and code analysis capabilities.
 
+## Reducing Boilerplate
+
+### Before ReactiveGenerator
+
+```csharp
+public class UserViewModel : ReactiveObject
+{
+    private string _firstName;
+    public string FirstName
+    {
+        get => _firstName;
+        set => this.RaiseAndSetIfChanged(ref _firstName, value);
+    }
+
+    private string _lastName;
+    public string LastName
+    {
+        get => _lastName;
+        set => this.RaiseAndSetIfChanged(ref _lastName, value);
+    }
+
+    private readonly ObservableAsPropertyHelper<string> _fullName;
+    public string FullName => _fullName.Value;
+
+    private readonly ObservableAsPropertyHelper<bool> _hasName;
+    public bool HasName => _hasName.Value;
+
+    public UserViewModel()
+    {
+        _fullName = this.WhenAnyValue(x => x.FirstName, x => x.LastName)
+            .Select(tuple => $"{tuple.Item1} {tuple.Item2}".Trim())
+            .ToProperty(this, x => x.FullName);
+
+        _hasName = this.WhenAnyValue(x => x.FullName)
+            .Select(name => !string.IsNullOrEmpty(name))
+            .ToProperty(this, x => x.HasName);
+    }
+}
+```
+
+### After ReactiveGenerator
+
+```csharp
+[Reactive]
+public partial class UserViewModel : ReactiveObject
+{
+    public partial string FirstName { get; set; }
+    public partial string LastName { get; set; }
+
+    [ObservableAsProperty]
+    public partial string FullName { get; }
+
+    [ObservableAsProperty]
+    public partial bool HasName { get; }
+
+    public UserViewModel()
+    {
+        // Generated extension methods make the code more readable
+        this.WhenAnyFirstName()
+            .CombineLatest(this.WhenAnyLastName())
+            .Select(names => $"{names.First} {names.Second}".Trim())
+            .ToProperty(this, x => x.FullName);
+
+        this.WhenAnyFullName()
+            .Select(name => !string.IsNullOrEmpty(name))
+            .ToProperty(this, x => x.HasName);
+    }
+}
+```
+
 ## Quick Start Samples
 
 ### Basic MVVM with Reactive Properties
