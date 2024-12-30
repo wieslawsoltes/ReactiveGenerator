@@ -33,19 +33,17 @@ using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 
-partial public class TestViewModel 
+public partial class TestViewModel 
 {
-    public partial TestViewModel()
-    {
-        InitializeGeneratedCommands();
-    }
+    private ReactiveCommand<int, int> _computeCommand;
 
-    private void InitializeGeneratedCommands()
-    {
-        this.ComputeCommand = ReactiveCommand.CreateFromTask<int, int>(x => ComputeValueAsync(x));
-    }
+    public ReactiveCommand<int, int> ComputeCommand => 
+        _computeCommand;
 
-    public ReactiveCommand<int, int> ComputeCommand { get; private set; }
+    public TestViewModel()
+    {
+        _computeCommand = ReactiveCommand.CreateFromTask<int, int>(x => ComputeValueAsync(x));
+    }
 }
 
     }

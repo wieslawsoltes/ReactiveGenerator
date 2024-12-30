@@ -33,19 +33,17 @@ using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 
-partial public class TestViewModel 
+public partial class TestViewModel 
 {
-    public partial TestViewModel()
-    {
-        InitializeGeneratedCommands();
-    }
+    private ReactiveCommand<Unit, string> _fetchDataCommand;
 
-    private void InitializeGeneratedCommands()
-    {
-        this.FetchDataCommand = ReactiveCommand.CreateFromObservable<Unit, string>(() => FetchData());
-    }
+    public ReactiveCommand<Unit, string> FetchDataCommand => 
+        _fetchDataCommand;
 
-    public ReactiveCommand<Unit, string> FetchDataCommand { get; private set; }
+    public TestViewModel()
+    {
+        _fetchDataCommand = ReactiveCommand.CreateFromObservable(() => FetchData());
+    }
 }
 
     }

@@ -33,19 +33,17 @@ using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 
-partial public class TestViewModel 
+public partial class TestViewModel 
 {
-    public partial TestViewModel()
-    {
-        InitializeGeneratedCommands();
-    }
+    private ReactiveCommand<int, int> _generateNumbersCommand;
 
-    private void InitializeGeneratedCommands()
-    {
-        this.GenerateNumbersCommand = ReactiveCommand.CreateFromObservable<int, int>(count => GenerateNumbers(count));
-    }
+    public ReactiveCommand<int, int> GenerateNumbersCommand => 
+        _generateNumbersCommand;
 
-    public ReactiveCommand<int, int> GenerateNumbersCommand { get; private set; }
+    public TestViewModel()
+    {
+        _generateNumbersCommand = ReactiveCommand.CreateFromObservable<int, int>(count => GenerateNumbers(count));
+    }
 }
 
     }

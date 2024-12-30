@@ -33,20 +33,17 @@ using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 
-partial public class TestViewModel 
+public partial class TestViewModel 
 {
-    public partial TestViewModel()
-    {
-        InitializeGeneratedCommands();
-    }
+    private ReactiveCommand<global::SomeDto, Unit> _doWorkCommand;
 
-    private void InitializeGeneratedCommands()
-    {
-        this.DoWorkCommand = // ERROR: More than one parameter not handled automatically by the generator.
-ReactiveCommand.Create(() => { });
-    }
+    public ReactiveCommand<global::SomeDto, Unit> DoWorkCommand => 
+        _doWorkCommand;
 
-    public ReactiveCommand<global::SomeDto, Unit> DoWorkCommand { get; private set; }
+    public TestViewModel()
+    {
+        _doWorkCommand = // TODO: More than 1 param not currently supported.;
+    }
 }
 
     }

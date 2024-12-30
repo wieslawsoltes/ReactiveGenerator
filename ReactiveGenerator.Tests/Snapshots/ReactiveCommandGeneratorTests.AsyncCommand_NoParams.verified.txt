@@ -33,19 +33,17 @@ using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 
-partial public class TestViewModel 
+public partial class TestViewModel 
 {
-    public partial TestViewModel()
-    {
-        InitializeGeneratedCommands();
-    }
+    private ReactiveCommand<Unit, Unit> _saveDataAsyncCommand;
 
-    private void InitializeGeneratedCommands()
-    {
-        this.SaveDataAsyncCommand = ReactiveCommand.CreateFromTask<Unit, Unit>(() => SaveDataAsync());
-    }
+    public ReactiveCommand<Unit, Unit> SaveDataAsyncCommand => 
+        _saveDataAsyncCommand;
 
-    public ReactiveCommand<Unit, Unit> SaveDataAsyncCommand { get; private set; }
+    public TestViewModel()
+    {
+        _saveDataAsyncCommand = ReactiveCommand.CreateFromTask(() => SaveDataAsync());
+    }
 }
 
     }
