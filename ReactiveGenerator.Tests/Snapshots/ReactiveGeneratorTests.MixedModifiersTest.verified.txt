@@ -81,7 +81,7 @@ public partial class TestClass
         }
     }
 
-    public static partial string NewStatic
+    public new static partial string NewStatic
     {
         get => field;
         set

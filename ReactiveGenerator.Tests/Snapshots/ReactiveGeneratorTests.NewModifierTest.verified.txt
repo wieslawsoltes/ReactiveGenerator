@@ -72,7 +72,7 @@ public partial class Derived
 {
     private static readonly PropertyChangedEventArgs _nameChangedEventArgs = new PropertyChangedEventArgs(nameof(Name));
 
-    public partial string Name
+    public new partial string Name
     {
         get => field;
         set

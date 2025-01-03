@@ -21,6 +21,17 @@ public class ReactiveGenerator : IIncrementalGenerator
         {
             var modifiers = new List<string>();
 
+            // Get 'new' modifier from syntax if present
+            if (Property.DeclaringSyntaxReferences.Length > 0)
+            {
+                var syntax = Property.DeclaringSyntaxReferences[0].GetSyntax();
+                if (syntax is PropertyDeclarationSyntax propertyDeclaration &&
+                    propertyDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.NewKeyword)))
+                {
+                    modifiers.Add("new");
+                }
+            }
+
             if (Property.IsStatic)
                 modifiers.Add("static");
 

@@ -145,7 +145,7 @@ public partial class Derived
     private static readonly PropertyChangedEventArgs _requiredVirtualPropChangedEventArgs = new PropertyChangedEventArgs(nameof(RequiredVirtualProp));
     private static readonly PropertyChangedEventArgs _staticPropChangedEventArgs = new PropertyChangedEventArgs(nameof(StaticProp));
 
-    public partial string VirtualProp
+    public new partial string VirtualProp
     {
         get => field;
         set
@@ -184,7 +184,7 @@ public partial class Derived
         }
     }
 
-    public static partial string StaticProp
+    public new static partial string StaticProp
     {
         get => field;
         set
