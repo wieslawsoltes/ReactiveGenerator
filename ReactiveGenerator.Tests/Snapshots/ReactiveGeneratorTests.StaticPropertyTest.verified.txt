@@ -63,10 +63,10 @@ using System.Runtime.CompilerServices;
 /// </summary>
 public partial class TestClass
 {
-    private static readonly PropertyChangedEventArgs _staticPropChangedEventArgs = new PropertyChangedEventArgs(nameof(StaticProp));
-    private static readonly PropertyChangedEventArgs _instancePropChangedEventArgs = new PropertyChangedEventArgs(nameof(InstanceProp));
+    private static readonly PropertyChangedEventArgs _globalConfigChangedEventArgs = new PropertyChangedEventArgs(nameof(GlobalConfig));
+    private static readonly PropertyChangedEventArgs _counterChangedEventArgs = new PropertyChangedEventArgs(nameof(Counter));
 
-    public static partial string StaticProp
+    public static partial string GlobalConfig
     {
         get => field;
         set
@@ -74,12 +74,12 @@ public partial class TestClass
             if (!Equals(field, value))
             {
                 field = value;
-                OnPropertyChanged(_staticPropChangedEventArgs);
+                OnPropertyChanged(_globalConfigChangedEventArgs);
             }
         }
     }
 
-    public partial string InstanceProp
+    private static partial int Counter
     {
         get => field;
         set
@@ -87,7 +87,7 @@ public partial class TestClass
             if (!Equals(field, value))
             {
                 field = value;
-                OnPropertyChanged(_instancePropChangedEventArgs);
+                OnPropertyChanged(_counterChangedEventArgs);
             }
         }
     }

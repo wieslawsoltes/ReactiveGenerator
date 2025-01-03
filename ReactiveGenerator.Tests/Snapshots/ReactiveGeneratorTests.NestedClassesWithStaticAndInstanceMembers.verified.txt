@@ -47,7 +47,7 @@ public partial class Container
         private static readonly PropertyChangedEventArgs _staticPropChangedEventArgs = new PropertyChangedEventArgs(nameof(StaticProp));
         private static readonly PropertyChangedEventArgs _instancePropChangedEventArgs = new PropertyChangedEventArgs(nameof(InstanceProp));
 
-        public partial string StaticProp
+        public static partial string StaticProp
         {
             get => field;
             set

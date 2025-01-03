@@ -1269,4 +1269,297 @@ public class ReactiveGeneratorTests
 
         return TestAndVerify(source);
     }
+    
+    [Fact]
+    public Task RequiredPropertyTest()
+    {
+        var source = @"
+        [Reactive]
+        public partial class Person
+        {
+            public required partial string Name { get; set; }
+            public required partial int Age { get; set; }
+            public partial string? OptionalNickname { get; set; }
+        }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task RequiredPropertyWithReactiveObjectTest()
+    {
+        var source = @"
+        using ReactiveUI;
+        
+        [Reactive]
+        public partial class Person : ReactiveObject
+        {
+            public required partial string Name { get; set; }
+            public required partial DateOnly BirthDate { get; set; }
+        }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task RequiredPropertyWithInheritanceTest()
+    {
+        var source = @"
+        [Reactive]
+        public abstract partial class Entity
+        {
+            public required partial string Id { get; set; }
+        }
+
+        [Reactive]
+        public partial class Person : Entity
+        {
+            public required partial string Name { get; set; }
+        }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task RequiredPropertyWithMixedModifiersTest()
+    {
+        var source = @"
+        [Reactive]
+        public partial class BaseClass
+        {
+            public required virtual partial string VirtualRequired { get; set; }
+        }
+
+        [Reactive]
+        public partial class DerivedClass : BaseClass
+        {
+            public required override partial string VirtualRequired { get; set; }
+            public required partial string LocalRequired { get; set; }
+        }";
+
+        return TestAndVerify(source);
+    }
+    
+    [Fact]
+    public Task AllPropertyModifiersTest()
+    {
+        var source = @"
+            [Reactive]
+            public partial class Base
+            {
+                // Static properties
+                public static partial string StaticProp { get; set; }
+                protected static partial string ProtectedStaticProp { get; set; }
+
+                // Virtual and abstract properties
+                public virtual partial string VirtualProp { get; set; }
+                public abstract partial string AbstractProp { get; set; }
+
+                // Required properties
+                public required partial string RequiredProp { get; set; }
+
+                // Mixed modifiers
+                public required virtual partial string RequiredVirtualProp { get; set; }
+            }
+
+            [Reactive]
+            public partial class Derived : Base
+            {
+                // New properties (shadowing)
+                public new partial string VirtualProp { get; set; }
+
+                // Override properties
+                public override partial string AbstractProp { get; set; }
+
+                // Sealed override properties
+                public sealed override partial string RequiredVirtualProp { get; set; }
+
+                // Static shadows
+                public new static partial string StaticProp { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task StaticPropertyTest()
+    {
+        var source = @"
+            [Reactive]
+            public partial class TestClass
+            {
+                public static partial string GlobalConfig { get; set; }
+                private static partial int Counter { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task NewModifierTest()
+    {
+        var source = @"
+            [Reactive]
+            public partial class Base
+            {
+                public partial string Name { get; set; }
+            }
+
+            [Reactive]
+            public partial class Derived : Base
+            {
+                public new partial string Name { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task SealedOverrideTest()
+    {
+        var source = @"
+            [Reactive]
+            public partial class Base
+            {
+                public virtual partial string VirtualProp { get; set; }
+            }
+
+            [Reactive]
+            public partial class Derived : Base
+            {
+                public sealed override partial string VirtualProp { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task MixedModifiersTest()
+    {
+        var source = @"
+            [Reactive]
+            public partial class TestClass
+            {
+                // Static + Required
+                public static required partial string StaticRequired { get; set; }
+
+                // New + Static
+                public new static partial string NewStatic { get; set; }
+
+                // Virtual + Required
+                public virtual required partial string VirtualRequired { get; set; }
+
+                // Override + Sealed
+                public sealed override partial string SealedOverride { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task AccessorModifiersTest()
+    {
+        var source = @"
+            [Reactive]
+            public partial class TestClass
+            {
+                // Property with private setter
+                public partial string Name { get; private set; }
+
+                // Protected property with private getter
+                protected partial string Id { private get; set; }
+
+                // Internal property with protected setter
+                internal partial string Code { get; protected set; }
+
+                // Public property with protected internal setter
+                public partial string Key { get; protected internal set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task ModifierOrderingTest()
+    {
+        var source = @"
+            [Reactive]
+            public partial class Base
+            {
+                // Base class properties for override/shadowing
+                public virtual partial string VirtualProp { get; set; }
+                protected virtual partial string ProtectedVirtualProp { get; set; }
+                public static partial string StaticProp { get; set; }
+                public abstract partial string AbstractProp { get; set; }
+            }
+
+            [Reactive]
+            public partial class Derived : Base
+            {
+                // Test new modifier comes first
+                public new partial string VirtualProp { get; set; }
+                
+                // Test new + static ordering
+                public new static partial string StaticProp { get; set; }
+                
+                // Test override + sealed + required ordering
+                public sealed override required partial string ProtectedVirtualProp { get; set; }
+                
+                // Test override + required ordering
+                public override required partial string AbstractProp { get; set; }
+                
+                // Test required only
+                public required partial string RequiredProp { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task InheritanceModifiersTest()
+    {
+        var source = @"
+            [Reactive]
+            public abstract partial class BaseClass
+            {
+                // Virtual property
+                public virtual partial string VirtualProp { get; set; }
+                
+                // Abstract property
+                public abstract partial string AbstractProp { get; set; }
+            }
+
+            [Reactive]
+            public partial class DerivedClass : BaseClass
+            {
+                // Override property
+                public override partial string VirtualProp { get; set; }
+                
+                // Sealed override property
+                public sealed override partial string AbstractProp { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task RequiredModifierTest()
+    {
+        var source = @"
+            [Reactive]
+            public partial class TestClass
+            {
+                // Required property
+                public required partial string Name { get; set; }
+                
+                // Required with virtual
+                public virtual required partial string VirtualRequired { get; set; }
+                
+                // Required with different access levels
+                protected required partial string ProtectedRequired { get; set; }
+                private required partial string PrivateRequired { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
 }
