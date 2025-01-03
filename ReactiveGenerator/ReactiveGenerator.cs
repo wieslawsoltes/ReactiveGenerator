@@ -21,12 +21,33 @@ public class ReactiveGenerator : IIncrementalGenerator
         {
             var modifiers = new List<string>();
 
+            // Get 'new' modifier from syntax if present
+            if (Property.DeclaringSyntaxReferences.Length > 0)
+            {
+                var syntax = Property.DeclaringSyntaxReferences[0].GetSyntax();
+                if (syntax is PropertyDeclarationSyntax propertyDeclaration &&
+                    propertyDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.NewKeyword)))
+                {
+                    modifiers.Add("new");
+                }
+            }
+
+            if (Property.IsStatic)
+                modifiers.Add("static");
+
             if (Property.IsOverride)
                 modifiers.Add("override");
             else if (Property.IsVirtual)
                 modifiers.Add("virtual");
             else if (Property.IsAbstract)
                 modifiers.Add("abstract");
+
+            // sealed only makes sense with override
+            if (Property.IsSealed && Property.IsOverride)
+                modifiers.Add("sealed");
+
+            if (Property.IsRequired)
+                modifiers.Add("required");
 
             return string.Join(" ", modifiers);
         }
@@ -711,11 +732,9 @@ public class ReactiveGenerator : IIncrementalGenerator
         var getterAccessibility = TypeHelper.GetAccessorAccessibility(property.GetMethod);
         var setterAccessibility = TypeHelper.GetAccessorAccessibility(property.SetMethod);
 
-        // Create PropertyInfo to get modifiers
         var propInfo = new PropertyInfo(property, false, false, false);
         var modifiers = propInfo.GetPropertyModifiers();
 
-        // Combine modifiers with accessibility and partial
         var declarationModifiers = new List<string> { propertyAccessibility };
         if (!string.IsNullOrEmpty(modifiers))
             declarationModifiers.Add(modifiers);

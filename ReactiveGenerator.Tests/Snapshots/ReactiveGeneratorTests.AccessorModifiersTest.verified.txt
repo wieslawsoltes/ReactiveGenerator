@@ -63,31 +63,59 @@ using System.Runtime.CompilerServices;
 /// </summary>
 public partial class TestClass
 {
-    private static readonly PropertyChangedEventArgs _staticPropChangedEventArgs = new PropertyChangedEventArgs(nameof(StaticProp));
-    private static readonly PropertyChangedEventArgs _instancePropChangedEventArgs = new PropertyChangedEventArgs(nameof(InstanceProp));
+    private static readonly PropertyChangedEventArgs _nameChangedEventArgs = new PropertyChangedEventArgs(nameof(Name));
+    private static readonly PropertyChangedEventArgs _idChangedEventArgs = new PropertyChangedEventArgs(nameof(Id));
+    private static readonly PropertyChangedEventArgs _codeChangedEventArgs = new PropertyChangedEventArgs(nameof(Code));
+    private static readonly PropertyChangedEventArgs _keyChangedEventArgs = new PropertyChangedEventArgs(nameof(Key));
 
-    public static partial string StaticProp
+    public partial string Name
     {
         get => field;
-        set
+        private set
         {
             if (!Equals(field, value))
             {
                 field = value;
-                OnPropertyChanged(_staticPropChangedEventArgs);
+                OnPropertyChanged(_nameChangedEventArgs);
             }
         }
     }
 
-    public partial string InstanceProp
+    protected partial string Id
     {
-        get => field;
+        private get => field;
         set
         {
             if (!Equals(field, value))
             {
                 field = value;
-                OnPropertyChanged(_instancePropChangedEventArgs);
+                OnPropertyChanged(_idChangedEventArgs);
+            }
+        }
+    }
+
+    internal partial string Code
+    {
+        get => field;
+        protected set
+        {
+            if (!Equals(field, value))
+            {
+                field = value;
+                OnPropertyChanged(_codeChangedEventArgs);
+            }
+        }
+    }
+
+    public partial string Key
+    {
+        get => field;
+        protected internal set
+        {
+            if (!Equals(field, value))
+            {
+                field = value;
+                OnPropertyChanged(_keyChangedEventArgs);
             }
         }
     }

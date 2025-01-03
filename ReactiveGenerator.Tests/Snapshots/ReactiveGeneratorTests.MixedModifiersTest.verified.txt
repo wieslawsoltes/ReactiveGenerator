@@ -63,10 +63,12 @@ using System.Runtime.CompilerServices;
 /// </summary>
 public partial class TestClass
 {
-    private static readonly PropertyChangedEventArgs _staticPropChangedEventArgs = new PropertyChangedEventArgs(nameof(StaticProp));
-    private static readonly PropertyChangedEventArgs _instancePropChangedEventArgs = new PropertyChangedEventArgs(nameof(InstanceProp));
+    private static readonly PropertyChangedEventArgs _staticRequiredChangedEventArgs = new PropertyChangedEventArgs(nameof(StaticRequired));
+    private static readonly PropertyChangedEventArgs _newStaticChangedEventArgs = new PropertyChangedEventArgs(nameof(NewStatic));
+    private static readonly PropertyChangedEventArgs _virtualRequiredChangedEventArgs = new PropertyChangedEventArgs(nameof(VirtualRequired));
+    private static readonly PropertyChangedEventArgs _sealedOverrideChangedEventArgs = new PropertyChangedEventArgs(nameof(SealedOverride));
 
-    public static partial string StaticProp
+    public static partial string StaticRequired
     {
         get => field;
         set
@@ -74,12 +76,12 @@ public partial class TestClass
             if (!Equals(field, value))
             {
                 field = value;
-                OnPropertyChanged(_staticPropChangedEventArgs);
+                OnPropertyChanged(_staticRequiredChangedEventArgs);
             }
         }
     }
 
-    public partial string InstanceProp
+    public new static partial string NewStatic
     {
         get => field;
         set
@@ -87,7 +89,33 @@ public partial class TestClass
             if (!Equals(field, value))
             {
                 field = value;
-                OnPropertyChanged(_instancePropChangedEventArgs);
+                OnPropertyChanged(_newStaticChangedEventArgs);
+            }
+        }
+    }
+
+    public virtual required partial string VirtualRequired
+    {
+        get => field;
+        set
+        {
+            if (!Equals(field, value))
+            {
+                field = value;
+                OnPropertyChanged(_virtualRequiredChangedEventArgs);
+            }
+        }
+    }
+
+    public override sealed partial string SealedOverride
+    {
+        get => field;
+        set
+        {
+            if (!Equals(field, value))
+            {
+                field = value;
+                OnPropertyChanged(_sealedOverrideChangedEventArgs);
             }
         }
     }
