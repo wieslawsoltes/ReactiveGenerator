@@ -21,12 +21,21 @@ public class ReactiveGenerator : IIncrementalGenerator
         {
             var modifiers = new List<string>();
 
+            if (Property.IsStatic)
+                modifiers.Add("static");
+
             if (Property.IsOverride)
                 modifiers.Add("override");
             else if (Property.IsVirtual)
                 modifiers.Add("virtual");
             else if (Property.IsAbstract)
                 modifiers.Add("abstract");
+
+            if (Property.IsSealed)
+                modifiers.Add("sealed");
+
+            if (Property.IsRequired)
+                modifiers.Add("required");
 
             return string.Join(" ", modifiers);
         }
@@ -711,11 +720,9 @@ public class ReactiveGenerator : IIncrementalGenerator
         var getterAccessibility = TypeHelper.GetAccessorAccessibility(property.GetMethod);
         var setterAccessibility = TypeHelper.GetAccessorAccessibility(property.SetMethod);
 
-        // Create PropertyInfo to get modifiers
         var propInfo = new PropertyInfo(property, false, false, false);
         var modifiers = propInfo.GetPropertyModifiers();
 
-        // Combine modifiers with accessibility and partial
         var declarationModifiers = new List<string> { propertyAccessibility };
         if (!string.IsNullOrEmpty(modifiers))
             declarationModifiers.Add(modifiers);
