@@ -31,7 +31,8 @@ public class ReactiveGenerator : IIncrementalGenerator
             else if (Property.IsAbstract)
                 modifiers.Add("abstract");
 
-            if (Property.IsSealed)
+            // sealed only makes sense with override
+            if (Property.IsSealed && Property.IsOverride)
                 modifiers.Add("sealed");
 
             if (Property.IsRequired)
