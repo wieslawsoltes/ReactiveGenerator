@@ -1578,22 +1578,6 @@ public class ReactiveGeneratorTests
     }
 
     [Fact]
-    public Task RefReturnTest()
-    {
-        var source = @"
-            [Reactive]
-            public partial class Container
-            {
-                private int _value;
-                
-                public ref partial int RefValue { get; }
-                public ref readonly partial int ReadOnlyRefValue { get; }
-            }";
-
-        return TestAndVerify(source);
-    }
-
-    [Fact]
     public Task ReadOnlyPropertyTest()
     {
         var source = @"
@@ -1602,6 +1586,70 @@ public class ReactiveGeneratorTests
             {
                 public partial string ReadOnlyProp { get; }
                 public readonly partial string ExplicitReadOnlyProp { get; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task RefPropertyTest()
+    {
+        var source = @"
+            [Reactive]
+            public partial class Container
+            {
+                // Basic ref property
+                public partial ref int RefValue { get; }
+
+                // Ref readonly property
+                public partial ref readonly int ReadOnlyRefValue { get; }
+
+                // Ref with modifiers
+                public static partial ref int StaticRefValue { get; }
+                
+                // Virtual ref property
+                public virtual partial ref int VirtualRefValue { get; }
+                
+                // Override ref property
+                public override partial ref int BaseRefValue { get; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task RefReadonlyPropertyTest()
+    {
+        var source = @"
+            [Reactive]
+            public partial class Container
+            {
+                // Basic ref readonly property
+                public partial ref readonly int ReadOnlyValue { get; }
+
+                // Ref readonly with other modifiers
+                public static partial ref readonly int StaticReadOnlyValue { get; }
+                public virtual partial ref readonly int VirtualReadOnlyValue { get; }
+                
+                // Try with different types
+                public partial ref readonly string StringValue { get; }
+                public partial ref readonly System.DateTime DateValue { get; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task RefReturnTest()
+    {
+        var source = @"
+            [Reactive]
+            public partial class Container
+            {
+                private int _value;
+                
+                public partial ref int RefValue { get; }
+                public partial ref readonly int ReadOnlyRefValue { get; }
             }";
 
         return TestAndVerify(source);
@@ -1618,61 +1666,13 @@ public class ReactiveGeneratorTests
                 public required partial string Id { get; init; }
                 
                 // Ref return with static
-                public static ref partial int Counter { get; }
+                public static partial ref int Counter { get; }
                 
                 // Init with virtual
                 public virtual partial string Name { get; init; }
                 
                 // Readonly with override
                 public override partial string ToString { get; }
-            }";
-
-        return TestAndVerify(source);
-    }
-    
-    [Fact]
-    public Task RefPropertyTest()
-    {
-        var source = @"
-            [Reactive]
-            public partial class Container
-            {
-                // Basic ref property
-                public ref partial int RefValue { get; }
-
-                // Ref readonly property
-                public ref readonly partial int ReadOnlyRefValue { get; }
-
-                // Ref with modifiers
-                public static ref partial int StaticRefValue { get; }
-                
-                // Virtual ref property
-                public virtual ref partial int VirtualRefValue { get; }
-                
-                // Override ref property
-                public override ref partial int BaseRefValue { get; }
-            }";
-
-        return TestAndVerify(source);
-    }
-
-    [Fact]
-    public Task RefReadonlyPropertyTest()
-    {
-        var source = @"
-            [Reactive]
-            public partial class Container
-            {
-                // Basic ref readonly property
-                public ref readonly partial int ReadOnlyValue { get; }
-
-                // Ref readonly with other modifiers
-                public static ref readonly partial int StaticReadOnlyValue { get; }
-                public virtual ref readonly partial int VirtualReadOnlyValue { get; }
-                
-                // Try with different types
-                public ref readonly partial string StringValue { get; }
-                public ref readonly partial System.DateTime DateValue { get; }
             }";
 
         return TestAndVerify(source);
@@ -1686,10 +1686,10 @@ public class ReactiveGeneratorTests
             public partial class Container
             {
                 // Ref readonly should not generate a setter
-                public ref readonly partial int ReadOnlyValue { get; set; }
+                public partial ref readonly int ReadOnlyValue { get; set; }
 
                 // Regular ref can have a setter
-                public ref partial int MutableValue { get; set; }
+                public partial ref int MutableValue { get; set; }
             }";
 
         return TestAndVerify(source);
