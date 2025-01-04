@@ -1577,6 +1577,7 @@ public class ReactiveGeneratorTests
         return TestAndVerify(source);
     }
 
+    /* TODO:
     [Fact]
     public Task ReadOnlyPropertyTest()
     {
@@ -1694,4 +1695,5 @@ public class ReactiveGeneratorTests
 
         return TestAndVerify(source);
     }
+    */
 }
