@@ -28,7 +28,7 @@ public partial class MainWindow : Window
         var test = new Test
         {
             Person = person,
-            Car = new Car { Make = "Toyota" },
+            Car = new Car { Make = "Toyota", UniqueId = "123"},
             OaphViewModel = new OaphViewModel<string>()
         };
 

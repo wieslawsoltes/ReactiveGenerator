@@ -1562,4 +1562,138 @@ public class ReactiveGeneratorTests
 
         return TestAndVerify(source);
     }
+    
+    [Fact]
+    public Task InitAccessorTest()
+    {
+        var source = @"
+            [Reactive]
+            public partial class Person
+            {
+                public partial string Name { get; init; }
+                public required partial string Id { get; init; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    /* TODO:
+    [Fact]
+    public Task ReadOnlyPropertyTest()
+    {
+        var source = @"
+            [Reactive]
+            public partial class TestClass
+            {
+                public partial string ReadOnlyProp { get; }
+                public readonly partial string ExplicitReadOnlyProp { get; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task RefPropertyTest()
+    {
+        var source = @"
+            [Reactive]
+            public partial class Container
+            {
+                // Basic ref property
+                public partial ref int RefValue { get; }
+
+                // Ref readonly property
+                public partial ref readonly int ReadOnlyRefValue { get; }
+
+                // Ref with modifiers
+                public static partial ref int StaticRefValue { get; }
+                
+                // Virtual ref property
+                public virtual partial ref int VirtualRefValue { get; }
+                
+                // Override ref property
+                public override partial ref int BaseRefValue { get; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task RefReadonlyPropertyTest()
+    {
+        var source = @"
+            [Reactive]
+            public partial class Container
+            {
+                // Basic ref readonly property
+                public partial ref readonly int ReadOnlyValue { get; }
+
+                // Ref readonly with other modifiers
+                public static partial ref readonly int StaticReadOnlyValue { get; }
+                public virtual partial ref readonly int VirtualReadOnlyValue { get; }
+                
+                // Try with different types
+                public partial ref readonly string StringValue { get; }
+                public partial ref readonly System.DateTime DateValue { get; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task RefReturnTest()
+    {
+        var source = @"
+            [Reactive]
+            public partial class Container
+            {
+                private int _value;
+                
+                public partial ref int RefValue { get; }
+                public partial ref readonly int ReadOnlyRefValue { get; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task MixedFeaturesTest()
+    {
+        var source = @"
+            [Reactive]
+            public partial class AdvancedClass
+            {
+                // Init with required
+                public required partial string Id { get; init; }
+                
+                // Ref return with static
+                public static partial ref int Counter { get; }
+                
+                // Init with virtual
+                public virtual partial string Name { get; init; }
+                
+                // Readonly with override
+                public override partial string ToString { get; }
+            }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task RefPropertyInvalidCombinationsTest()
+    {
+        var source = @"
+            [Reactive]
+            public partial class Container
+            {
+                // Ref readonly should not generate a setter
+                public partial ref readonly int ReadOnlyValue { get; set; }
+
+                // Regular ref can have a setter
+                public partial ref int MutableValue { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
+    */
 }

@@ -17,6 +17,28 @@ public class ReactiveGenerator : IIncrementalGenerator
         bool HasIgnoreAttribute,
         bool HasImplementation)
     {
+        public RefKind RefKind => GetRefKind();
+    
+        private RefKind GetRefKind()
+        {
+            if (Property.DeclaringSyntaxReferences.Length > 0)
+            {
+                var syntax = Property.DeclaringSyntaxReferences[0].GetSyntax() as PropertyDeclarationSyntax;
+                if (syntax != null)
+                {
+                    // Check for both ref and readonly modifiers
+                    bool hasRef = syntax.Modifiers.Any(m => m.IsKind(SyntaxKind.RefKeyword));
+                    bool hasReadOnly = syntax.Modifiers.Any(m => m.IsKind(SyntaxKind.ReadOnlyKeyword));
+            
+                    if (hasRef)
+                    {
+                        return hasReadOnly ? RefKind.RefReadOnly : RefKind.Ref;
+                    }
+                }
+            }
+            return RefKind.None;
+        }
+
         public string GetPropertyModifiers()
         {
             var modifiers = new List<string>();
@@ -681,32 +703,68 @@ public class ReactiveGenerator : IIncrementalGenerator
             declarationModifiers.Add(modifiers);
         declarationModifiers.Add("partial");
 
-        sb.AppendLine($"{indent}{string.Join(" ", declarationModifiers)} {propertyType} {propertyName}");
+        // Add ref and readonly modifiers to declaration
+        var refPrefix = propInfo.RefKind switch
+        {
+            RefKind.Ref => "ref ",
+            RefKind.RefReadOnly => "ref readonly ",
+            _ => ""
+        };
+
+        sb.AppendLine($"{indent}{string.Join(" ", declarationModifiers)} {refPrefix}{propertyType} {propertyName}");
         sb.AppendLine($"{indent}{{");
 
-        if (isReactiveObject)
-        {
-            var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
-            var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
+        var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
 
-            sb.AppendLine($"{indent}    {getterModifier}get => {backingFieldName};");
-            if (property.SetMethod != null)
+        // Handle ref returns in getter
+        if (propInfo.RefKind != RefKind.None)
+        {
+            // Ref properties can only return references to fields
+            sb.AppendLine($"{indent}    {getterModifier}get => ref {backingFieldName};");
+        
+            // Don't generate a setter for ref readonly properties
+            if (property.SetMethod != null && propInfo.RefKind == RefKind.Ref)
             {
-                sb.AppendLine(
-                    $"{indent}    {setterModifier}set => this.RaiseAndSetIfChanged(ref {backingFieldName}, value);");
+                var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
+                var setterType = property.SetMethod.IsInitOnly ? "init" : "set";
+            
+                if (isReactiveObject)
+                {
+                    sb.AppendLine($"{indent}    {setterModifier}{setterType} => this.RaiseAndSetIfChanged(ref {backingFieldName}, value);");
+                }
+                else
+                {
+                    var eventArgsFieldName = GetEventArgsFieldName(propertyName);
+                    sb.AppendLine($"{indent}    {setterModifier}{setterType}");
+                    sb.AppendLine($"{indent}    {{");
+                    sb.AppendLine($"{indent}        if (!Equals({backingFieldName}, value))");
+                    sb.AppendLine($"{indent}        {{");
+                    sb.AppendLine($"{indent}            {backingFieldName} = value;");
+                    sb.AppendLine($"{indent}            OnPropertyChanged({eventArgsFieldName});");
+                    sb.AppendLine($"{indent}        }}");
+                    sb.AppendLine($"{indent}    }}");
+                }
             }
         }
         else
         {
-            var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
-            var eventArgsFieldName = GetEventArgsFieldName(propertyName);
-
             sb.AppendLine($"{indent}    {getterModifier}get => {backingFieldName};");
+        }
 
-            if (property.SetMethod != null)
+        // Only generate setter if not ref readonly
+        if (property.SetMethod != null && propInfo.RefKind != RefKind.RefReadOnly)
+        {
+            var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
+            var setterType = property.SetMethod.IsInitOnly ? "init" : "set";
+            
+            if (isReactiveObject)
             {
-                var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
-                sb.AppendLine($"{indent}    {setterModifier}set");
+                sb.AppendLine($"{indent}    {setterModifier}{setterType} => this.RaiseAndSetIfChanged(ref {backingFieldName}, value);");
+            }
+            else
+            {
+                var eventArgsFieldName = GetEventArgsFieldName(propertyName);
+                sb.AppendLine($"{indent}    {setterModifier}{setterType}");
                 sb.AppendLine($"{indent}    {{");
                 sb.AppendLine($"{indent}        if (!Equals({backingFieldName}, value))");
                 sb.AppendLine($"{indent}        {{");
@@ -740,31 +798,68 @@ public class ReactiveGenerator : IIncrementalGenerator
             declarationModifiers.Add(modifiers);
         declarationModifiers.Add("partial");
 
-        sb.AppendLine($"{indent}{string.Join(" ", declarationModifiers)} {propertyType} {propertyName}");
+        // Add ref and readonly modifiers to declaration
+        var refPrefix = propInfo.RefKind switch
+        {
+            RefKind.Ref => "ref ",
+            RefKind.RefReadOnly => "ref readonly ",
+            _ => ""
+        };
+
+        sb.AppendLine($"{indent}{string.Join(" ", declarationModifiers)} {refPrefix}{propertyType} {propertyName}");
         sb.AppendLine($"{indent}{{");
 
-        if (isReactiveObject)
-        {
-            var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
-            var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
+        var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
 
-            sb.AppendLine($"{indent}    {getterModifier}get => field;");
-            if (property.SetMethod != null)
+        // Handle ref returns in getter
+        if (propInfo.RefKind != RefKind.None)
+        {
+            // Ref properties can only return references to fields
+            sb.AppendLine($"{indent}    {getterModifier}get => ref field;");
+        
+            // Don't generate a setter for ref readonly properties
+            if (property.SetMethod != null && propInfo.RefKind == RefKind.Ref)
             {
-                sb.AppendLine($"{indent}    {setterModifier}set => this.RaiseAndSetIfChanged(ref field, value);");
+                var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
+                var setterType = property.SetMethod.IsInitOnly ? "init" : "set";
+            
+                if (isReactiveObject)
+                {
+                    sb.AppendLine($"{indent}    {setterModifier}{setterType} => this.RaiseAndSetIfChanged(ref field, value);");
+                }
+                else
+                {
+                    var eventArgsFieldName = GetEventArgsFieldName(propertyName);
+                    sb.AppendLine($"{indent}    {setterModifier}{setterType}");
+                    sb.AppendLine($"{indent}    {{");
+                    sb.AppendLine($"{indent}        if (!Equals(field, value))");
+                    sb.AppendLine($"{indent}        {{");
+                    sb.AppendLine($"{indent}            field = value;");
+                    sb.AppendLine($"{indent}            OnPropertyChanged({eventArgsFieldName});");
+                    sb.AppendLine($"{indent}        }}");
+                    sb.AppendLine($"{indent}    }}");
+                }
             }
         }
         else
         {
-            var getterModifier = getterAccessibility != propertyAccessibility ? $"{getterAccessibility} " : "";
-            var eventArgsFieldName = GetEventArgsFieldName(propertyName);
-
             sb.AppendLine($"{indent}    {getterModifier}get => field;");
+        }
 
-            if (property.SetMethod != null)
+        // Only generate setter if not ref readonly
+        if (property.SetMethod != null && propInfo.RefKind != RefKind.RefReadOnly)
+        {
+            var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
+            var setterType = property.SetMethod.IsInitOnly ? "init" : "set";
+            
+            if (isReactiveObject)
             {
-                var setterModifier = setterAccessibility != propertyAccessibility ? $"{setterAccessibility} " : "";
-                sb.AppendLine($"{indent}    {setterModifier}set");
+                sb.AppendLine($"{indent}    {setterModifier}{setterType} => this.RaiseAndSetIfChanged(ref field, value);");
+            }
+            else
+            {
+                var eventArgsFieldName = GetEventArgsFieldName(propertyName);
+                sb.AppendLine($"{indent}    {setterModifier}{setterType}");
                 sb.AppendLine($"{indent}    {{");
                 sb.AppendLine($"{indent}        if (!Equals(field, value))");
                 sb.AppendLine($"{indent}        {{");

@@ -46,7 +46,7 @@ public partial class TestViewModel
     public partial string InitOnlyProp
     {
         get => field;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        init => this.RaiseAndSetIfChanged(ref field, value);
     }
 
     public partial string GetOnlyProp
