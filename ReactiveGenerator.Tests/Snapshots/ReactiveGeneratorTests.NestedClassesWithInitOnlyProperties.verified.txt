@@ -63,7 +63,7 @@ public partial class Container
         public partial string InitOnlyProp
         {
             get => field;
-            set
+            init
             {
                 if (!Equals(field, value))
                 {

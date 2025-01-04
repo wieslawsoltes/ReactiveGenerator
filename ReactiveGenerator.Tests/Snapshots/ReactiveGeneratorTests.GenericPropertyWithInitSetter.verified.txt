@@ -42,7 +42,7 @@ internal partial class GenericViewModel<T>
     public partial T InitValue
     {
         get => field;
-        set
+        init
         {
             if (!Equals(field, value))
             {
