@@ -1577,6 +1577,68 @@ public class ReactiveGeneratorTests
         return TestAndVerify(source);
     }
 
+    [Fact]
+    public Task ClassWithNotNullConstraint()
+    {
+        var source = @"
+        [Reactive]
+        public partial class Cache<TKey, TValue> 
+            where TKey : notnull 
+            where TValue : class
+        {
+            public partial TValue? Value { get; set; }
+            public partial TKey Key { get; set; }
+        }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task ClassWithMultipleComplexConstraints()
+    {
+        var source = @"
+        [Reactive]
+        public partial class AdvancedCache<T, TKey, TValue>
+            where T : class, IDisposable
+            where TKey : notnull
+            where TValue : struct, IComparable<TValue>
+        {
+            public partial T? Instance { get; set; }
+            public partial TKey Key { get; set; }
+            public partial TValue Value { get; set; }
+        }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task ClassWithNullableReferenceConstraint()
+    {
+        var source = @"
+        [Reactive]
+        public partial class Container<T>
+            where T : class?
+        {
+            public partial T? Value { get; set; }
+        }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task ClassWithUnmanagedConstraint()
+    {
+        var source = @"
+        [Reactive]
+        public partial class UnmanagedContainer<T>
+            where T : unmanaged
+        {
+            public partial T Value { get; set; }
+        }";
+
+        return TestAndVerify(source);
+    }
+    
     /* TODO:
     [Fact]
     public Task ReadOnlyPropertyTest()
