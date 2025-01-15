@@ -507,6 +507,8 @@ public class ReactiveGenerator : IIncrementalGenerator
                     paramConstraints.Add("struct");
                 if (typeParam.HasConstructorConstraint)
                     paramConstraints.Add("new()");
+                if (typeParam.HasNotNullConstraint)
+                    paramConstraints.Add("notnull");
 
                 var typeConstraint = string.Join(", ", typeParam.ConstraintTypes.Select(t =>
                     t.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)));
