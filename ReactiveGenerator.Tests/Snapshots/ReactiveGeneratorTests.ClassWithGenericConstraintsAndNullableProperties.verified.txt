@@ -33,7 +33,7 @@ sealed class ReactiveAttribute : Attribute
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-public partial class TestClass<T, U> : INotifyPropertyChanged where T : class, IDisposable where U : struct, IComparable<U>
+public partial class TestClass<T, U> : INotifyPropertyChanged where T : class?, IDisposable where U : struct, IComparable<U>
 {
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -61,7 +61,7 @@ using System.Runtime.CompilerServices;
 /// <summary>
 /// A partial class implementation for TestClass{T, U}.
 /// </summary>
-public partial class TestClass<T, U> where T : class, IDisposable where U : struct, IComparable<U>
+public partial class TestClass<T, U> where T : class?, IDisposable where U : struct, IComparable<U>
 {
     private static readonly PropertyChangedEventArgs _nullableRefChangedEventArgs = new PropertyChangedEventArgs(nameof(NullableRef));
     private static readonly PropertyChangedEventArgs _nullableStructChangedEventArgs = new PropertyChangedEventArgs(nameof(NullableStruct));
