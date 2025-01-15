@@ -355,7 +355,6 @@ public class ReactiveGenerator : IIncrementalGenerator
                 types.Insert(0, current);
                 current = current.ContainingType;
             }
-
             return types;
         }
 
@@ -370,30 +369,7 @@ public class ReactiveGenerator : IIncrementalGenerator
         if (classSymbol.TypeParameters.Length > 0)
         {
             typeParameters = "<" + string.Join(", ", classSymbol.TypeParameters.Select(tp => tp.Name)) + ">";
-
-            var constraints = new List<string>();
-            foreach (var typeParam in classSymbol.TypeParameters)
-            {
-                var paramConstraints = new List<string>();
-
-                if (typeParam.HasReferenceTypeConstraint)
-                    paramConstraints.Add("class");
-                if (typeParam.HasValueTypeConstraint)
-                    paramConstraints.Add("struct");
-                if (typeParam.HasConstructorConstraint)
-                    paramConstraints.Add("new()");
-
-                var typeConstraint = string.Join(", ", typeParam.ConstraintTypes.Select(t =>
-                    t.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)));
-                if (!string.IsNullOrEmpty(typeConstraint))
-                    paramConstraints.Add(typeConstraint);
-
-                if (paramConstraints.Count > 0)
-                    constraints.Add($"where {typeParam.Name} : {string.Join(", ", paramConstraints)}");
-            }
-
-            if (constraints.Count > 0)
-                typeConstraints = " " + string.Join(" ", constraints);
+            typeConstraints = TypeHelper.GenerateTypeConstraints(classSymbol);
         }
 
         var sb = new StringBuilder();
@@ -414,21 +390,31 @@ public class ReactiveGenerator : IIncrementalGenerator
         foreach (var containingType in containingTypes)
         {
             var containingTypeAccessibility = containingType.DeclaredAccessibility.ToString().ToLowerInvariant();
-            sb.AppendLine($"{indent}{containingTypeAccessibility} partial class {containingType.Name}");
+            
+            // Handle containing type's generic parameters if any
+            var containingTypeParams = "";
+            var containingTypeConstraints = "";
+            if (containingType.TypeParameters.Length > 0)
+            {
+                containingTypeParams = "<" + string.Join(", ", containingType.TypeParameters.Select(tp => tp.Name)) + ">";
+                containingTypeConstraints = TypeHelper.GenerateTypeConstraints(containingType);
+            }
+            
+            sb.AppendLine($"{indent}{containingTypeAccessibility} partial class {containingType.Name}{containingTypeParams}{containingTypeConstraints}");
             sb.AppendLine($"{indent}{{");
             indent += "    ";
         }
 
         var accessibility = classSymbol.DeclaredAccessibility.ToString().ToLowerInvariant();
-        sb.AppendLine(
-            $"{indent}{accessibility} partial class {classSymbol.Name}{typeParameters} : INotifyPropertyChanged{typeConstraints}");
+        sb.AppendLine($"{indent}{accessibility} partial class {classSymbol.Name}{typeParameters} : INotifyPropertyChanged{typeConstraints}");
         sb.AppendLine($"{indent}{{");
-
+        
+        // Add PropertyChanged event
         sb.AppendLine($"{indent}    public event PropertyChangedEventHandler? PropertyChanged;");
         sb.AppendLine();
 
-        sb.AppendLine(
-            $"{indent}    protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)");
+        // Add OnPropertyChanged methods
+        sb.AppendLine($"{indent}    protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)");
         sb.AppendLine($"{indent}    {{");
         sb.AppendLine($"{indent}        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));");
         sb.AppendLine($"{indent}    }}");
@@ -438,8 +424,10 @@ public class ReactiveGenerator : IIncrementalGenerator
         sb.AppendLine($"{indent}    {{");
         sb.AppendLine($"{indent}        PropertyChanged?.Invoke(this, args);");
         sb.AppendLine($"{indent}    }}");
+
         sb.AppendLine($"{indent}}}");
 
+        // Close any containing type declarations
         for (int i = 0; i < containingTypes.Count; i++)
         {
             indent = indent.Substring(0, indent.Length - 4);
@@ -494,31 +482,7 @@ public class ReactiveGenerator : IIncrementalGenerator
         if (classSymbol.TypeParameters.Length > 0)
         {
             typeParameters = "<" + string.Join(", ", classSymbol.TypeParameters.Select(tp => tp.Name)) + ">";
-
-            // Add constraints for each type parameter
-            var constraints = new List<string>();
-            foreach (var typeParam in classSymbol.TypeParameters)
-            {
-                var paramConstraints = new List<string>();
-
-                if (typeParam.HasReferenceTypeConstraint)
-                    paramConstraints.Add("class");
-                if (typeParam.HasValueTypeConstraint)
-                    paramConstraints.Add("struct");
-                if (typeParam.HasConstructorConstraint)
-                    paramConstraints.Add("new()");
-
-                var typeConstraint = string.Join(", ", typeParam.ConstraintTypes.Select(t =>
-                    t.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)));
-                if (!string.IsNullOrEmpty(typeConstraint))
-                    paramConstraints.Add(typeConstraint);
-
-                if (paramConstraints.Count > 0)
-                    constraints.Add($"where {typeParam.Name} : {string.Join(", ", paramConstraints)}");
-            }
-
-            if (constraints.Count > 0)
-                typeConstraints = " " + string.Join(" ", constraints);
+            typeConstraints = TypeHelper.GenerateTypeConstraints(classSymbol);
         }
 
         var sb = new StringBuilder();
