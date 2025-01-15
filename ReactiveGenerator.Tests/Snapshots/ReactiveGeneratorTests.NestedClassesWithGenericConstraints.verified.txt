@@ -9,7 +9,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-public partial class Container
+public partial class Container<T> where T : class
 {
     public partial class Nested<U> : INotifyPropertyChanged where U : struct
     {
