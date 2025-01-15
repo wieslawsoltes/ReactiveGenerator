@@ -1638,7 +1638,35 @@ public class ReactiveGeneratorTests
 
         return TestAndVerify(source);
     }
-    
+ 
+    [Fact]
+    public Task AllPossibleConstraints()
+    {
+        var source = @"
+            public interface ITestInterface { }
+            public class BaseClass { }
+
+            [Reactive]
+            public partial class ConstraintsTest<T1, T2, T3, T4, T5, T6, T7>
+                where T1 : class, ITestInterface, new()           // Reference type + interface + constructor
+                where T2 : struct, IComparable<T2>               // Value type + interface with self
+                where T3 : notnull                               // Non-null constraint
+                where T4 : unmanaged                             // Unmanaged constraint
+                where T5 : BaseClass                             // Base class constraint
+                where T6 : T1                                    // Another type parameter constraint
+                where T7 : class?                                // Nullable reference type constraint
+            {
+                public partial T1? Property1 { get; set; }
+                public partial T2 Property2 { get; set; }
+                public partial T3 Property3 { get; set; }
+                public partial T4 Property4 { get; set; }
+                public partial T5? Property5 { get; set; }
+                public partial T6? Property6 { get; set; }
+                public partial T7? Property7 { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
     /* TODO:
     [Fact]
     public Task ReadOnlyPropertyTest()
