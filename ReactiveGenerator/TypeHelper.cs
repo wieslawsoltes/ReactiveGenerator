@@ -254,4 +254,67 @@ internal static class TypeHelper
         ProcessNamespaceTypes(compilation.GlobalNamespace);
         return result;
     }
+    
+    public static string GetTypeConstraints(ITypeParameterSymbol typeParam)
+    {
+        var constraints = new List<string>();
+
+        // Handle null constraints first
+        if (typeParam.HasNotNullConstraint)
+        {
+            constraints.Add("notnull");
+        }
+        else if (typeParam.HasUnmanagedTypeConstraint)
+        {
+            constraints.Add("unmanaged");
+        }
+
+        // Handle reference/value type constraints
+        if (typeParam.HasReferenceTypeConstraint)
+        {
+            // Handle nullable reference type constraint
+            if (typeParam.ReferenceTypeConstraintNullableAnnotation == NullableAnnotation.Annotated)
+            {
+                constraints.Add("class?");
+            }
+            else
+            {
+                constraints.Add("class");
+            }
+        }
+        else if (typeParam.HasValueTypeConstraint)
+        {
+            constraints.Add("struct");
+        }
+
+        // Add type constraints
+        foreach (var constraintType in typeParam.ConstraintTypes)
+        {
+            constraints.Add(constraintType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+        }
+
+        // Add constructor constraint last
+        if (typeParam.HasConstructorConstraint)
+        {
+            constraints.Add("new()");
+        }
+
+        return string.Join(", ", constraints);
+    }
+
+    public static string GenerateTypeConstraints(INamedTypeSymbol classSymbol)
+    {
+        var constraints = new List<string>();
+    
+        foreach (var typeParam in classSymbol.TypeParameters)
+        {
+            var typeConstraints = GetTypeConstraints(typeParam);
+            if (!string.IsNullOrEmpty(typeConstraints))
+            {
+                constraints.Add($"where {typeParam.Name} : {typeConstraints}");
+            }
+        }
+
+        return constraints.Count > 0 ? " " + string.Join(" ", constraints) : "";
+    }
 }

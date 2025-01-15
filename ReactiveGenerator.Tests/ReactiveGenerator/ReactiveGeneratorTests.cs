@@ -1577,6 +1577,96 @@ public class ReactiveGeneratorTests
         return TestAndVerify(source);
     }
 
+    [Fact]
+    public Task ClassWithNotNullConstraint()
+    {
+        var source = @"
+        [Reactive]
+        public partial class Cache<TKey, TValue> 
+            where TKey : notnull 
+            where TValue : class
+        {
+            public partial TValue? Value { get; set; }
+            public partial TKey Key { get; set; }
+        }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task ClassWithMultipleComplexConstraints()
+    {
+        var source = @"
+        [Reactive]
+        public partial class AdvancedCache<T, TKey, TValue>
+            where T : class, IDisposable
+            where TKey : notnull
+            where TValue : struct, IComparable<TValue>
+        {
+            public partial T? Instance { get; set; }
+            public partial TKey Key { get; set; }
+            public partial TValue Value { get; set; }
+        }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task ClassWithNullableReferenceConstraint()
+    {
+        var source = @"
+        [Reactive]
+        public partial class Container<T>
+            where T : class?
+        {
+            public partial T? Value { get; set; }
+        }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task ClassWithUnmanagedConstraint()
+    {
+        var source = @"
+        [Reactive]
+        public partial class UnmanagedContainer<T>
+            where T : unmanaged
+        {
+            public partial T Value { get; set; }
+        }";
+
+        return TestAndVerify(source);
+    }
+ 
+    [Fact]
+    public Task AllPossibleConstraints()
+    {
+        var source = @"
+            public interface ITestInterface { }
+            public class BaseClass { }
+
+            [Reactive]
+            public partial class ConstraintsTest<T1, T2, T3, T4, T5, T6, T7>
+                where T1 : class, ITestInterface, new()           // Reference type + interface + constructor
+                where T2 : struct, IComparable<T2>               // Value type + interface with self
+                where T3 : notnull                               // Non-null constraint
+                where T4 : unmanaged                             // Unmanaged constraint
+                where T5 : BaseClass                             // Base class constraint
+                where T6 : T1                                    // Another type parameter constraint
+                where T7 : class?                                // Nullable reference type constraint
+            {
+                public partial T1? Property1 { get; set; }
+                public partial T2 Property2 { get; set; }
+                public partial T3 Property3 { get; set; }
+                public partial T4 Property4 { get; set; }
+                public partial T5? Property5 { get; set; }
+                public partial T6? Property6 { get; set; }
+                public partial T7? Property7 { get; set; }
+            }";
+
+        return TestAndVerify(source);
+    }
     /* TODO:
     [Fact]
     public Task ReadOnlyPropertyTest()
