@@ -163,7 +163,14 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         foreach (var containingType in containingTypes)
         {
             var containingTypeAccessibility = containingType.DeclaredAccessibility.ToString().ToLowerInvariant();
-            sb.AppendLine($"{indent}{containingTypeAccessibility} partial class {containingType.Name}");
+            var containingTypeParams = "";
+            var containingTypeConstraints = "";
+            if (containingType.TypeParameters.Length > 0)
+            {
+                containingTypeParams = "<" + string.Join(", ", containingType.TypeParameters.Select(tp => tp.Name)) + ">";
+                containingTypeConstraints = TypeHelper.GenerateTypeConstraints(containingType);
+            }
+            sb.AppendLine($"{indent}{containingTypeAccessibility} partial class {containingType.Name}{containingTypeParams}{containingTypeConstraints}");
             sb.AppendLine($"{indent}{{");
             indent += "    ";
         }
@@ -175,7 +182,7 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         if (classSymbol.TypeParameters.Length > 0)
         {
             typeParameters = "<" + string.Join(", ", classSymbol.TypeParameters.Select(tp => tp.Name)) + ">";
-            typeConstraints = GenerateTypeConstraints(classSymbol.TypeParameters);
+            typeConstraints = TypeHelper.GenerateTypeConstraints(classSymbol);
         }
 
         sb.AppendLine($"{indent}{accessibility} partial class {classSymbol.Name}{typeParameters}{typeConstraints}");
@@ -206,35 +213,6 @@ public class ObservableAsPropertyHelperGenerator : IIncrementalGenerator
         }
 
         return sb.ToString();
-    }
-
-    private static string GenerateTypeConstraints(ImmutableArray<ITypeParameterSymbol> typeParameters)
-    {
-        var constraints = new List<string>();
-        foreach (var typeParam in typeParameters)
-        {
-            var paramConstraints = new List<string>();
-
-            if (typeParam.HasReferenceTypeConstraint)
-                paramConstraints.Add("class");
-            else if (typeParam.HasValueTypeConstraint)
-                paramConstraints.Add("struct");
-
-            foreach (var constraintType in typeParam.ConstraintTypes)
-            {
-                paramConstraints.Add(constraintType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
-            }
-
-            if (typeParam.HasConstructorConstraint)
-                paramConstraints.Add("new()");
-
-            if (paramConstraints.Count > 0)
-            {
-                constraints.Add($"where {typeParam.Name} : {string.Join(", ", paramConstraints)}");
-            }
-        }
-
-        return constraints.Count > 0 ? " " + string.Join(" ", constraints) : "";
     }
 
     private static void GenerateObservableAsPropertyHelper(StringBuilder sb, IPropertySymbol property, string indent)
