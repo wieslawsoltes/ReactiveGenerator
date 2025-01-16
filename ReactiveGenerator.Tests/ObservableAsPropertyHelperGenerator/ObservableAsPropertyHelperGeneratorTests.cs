@@ -317,4 +317,68 @@ public class ObservableAsPropertyHelperGeneratorTests
 
         return TestAndVerify(source);
     }
+  
+    [Fact]
+    public Task ObservableAsPropertyWithConstraints()
+    {
+        var source = @"
+        using ReactiveUI;
+        
+        public partial class ViewModel<T, TKey> : ReactiveObject
+            where T : class, IDisposable
+            where TKey : notnull
+        {
+            [ObservableAsProperty]
+            public partial T? ComputedValue { get; }
+
+            [ObservableAsProperty]
+            public partial TKey CurrentKey { get; }
+        }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task ObservableAsPropertyWithComplexConstraints()
+    {
+        var source = @"
+        using ReactiveUI;
+        
+        public partial class Container<T, U, V> : ReactiveObject
+            where T : class?
+            where U : struct, IComparable<U>
+            where V : unmanaged
+        {
+            [ObservableAsProperty]
+            public partial T? NullableRef { get; }
+
+            [ObservableAsProperty]
+            public partial U ValueType { get; }
+
+            [ObservableAsProperty]
+            public partial V UnmanagedValue { get; }
+        }";
+
+        return TestAndVerify(source);
+    }
+
+    [Fact]
+    public Task ObservableAsPropertyWithNestedGenerics()
+    {
+        var source = @"
+        using ReactiveUI;
+        
+        public partial class Outer<T> : ReactiveObject
+            where T : class
+        {
+            public partial class Inner<U> : ReactiveObject
+                where U : T, new()
+            {
+                [ObservableAsProperty]
+                public partial U? Value { get; }
+            }
+        }";
+
+        return TestAndVerify(source);
+    }
 }
